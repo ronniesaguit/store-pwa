@@ -285,8 +285,10 @@ async function loadProducts() {
 
 function renderProductsList() {
   var html = state.products.map(function(p) {
-    return '<div class="product-row">' +
-      '<div><strong>' + p.Product_Name + '</strong><br>' +
+    return '<div class="product-row" style="align-items:center;gap:10px;">' +
+      _thumbHtml(p.Image, 44) +
+      '<div style="flex:1;min-width:0;"><strong>' + p.Product_Name + '</strong>' +
+      (p._pending ? ' <span style="color:#d97706;font-size:11px;">⏳pending</span>' : '') + '<br>' +
       '<span class="muted">₱' + Number(p.Selling_Price).toFixed(2) + ' | Stock: ' + p.Current_Stock + '</span></div>' +
       '<button class="small-btn" onclick="editProduct(\'' + p.Product_ID + '\')">Edit</button>' +
       '</div>';
@@ -300,11 +302,16 @@ function renderProductsList() {
     '<div class="card">' + html + '</div></div>';
 }
 
-function renderAddProductForm(msg, scannedCode) {
+function renderAddProductForm(msg, scannedCode, existingImage) {
+  _pendingProductImage = existingImage || null;
   var catsHtml = (state.categories || []).map(function(c) {
     return '<option value="' + c.Category_Name + '">' + c.Category_Name + '</option>';
   }).join('');
-  var initialCode = scannedCode || '';
+  var initialCode  = scannedCode || '';
+  var imgPreview   = existingImage
+    ? '<img id="p-img-preview" src="' + existingImage + '" onclick="openImageLightbox(\'' + existingImage + '\')" ' +
+      'style="width:64px;height:64px;object-fit:cover;border-radius:8px;cursor:pointer;border:1px solid #e5e7eb;">'
+    : '<img id="p-img-preview" src="" style="display:none;width:64px;height:64px;object-fit:cover;border-radius:8px;cursor:pointer;border:1px solid #e5e7eb;" onclick="openImageLightbox(this.src)">';
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
@@ -317,10 +324,17 @@ function renderAddProductForm(msg, scannedCode) {
         '<input id="p-barcode" value="' + initialCode + '" placeholder="Barcode number">' +
       '</div>' +
       '<div class="field"><label>Product Name *</label>' +
-        '<div style="display:flex;gap:8px;align-items:stretch;">' +
-          '<input id="p-name" placeholder="Full product name" style="flex:1;">' +
-          '<button onclick="openOCRScanner(\'p-name\')" title="Scan product name with camera" ' +
-            'style="background:#0891b2;color:#fff;border:none;padding:0 14px;border-radius:8px;font-size:22px;cursor:pointer;flex-shrink:0;">📷</button>' +
+        '<div style="display:flex;gap:6px;align-items:stretch;">' +
+          '<input id="p-name" placeholder="Full product name" style="flex:1;min-width:0;">' +
+          '<button id="voice-btn-p-name" onclick="startVoiceInput(\'p-name\')" title="Speak product name" ' +
+            'style="background:#7c3aed;color:#fff;border:none;padding:0 12px;border-radius:8px;font-size:20px;cursor:pointer;flex-shrink:0;">🎤</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="field"><label>Product Photo</label>' +
+        '<div style="display:flex;gap:10px;align-items:center;">' +
+          '<button onclick="openProductCamera()" ' +
+            'style="background:#0891b2;color:#fff;border:none;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">📷 Take Photo</button>' +
+          imgPreview +
         '</div>' +
       '</div>' +
       '<div class="field"><label>Category</label>' +
@@ -340,138 +354,101 @@ function renderAddProductForm(msg, scannedCode) {
     '</div>';
 }
 
-// ── OCR Text Scanner ──────────────────────────────────────────────────────────
+// ── Voice to Text ────────────────────────────────────────────────────────────
 
-var _ocrStream      = null;
-var _ocrTargetField = null;
+var _voiceRec = null;
 
-function openOCRScanner(fieldId) {
-  _ocrTargetField = fieldId;
-  var overlay = document.getElementById('ocr-overlay');
-  overlay.style.display = 'flex';
-  var btn = document.getElementById('ocr-capture-btn');
-  btn.disabled = false;
-  btn.textContent = '📷 Capture Text';
-  document.getElementById('ocr-status').textContent = 'Starting camera…';
+function startVoiceInput(fieldId) {
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { _showToast('Voice not supported on this browser', true); return; }
+  if (_voiceRec) { try { _voiceRec.stop(); } catch(e) {} }
 
-  navigator.mediaDevices.getUserMedia({
-    video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
-  }).then(function(stream) {
-    _ocrStream = stream;
-    var v = document.getElementById('ocr-video');
-    v.srcObject = stream;
-    v.play();
-    document.getElementById('ocr-status').textContent = 'Point at product name text, then tap Capture.';
-  }).catch(function(err) {
-    document.getElementById('ocr-status').textContent = '⚠ Camera error: ' + (err.message || err);
+  var btn   = document.getElementById('voice-btn-' + fieldId);
+  var field = document.getElementById(fieldId);
+  if (btn) { btn.textContent = '🔴'; btn.style.background = '#dc2626'; }
+
+  _voiceRec = new SR();
+  _voiceRec.lang = 'en-PH';
+  _voiceRec.interimResults = false;
+  _voiceRec.maxAlternatives = 1;
+
+  _voiceRec.onresult = function(e) {
+    var text = e.results[0][0].transcript;
+    if (field) { field.value = text; field.dispatchEvent(new Event('input')); }
+    _showToast('Got: ' + text.substring(0, 30), false);
+  };
+  _voiceRec.onerror = function(e) {
+    _showToast('Voice error: ' + e.error, true);
+  };
+  _voiceRec.onend = function() {
+    if (btn) { btn.textContent = '🎤'; btn.style.background = '#7c3aed'; }
+    _voiceRec = null;
+  };
+  _voiceRec.start();
+  _showToast('Listening… speak now', false);
+}
+
+// ── Product Photo / Thumbnail ─────────────────────────────────────────────────
+
+var _pendingProductImage = null;
+
+function openProductCamera() {
+  document.getElementById('product-photo-input').click();
+}
+
+function handleProductPhoto(input) {
+  var file = input.files[0];
+  if (!file) return;
+  _compressToThumbnail(file).then(function(dataUrl) {
+    _pendingProductImage = dataUrl;
+    var preview = document.getElementById('p-img-preview');
+    if (preview) {
+      preview.src = dataUrl;
+      preview.style.display = 'block';
+    }
+    _showToast('Photo ready', false);
+  });
+  input.value = ''; // reset so same file can be picked again
+}
+
+function _compressToThumbnail(file) {
+  return new Promise(function(resolve) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var img = new Image();
+      img.onload = function() {
+        var MAX = 96;
+        var scale = Math.min(MAX / img.width, MAX / img.height, 1);
+        var w = Math.max(1, Math.round(img.width  * scale));
+        var h = Math.max(1, Math.round(img.height * scale));
+        var canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.45));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
   });
 }
 
-function closeOCRScanner() {
-  document.getElementById('ocr-overlay').style.display = 'none';
-  if (_ocrStream) {
-    _ocrStream.getTracks().forEach(function(t) { t.stop(); });
-    _ocrStream = null;
-  }
+function openImageLightbox(src) {
+  var lb = document.getElementById('img-lightbox');
+  document.getElementById('img-lightbox-img').src = src;
+  lb.style.display = 'flex';
 }
 
-async function captureOCR() {
-  var video  = document.getElementById('ocr-video');
-  var btn    = document.getElementById('ocr-capture-btn');
-  var status = document.getElementById('ocr-status');
-  btn.disabled    = true;
-  btn.textContent = 'Processing…';
-  status.textContent = 'Recognizing text…';
+function closeImageLightbox() {
+  document.getElementById('img-lightbox').style.display = 'none';
+  document.getElementById('img-lightbox-img').src = '';
+}
 
-  // Capture current frame — crop to viewfinder region only
-  var vf       = document.getElementById('ocr-viewfinder');
-  var videoRect = video.getBoundingClientRect();
-  var vfRect    = vf.getBoundingClientRect();
-  var vidW = video.videoWidth  || 1280;
-  var vidH = video.videoHeight || 720;
-  var scaleX = vidW / videoRect.width;
-  var scaleY = vidH / videoRect.height;
-  var cropX = Math.max(0, (vfRect.left - videoRect.left) * scaleX);
-  var cropY = Math.max(0, (vfRect.top  - videoRect.top)  * scaleY);
-  var cropW = Math.min(vfRect.width  * scaleX, vidW - cropX);
-  var cropH = Math.min(vfRect.height * scaleY, vidH - cropY);
-  var canvas = document.createElement('canvas');
-  canvas.width  = cropW;
-  canvas.height = cropH;
-  canvas.getContext('2d').drawImage(video, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
-
-  var recognizedText = '';
-
-  // ── Path 1: Native TextDetector (Chrome Android 74+, fast, no library) ───────
-  if (typeof TextDetector !== 'undefined') {
-    try {
-      var detector = new TextDetector();
-      var blocks   = await detector.detect(canvas);
-      if (blocks.length > 0) {
-        recognizedText = blocks.map(function(b) { return b.rawValue; }).join(' ');
-      }
-    } catch(e) { console.warn('TextDetector failed:', e); }
-  }
-
-  // ── Path 2: Tesseract.js fallback ─────────────────────────────────────────────
-  if (!recognizedText) {
-    // If offline and TextDetector not available, Tesseract can't load from CDN
-    if (!navigator.onLine) {
-      status.textContent = '⚠ Text scanning needs internet on this device. Type name manually.';
-      btn.disabled    = false;
-      btn.textContent = '📷 Capture Text';
-      return;
-    }
-    status.textContent = 'Loading OCR engine (first use may take ~10s)…';
-    try {
-      if (typeof Tesseract === 'undefined') {
-        await new Promise(function(resolve, reject) {
-          var s = document.createElement('script');
-          s.src    = 'https://unpkg.com/tesseract.js@4/dist/tesseract.min.js';
-          s.onload = resolve;
-          s.onerror = reject;
-          document.head.appendChild(s);
-        });
-      }
-      status.textContent = 'Recognizing text…';
-      var result = await Tesseract.recognize(canvas, 'eng+fil', {
-        logger: function(m) {
-          if (m.status === 'recognizing text')
-            status.textContent = 'Recognizing… ' + Math.round((m.progress || 0) * 100) + '%';
-        }
-      });
-      recognizedText = result.data.text || '';
-    } catch(e) {
-      status.textContent = '⚠ OCR failed. Try again or type manually.';
-      btn.disabled    = false;
-      btn.textContent = '📷 Capture Text';
-      return;
-    }
-  }
-
-  // ── Clean up the text ─────────────────────────────────────────────────────────
-  var cleaned = recognizedText
-    .split('\n')
-    .map(function(s) { return s.trim(); })
-    .filter(function(s) { return s.length > 1; })
-    .join(' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .substring(0, 80);
-
-  if (cleaned) {
-    var field = document.getElementById(_ocrTargetField);
-    if (field) {
-      field.value = cleaned;
-      field.dispatchEvent(new Event('input'));
-    }
-    closeOCRScanner();
-    _showToast('Captured: ' + cleaned.substring(0, 35) + (cleaned.length > 35 ? '…' : ''), false);
-  } else {
-    status.textContent = '⚠ No text detected. Retake or type manually.';
-    btn.disabled    = false;
-    btn.textContent = '📷 Capture Text';
-  }
+function _thumbHtml(src, size) {
+  size = size || 44;
+  if (!src) return '';
+  return '<img src="' + src + '" onclick="openImageLightbox(\'' + src + '\')" ' +
+    'style="width:' + size + 'px;height:' + size + 'px;object-fit:cover;border-radius:6px;' +
+    'cursor:pointer;flex-shrink:0;border:1px solid #e5e7eb;" loading="lazy">';
 }
 
 function calcSellingPrice() {
@@ -494,7 +471,8 @@ async function submitProduct() {
     Cost_Price:    (document.getElementById('p-cost')     || {}).value || 0,
     Selling_Price: price,
     Current_Stock: (document.getElementById('p-stock')   || {}).value || 0,
-    Reorder_Level: (document.getElementById('p-reorder') || {}).value || 5
+    Reorder_Level: (document.getElementById('p-reorder') || {}).value || 5,
+    Image:         _pendingProductImage || ''
   };
 
   // ── Offline path: queue locally, sync when back online ───────────────────────
@@ -527,7 +505,7 @@ async function submitProduct() {
 async function editProduct(id) {
   var p = state.products.find(function(x) { return x.Product_ID === id; });
   if (!p) return;
-  renderAddProductForm('', p.Barcode);
+  renderAddProductForm('', p.Barcode, p.Image || '');
   document.getElementById('p-name').value    = p.Product_Name   || '';
   document.getElementById('p-price').value   = p.Selling_Price  || '';
   document.getElementById('p-cost').value    = p.Cost_Price     || '';
@@ -668,10 +646,14 @@ async function deleteCategory(name) {
 
 function renderQuickSell(msg) {
   var prodsHtml = state.products.map(function(p) {
+    var imgHtml = p.Image
+      ? '<img src="' + p.Image + '" style="width:100%;height:70px;object-fit:cover;border-radius:8px;margin-bottom:6px;display:block;" loading="lazy" onclick="event.stopPropagation();openImageLightbox(\'' + p.Image + '\')">'
+      : '';
     return '<button class="product-btn" onclick="addToCart(\'' + p.Product_ID + '\')">' +
-      '<div class="product-name">' + p.Product_Name + '</div>' +
+      imgHtml +
+      '<div class="product-name" style="font-size:13px;line-height:1.3;">' + p.Product_Name + '</div>' +
       '<div class="product-price">₱' + Number(p.Selling_Price).toFixed(2) + '</div>' +
-      '<div class="muted">Stock: ' + p.Current_Stock + '</div>' +
+      '<div class="muted" style="font-size:11px;">Stock: ' + p.Current_Stock + '</div>' +
       '</button>';
   }).join('');
 

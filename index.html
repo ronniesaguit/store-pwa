@@ -89,55 +89,16 @@
     </div>
   </div>
 
-  <!-- OCR Text Scanner overlay -->
-  <div id="ocr-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#111827;z-index:10000;flex-direction:column;overflow:hidden;">
-    <!-- Top bar -->
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:rgba(0,0,0,.8);flex-shrink:0;z-index:2;">
-      <h2 style="color:#fff;font-size:17px;font-weight:700;margin:0;">📝 Scan Product Name</h2>
-      <button onclick="closeOCRScanner()" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:38px;height:38px;border-radius:50%;font-size:20px;cursor:pointer;">✕</button>
-    </div>
+  <!-- Hidden file input for product photo capture -->
+  <input type="file" id="product-photo-input" accept="image/*" capture="environment"
+    style="display:none;" onchange="handleProductPhoto(this)">
 
-    <!-- Camera area with viewfinder — same style as barcode scanner -->
-    <div style="flex:1;min-height:0;position:relative;background:#000;overflow:hidden;">
-      <video id="ocr-video" autoplay playsinline muted
-        style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;"></video>
-
-      <!-- Viewfinder: wide crop box, only this region is sent to OCR -->
-      <div id="ocr-viewfinder"
-        style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-               width:88%;max-width:340px;aspect-ratio:3.5/1;
-               box-shadow:0 0 0 9999px rgba(0,0,0,.55);
-               border:2px solid rgba(34,197,94,.85);border-radius:8px;pointer-events:none;">
-        <!-- Animated scan line -->
-        <div style="position:absolute;left:2%;width:96%;height:2px;top:0;
-                    background:linear-gradient(to right,transparent,#22c55e,transparent);
-                    animation:ocr-sweep 2s linear infinite;"></div>
-      </div>
-    </div>
-
-    <!-- Bottom controls -->
-    <div style="flex-shrink:0;padding:14px 18px 24px;background:rgba(0,0,0,.88);text-align:center;">
-      <p id="ocr-status" style="color:#d1fae5;font-size:13px;font-weight:600;margin:0 0 12px 0;">
-        Align product name inside the box, then tap Capture.
-      </p>
-      <button id="ocr-capture-btn" onclick="captureOCR()"
-        style="display:block;width:100%;max-width:320px;margin:0 auto 10px;padding:15px;
-               background:#22c55e;color:#111;border:none;border-radius:12px;
-               font-size:16px;font-weight:700;cursor:pointer;">
-        📷 Capture Text
-      </button>
-      <button onclick="closeOCRScanner()"
-        style="display:block;width:100%;max-width:320px;margin:0 auto;padding:12px;
-               background:#374151;color:#9ca3af;border:none;border-radius:12px;
-               font-size:14px;cursor:pointer;">
-        Cancel
-      </button>
-    </div>
+  <!-- Image lightbox -->
+  <div id="img-lightbox" onclick="closeImageLightbox()"
+    style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:11000;
+           align-items:center;justify-content:center;padding:20px;">
+    <img id="img-lightbox-img" src="" style="max-width:100%;max-height:90dvh;border-radius:12px;object-fit:contain;">
   </div>
-
-  <style>
-    @keyframes ocr-sweep { 0%{top:5%} 100%{top:88%} }
-  </style>
 
   <!-- Inline Barcode Scanner overlay -->
   <div id="barcode-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#111827;z-index:10000;flex-direction:column;overflow:hidden;">
