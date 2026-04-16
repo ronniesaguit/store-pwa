@@ -415,6 +415,13 @@ async function captureOCR() {
 
   // ── Path 2: Tesseract.js fallback ─────────────────────────────────────────────
   if (!recognizedText) {
+    // If offline and TextDetector not available, Tesseract can't load from CDN
+    if (!navigator.onLine) {
+      status.textContent = '⚠ Text scanning needs internet on this device. Type name manually.';
+      btn.disabled    = false;
+      btn.textContent = '📷 Capture Text';
+      return;
+    }
     status.textContent = 'Loading OCR engine (first use may take ~10s)…';
     try {
       if (typeof Tesseract === 'undefined') {
@@ -490,6 +497,25 @@ async function submitProduct() {
     Reorder_Level: (document.getElementById('p-reorder') || {}).value || 5
   };
 
+  // ── Offline path: queue locally, sync when back online ───────────────────────
+  if (!navigator.onLine) {
+    try {
+      await DB.addToSyncQueue({ action: 'createProduct', data: payload });
+      // Add to local state immediately so it appears in the product list
+      var tempProduct = Object.assign({}, payload, {
+        Product_ID: 'OFFLINE_' + Date.now(),
+        _pending: true
+      });
+      state.products.push(tempProduct);
+      try { await DB.saveProducts(state.products); } catch(e) {}
+      renderOwnerDashboard('✓ Product saved offline — will sync when online.');
+    } catch(e) {
+      renderAddProductForm('Failed to save offline: ' + (e.message || String(e)));
+    }
+    return;
+  }
+
+  // ── Online path ───────────────────────────────────────────────────────────────
   showLoading('Saving product…');
   try {
     await API.call('createProduct', payload);
