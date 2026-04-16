@@ -251,6 +251,7 @@ function renderOwnerDashboard(msg) {
     '<button class="big-btn" onclick="renderExpenses()">💸 Expenses</button>' +
     '<button class="big-btn" onclick="renderReports()">📊 Reports</button>' +
     '<button class="big-btn" onclick="renderChat()">💬 Chat</button>' +
+    '<button class="big-btn" onclick="renderSettings()">⚙️ Settings</button>' +
     '</div>' +
     '<div class="card"><div class="subtitle">Quick Actions</div>' +
     '<button class="btn btn-secondary" onclick="renderAddProductForm()">+ Add New Product</button>' +
@@ -861,6 +862,8 @@ var EXPENSE_CATEGORIES = [
   { value: 'Inventory Purchase', label: 'Inventory Purchase', hint: 'Products you bought to sell (Coke, rice, snacks…)' },
   { value: 'Store Supplies',     label: 'Store Supplies',     hint: 'Items the store uses up but does not sell (bags, ice for display, tape…)' },
   { value: 'Utilities',          label: 'Utilities',          hint: 'Electricity, water, internet, load…' },
+  { value: 'Store Rental',       label: 'Store Rental',       hint: 'Monthly rent for the store space…' },
+  { value: 'Salaries/Wages',     label: 'Salaries/Wages',     hint: 'Staff pay — salbahis, daily wage, or monthly salary…' },
   { value: 'Transportation',     label: 'Transportation',     hint: 'Fare, fuel, delivery cost…' },
   { value: 'Repairs',            label: 'Repairs',            hint: 'Fixing equipment, shelves, appliances…' },
   { value: 'Food',               label: 'Food (Staff)',       hint: 'Meals or snacks for the store staff…' },
@@ -1067,26 +1070,30 @@ function renderReports() {
 async function loadReport(type, a, b) {
   showLoading('Generating report…');
   try {
-    var data;
+    var data, fixedCosts;
     if      (type === 'daily')   data = await API.call('getDailyReport',   { date: a });
     else if (type === 'weekly')  data = await API.call('getWeeklyReport',  {});
     else if (type === 'monthly') data = await API.call('getMonthlyReport', { year: a, month: b });
     else                         data = await API.call('getPeriodReport',  { dateFrom: a, dateTo: b });
-    renderReportScreen(type, data);
+    try { fixedCosts = await API.call('getFixedCosts'); } catch(e2) { fixedCosts = { rent: 0, salaries: [], otherFixed: 0 }; }
+    renderReportScreen(type, data, fixedCosts);
   } catch(e) {
     _showToast('Error: ' + e.message, true);
     renderReports();
   }
 }
 
-function renderReportScreen(type, d) {
+function renderReportScreen(type, d, fixedCosts) {
   var s      = d.summary;
   var title  = type === 'daily'   ? '📅 ' + d.date
              : type === 'weekly'  ? '📆 ' + d.dateFrom + ' → ' + d.dateTo
              : type === 'monthly' ? '🗓 ' + _monthName(d.month) + ' ' + d.year
              : '📊 ' + d.dateFrom + ' → ' + d.dateTo;
 
+  fixedCosts = fixedCosts || { rent: 0, salaries: [], otherFixed: 0 };
+
   function money(v) { return '₱' + Number(v || 0).toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+  function pct(v)   { return (v || 0).toFixed(1) + '%'; }
 
   // ── Summary cards ──
   var summaryHtml =
@@ -1100,6 +1107,71 @@ function renderReportScreen(type, d) {
       _rptCard('💸 Expenses',     money(s.totalExpenses),'#dc2626') +
       _rptCard('🏆 Net Profit',   money(s.netProfit), s.netProfit >= 0 ? '#16a34a' : '#dc2626') +
     '</div>';
+
+  // ── Health Indicators ──
+  var salaryTotal = (fixedCosts.salaries || []).reduce(function(t, x) { return t + Number(x.amount || 0); }, 0);
+  var monthlyFixed = Number(fixedCosts.rent || 0) + salaryTotal + Number(fixedCosts.otherFixed || 0);
+
+  // Scale fixed costs to the report period
+  var periodDays = 30;
+  if (type === 'daily')   periodDays = 1;
+  else if (type === 'weekly') periodDays = 7;
+  else if (type === 'monthly') periodDays = 30;
+  else {
+    var msPerDay = 86400000;
+    var df = new Date((d.dateFrom || '').replace(/-/g,'/'));
+    var dt = new Date((d.dateTo   || '').replace(/-/g,'/'));
+    if (!isNaN(df) && !isNaN(dt)) periodDays = Math.max(1, Math.round((dt - df) / msPerDay) + 1);
+  }
+  var scaledFixed = monthlyFixed * periodDays / 30;
+
+  var gpm   = s.revenue > 0 ? (s.grossProfit / s.revenue) * 100 : 0;   // Gross Profit Margin %
+  var npm   = s.revenue > 0 ? (s.netProfit   / s.revenue) * 100 : 0;   // Net Profit Margin %
+  var exr   = s.revenue > 0 ? (s.totalExpenses / s.revenue) * 100 : 0; // Expense Ratio %
+  var breakEven = gpm > 0 ? (scaledFixed / (gpm / 100)) : 0;           // Revenue needed to cover fixed costs
+  var beStatus  = breakEven <= 0 ? 'N/A' : s.revenue >= breakEven ? 'ABOVE' : 'BELOW';
+  var dailyTarget = monthlyFixed > 0 ? (monthlyFixed / 30 / (gpm > 0 ? gpm / 100 : 1)) : 0;
+
+  function gpmColor(v)  { return v >= 30 ? '#16a34a' : v >= 15 ? '#d97706' : '#dc2626'; }
+  function npmColor(v)  { return v >= 10 ? '#16a34a' : v >= 0  ? '#d97706' : '#dc2626'; }
+  function exrColor(v)  { return v <= 40 ? '#16a34a' : v <= 60 ? '#d97706' : '#dc2626'; }
+  function beColor(st)  { return st === 'ABOVE' ? '#16a34a' : st === 'BELOW' ? '#dc2626' : '#6b7280'; }
+  function beEmoji(st)  { return st === 'ABOVE' ? '🟢' : st === 'BELOW' ? '🔴' : '⚪'; }
+
+  var healthHtml = '<div class="card"><div class="title" style="font-size:15px;margin-bottom:10px;">📈 Business Health Indicators</div>';
+
+  if (monthlyFixed <= 0) {
+    healthHtml += '<div style="background:#fef9c3;border-radius:8px;padding:10px;font-size:13px;color:#854d0e;margin-bottom:10px;">' +
+      '⚙️ <strong>Set your Monthly Fixed Costs</strong> in Settings to unlock Break-Even analysis.</div>';
+  }
+
+  healthHtml += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+    _rptCard('📊 Gross Margin',   pct(gpm),  gpmColor(gpm), gpm >= 30 ? 'Healthy (≥30%)' : gpm >= 15 ? 'Moderate (≥15%)' : 'Low (<15%)') +
+    _rptCard('💹 Net Margin',     pct(npm),  npmColor(npm), npm >= 10 ? 'Healthy (≥10%)' : npm >= 0  ? 'Slim (≥0%)'     : 'Loss!') +
+    _rptCard('💸 Expense Ratio',  pct(exr),  exrColor(exr), exr <= 40 ? 'Controlled (≤40%)' : exr <= 60 ? 'High (≤60%)' : 'Very High') +
+    _rptCard('🎯 Break-Even',     monthlyFixed > 0 ? money(breakEven) : '—', beColor(beStatus),
+             monthlyFixed > 0 ? beEmoji(beStatus) + ' ' + (beStatus === 'N/A' ? 'Set fixed costs' : beStatus + ' break-even') : 'Set fixed costs in Settings') +
+  '</div>';
+
+  if (monthlyFixed > 0) {
+    var fcRow = function(label, val) {
+      return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f3f4f6;font-size:13px;">' +
+        '<span style="color:#6b7280;">' + label + '</span><strong>' + money(val) + '</strong></div>';
+    };
+    healthHtml += '<div style="margin-top:10px;background:#f9fafb;border-radius:8px;padding:10px;">' +
+      '<div style="font-size:12px;font-weight:bold;color:#374151;margin-bottom:6px;">Cost Structure (' + periodDays + '-day period)</div>' +
+      fcRow('Rent (scaled)',    fixedCosts.rent * periodDays / 30) +
+      (fixedCosts.salaries || []).map(function(s2) {
+        return fcRow(s2.name, s2.amount * periodDays / 30);
+      }).join('') +
+      fcRow('Other Fixed',     fixedCosts.otherFixed * periodDays / 30) +
+      fcRow('Variable Expenses', s.totalExpenses) +
+      '<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;font-weight:bold;">' +
+        '<span>Total Costs</span><span style="color:#dc2626;">' + money(scaledFixed + s.totalExpenses) + '</span></div>' +
+      (dailyTarget > 0 ? '<div style="font-size:12px;color:#6b7280;margin-top:4px;">Daily revenue target to break even: <strong style="color:#2563eb;">' + money(dailyTarget) + '/day</strong></div>' : '') +
+    '</div>';
+  }
+  healthHtml += '</div>';
 
   // ── Top Products ──
   var topHtml = '<div class="card"><div class="title" style="font-size:16px;margin-bottom:10px;">🏆 Top Products</div>';
@@ -1201,6 +1273,7 @@ function renderReportScreen(type, d) {
       '<button class="small-btn" onclick="renderReports()">← Back</button>' +
     '</div>' +
     '<div class="card">' + summaryHtml + '</div>' +
+    healthHtml +
     breakdownHtml +
     topHtml +
     expHtml +
@@ -1209,10 +1282,11 @@ function renderReportScreen(type, d) {
     '</div>';
 }
 
-function _rptCard(label, value, color) {
+function _rptCard(label, value, color, detail) {
   return '<div style="background:#f9fafb;border-radius:10px;padding:12px;text-align:center;">' +
     '<div style="font-size:11px;color:#6b7280;margin-bottom:4px;">' + label + '</div>' +
     '<div style="font-size:15px;font-weight:bold;color:' + color + ';">' + value + '</div>' +
+    (detail ? '<div style="font-size:10px;color:#6b7280;margin-top:3px;">' + detail + '</div>' : '') +
     '</div>';
 }
 
@@ -1226,11 +1300,82 @@ function _formatDate(dateStr) {
   return days[d.getDay()] + ' ' + dateStr;
 }
 
-function renderSettings() {
+async function renderSettings() {
+  showLoading('Loading settings…');
+  var fc = { rent: 0, salaries: [], otherFixed: 0 };
+  try { fc = await API.call('getFixedCosts'); } catch(e) {}
+  _renderFixedCostsForm(fc);
+}
+
+function _renderFixedCostsForm(fc) {
+  var salaries = (fc.salaries || []);
+  var salaryRows = salaries.map(function(s, i) { return _salaryRowHtml(i, s.name, s.amount); }).join('');
+
   document.getElementById('app').innerHTML =
-    '<div class="screen"><div class="topbar"><div class="title">⚙️ Settings</div>' +
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">⚙️ Settings</div>' +
     '<button class="small-btn" onclick="goHome()">Back</button></div>' +
-    '<div class="card"><p>Coming soon…</p></div></div>';
+
+    '<div class="card">' +
+    '<div class="subtitle" style="margin-bottom:4px;">Monthly Fixed Costs</div>' +
+    '<div class="muted" style="font-size:12px;margin-bottom:14px;">These are costs the store pays every month regardless of sales. Used to compute Break-Even.</div>' +
+
+    '<div class="field"><label>Store Rent (₱/month)</label>' +
+    '<input id="fc-rent" type="number" min="0" step="1" value="' + (fc.rent || 0) + '" placeholder="0"></div>' +
+
+    '<div class="field"><label>Other Fixed Costs (₱/month)</label>' +
+    '<input id="fc-other" type="number" min="0" step="1" value="' + (fc.otherFixed || 0) + '" placeholder="0">' +
+    '<div class="muted" style="font-size:12px;margin-top:4px;">e.g. loan amortization, annual fees averaged monthly</div></div>' +
+
+    '<div class="field"><label>Salaries / Wages</label>' +
+    '<div id="fc-salary-list">' + salaryRows + '</div>' +
+    '<button class="btn btn-secondary" style="margin-top:8px;" onclick="_addSalaryRow()">+ Add Person</button></div>' +
+
+    '<button class="btn btn-primary" style="margin-top:8px;" onclick="saveFixedCostsSettings()">💾 Save Fixed Costs</button>' +
+    '</div></div>';
+}
+
+function _salaryRowHtml(i, name, amount) {
+  return '<div id="fc-sal-' + i + '" style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">' +
+    '<input placeholder="Name (e.g. Ate Nena)" style="flex:2;padding:10px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;" value="' + (name || '') + '" id="fc-sal-name-' + i + '">' +
+    '<input type="number" min="0" step="1" placeholder="₱/mo" style="flex:1;padding:10px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;" value="' + (amount || '') + '" id="fc-sal-amt-' + i + '">' +
+    '<button onclick="_removeSalaryRow(' + i + ')" style="padding:8px 12px;background:#fee2e2;border:none;border-radius:8px;cursor:pointer;font-size:16px;color:#dc2626;">✕</button>' +
+    '</div>';
+}
+
+var _salaryRowCount = 0;
+function _addSalaryRow() {
+  var list = document.getElementById('fc-salary-list');
+  if (!list) return;
+  var idx = ++_salaryRowCount + 1000;
+  var div = document.createElement('div');
+  div.innerHTML = _salaryRowHtml(idx, '', '');
+  list.appendChild(div.firstChild);
+}
+
+function _removeSalaryRow(i) {
+  var row = document.getElementById('fc-sal-' + i);
+  if (row) row.parentNode.removeChild(row);
+}
+
+async function saveFixedCostsSettings() {
+  var rent      = Number(document.getElementById('fc-rent').value)  || 0;
+  var otherFixed = Number(document.getElementById('fc-other').value) || 0;
+  var salaries  = [];
+  document.getElementById('fc-salary-list').querySelectorAll('[id^="fc-sal-name-"]').forEach(function(inp) {
+    var idx = inp.id.replace('fc-sal-name-', '');
+    var amtEl = document.getElementById('fc-sal-amt-' + idx);
+    var name  = inp.value.trim();
+    var amount = Number(amtEl ? amtEl.value : 0) || 0;
+    if (name && amount > 0) salaries.push({ name: name, amount: amount });
+  });
+  try {
+    await API.call('saveFixedCosts', { rent: rent, salaries: salaries, otherFixed: otherFixed });
+    _showToast('Fixed costs saved!', false);
+    renderSettings();
+  } catch(e) {
+    _showToast('Error: ' + e.message, true);
+  }
 }
 
 // ── Chat ──────────────────────────────────────────────────────────────────────
