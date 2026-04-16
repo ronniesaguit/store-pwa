@@ -285,8 +285,12 @@ async function loadProducts() {
 
 function renderProductsList() {
   var html = state.products.map(function(p) {
-    return '<div class="product-row" style="align-items:center;gap:10px;">' +
-      _thumbHtml(_productImage(p), 44) +
+    var pImg = _productImage(p);
+    var imgEl = pImg
+      ? _thumbHtml(pImg, 44)
+      : '<div style="width:44px;height:44px;border-radius:6px;background:#f3f4f6;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px;">📦</div>';
+    return '<div style="display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid #f3f4f6;">' +
+      imgEl +
       '<div style="flex:1;min-width:0;"><strong>' + p.Product_Name + '</strong>' +
       (p._pending ? ' <span style="color:#d97706;font-size:11px;">⏳pending</span>' : '') + '<br>' +
       '<span class="muted">₱' + Number(p.Selling_Price).toFixed(2) + ' | Stock: ' + p.Current_Stock + '</span></div>' +
@@ -503,6 +507,15 @@ async function submitProduct() {
   try {
     await API.call('createProduct', payload);
     state.products = await API.call('getProducts');
+    // If the server didn't return a Thumbnail_URL yet (Drive not wired),
+    // inject the local base64 image so it shows immediately
+    if (payload.Image) {
+      var match = state.products.find(function(p) {
+        return p.Product_Name === payload.Product_Name && !p.Thumbnail_URL;
+      });
+      if (match) match.Image = payload.Image;
+    }
+    try { await DB.saveProducts(state.products); } catch(e) {}
     renderOwnerDashboard('Product saved successfully!');
   } catch(err) { renderAddProductForm(err.message || String(err)); }
 }
@@ -652,14 +665,18 @@ async function deleteCategory(name) {
 function renderQuickSell(msg) {
   var prodsHtml = state.products.map(function(p) {
     var pImg = _productImage(p);
-    var imgHtml = pImg
-      ? '<img src="' + pImg + '" style="width:100%;height:70px;object-fit:cover;border-radius:8px;margin-bottom:6px;display:block;" loading="lazy" onclick="event.stopPropagation();openImageLightbox(\'' + pImg.replace(/'/g,'%27') + '\')">'
-      : '';
-    return '<button class="product-btn" onclick="addToCart(\'' + p.Product_ID + '\')">' +
-      imgHtml +
-      '<div class="product-name" style="font-size:13px;line-height:1.3;">' + p.Product_Name + '</div>' +
-      '<div class="product-price">₱' + Number(p.Selling_Price).toFixed(2) + '</div>' +
-      '<div class="muted" style="font-size:11px;">Stock: ' + p.Current_Stock + '</div>' +
+    var safeImg = pImg ? pImg.replace(/'/g, '%27') : '';
+    var imgEl = pImg
+      ? '<img src="' + pImg + '" loading="lazy" onclick="event.stopPropagation();openImageLightbox(\'' + safeImg + '\')" ' +
+        'style="width:44px;height:44px;object-fit:cover;border-radius:6px;flex-shrink:0;border:1px solid #e5e7eb;">'
+      : '<div style="width:44px;height:44px;border-radius:6px;background:#f3f4f6;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px;">📦</div>';
+    return '<button class="product-btn" onclick="addToCart(\'' + p.Product_ID + '\')" style="display:flex;align-items:center;gap:8px;padding:10px;">' +
+      imgEl +
+      '<div style="flex:1;min-width:0;text-align:left;">' +
+        '<div class="product-name" style="font-size:13px;line-height:1.3;white-space:normal;">' + p.Product_Name + '</div>' +
+        '<div class="product-price" style="font-size:13px;">₱' + Number(p.Selling_Price).toFixed(2) + '</div>' +
+        '<div class="muted" style="font-size:11px;">Stock: ' + p.Current_Stock + '</div>' +
+      '</div>' +
       '</button>';
   }).join('');
 
