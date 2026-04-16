@@ -286,7 +286,7 @@ async function loadProducts() {
 function renderProductsList() {
   var html = state.products.map(function(p) {
     return '<div class="product-row" style="align-items:center;gap:10px;">' +
-      _thumbHtml(p.Image, 44) +
+      _thumbHtml(_productImage(p), 44) +
       '<div style="flex:1;min-width:0;"><strong>' + p.Product_Name + '</strong>' +
       (p._pending ? ' <span style="color:#d97706;font-size:11px;">⏳pending</span>' : '') + '<br>' +
       '<span class="muted">₱' + Number(p.Selling_Price).toFixed(2) + ' | Stock: ' + p.Current_Stock + '</span></div>' +
@@ -443,10 +443,15 @@ function closeImageLightbox() {
   document.getElementById('img-lightbox-img').src = '';
 }
 
+function _productImage(p) {
+  return p.Thumbnail_URL || p.Image || '';
+}
+
 function _thumbHtml(src, size) {
   size = size || 44;
   if (!src) return '';
-  return '<img src="' + src + '" onclick="openImageLightbox(\'' + src + '\')" ' +
+  var safe = src.replace(/'/g, '%27');
+  return '<img src="' + src + '" onclick="openImageLightbox(\'' + safe + '\')" ' +
     'style="width:' + size + 'px;height:' + size + 'px;object-fit:cover;border-radius:6px;' +
     'cursor:pointer;flex-shrink:0;border:1px solid #e5e7eb;" loading="lazy">';
 }
@@ -505,7 +510,7 @@ async function submitProduct() {
 async function editProduct(id) {
   var p = state.products.find(function(x) { return x.Product_ID === id; });
   if (!p) return;
-  renderAddProductForm('', p.Barcode, p.Image || '');
+  renderAddProductForm('', p.Barcode, _productImage(p));
   document.getElementById('p-name').value    = p.Product_Name   || '';
   document.getElementById('p-price').value   = p.Selling_Price  || '';
   document.getElementById('p-cost').value    = p.Cost_Price     || '';
@@ -646,8 +651,9 @@ async function deleteCategory(name) {
 
 function renderQuickSell(msg) {
   var prodsHtml = state.products.map(function(p) {
-    var imgHtml = p.Image
-      ? '<img src="' + p.Image + '" style="width:100%;height:70px;object-fit:cover;border-radius:8px;margin-bottom:6px;display:block;" loading="lazy" onclick="event.stopPropagation();openImageLightbox(\'' + p.Image + '\')">'
+    var pImg = _productImage(p);
+    var imgHtml = pImg
+      ? '<img src="' + pImg + '" style="width:100%;height:70px;object-fit:cover;border-radius:8px;margin-bottom:6px;display:block;" loading="lazy" onclick="event.stopPropagation();openImageLightbox(\'' + pImg.replace(/'/g,'%27') + '\')">'
       : '';
     return '<button class="product-btn" onclick="addToCart(\'' + p.Product_ID + '\')">' +
       imgHtml +
