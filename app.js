@@ -856,7 +856,16 @@ async function submitStock() {
 
 // ── Expenses ──────────────────────────────────────────────────────────────────
 
-var EXPENSE_CATEGORIES = ['Supplies','Utilities','Restocking','Transportation','Repairs','Food','Others'];
+// Category list with descriptions shown in the form
+var EXPENSE_CATEGORIES = [
+  { value: 'Inventory Purchase', label: 'Inventory Purchase', hint: 'Products you bought to sell (Coke, rice, snacks…)' },
+  { value: 'Store Supplies',     label: 'Store Supplies',     hint: 'Items the store uses up but does not sell (bags, ice for display, tape…)' },
+  { value: 'Utilities',          label: 'Utilities',          hint: 'Electricity, water, internet, load…' },
+  { value: 'Transportation',     label: 'Transportation',     hint: 'Fare, fuel, delivery cost…' },
+  { value: 'Repairs',            label: 'Repairs',            hint: 'Fixing equipment, shelves, appliances…' },
+  { value: 'Food',               label: 'Food (Staff)',       hint: 'Meals or snacks for the store staff…' },
+  { value: 'Others',             label: 'Others',             hint: 'Anything that does not fit above…' }
+];
 
 async function renderExpenses() {
   showLoading('Loading expenses…');
@@ -905,10 +914,11 @@ async function renderExpenses() {
 }
 
 function renderAddExpenseForm(msg) {
-  var today = new Date().toISOString().substring(0, 10);
+  var today    = new Date().toISOString().substring(0, 10);
   var catsHtml = EXPENSE_CATEGORIES.map(function(c) {
-    return '<option value="' + c + '">' + c + '</option>';
+    return '<option value="' + c.value + '">' + c.label + '</option>';
   }).join('');
+  var firstHint = EXPENSE_CATEGORIES[0].hint;
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
@@ -918,34 +928,80 @@ function renderAddExpenseForm(msg) {
     '<div class="card">' +
       '<div class="field"><label>Date</label>' +
         '<input id="exp-date" type="date" value="' + today + '"></div>' +
+
       '<div class="field"><label>Category</label>' +
-        '<select id="exp-cat">' + catsHtml + '</select></div>' +
+        '<select id="exp-cat" onchange="updateExpenseCategoryHint()">' + catsHtml + '</select>' +
+        '<div id="exp-cat-hint" style="font-size:12px;color:#6b7280;margin-top:4px;padding:6px 8px;' +
+          'background:#f9fafb;border-radius:6px;">' + firstHint + '</div>' +
+      '</div>' +
+
       '<div class="field"><label>Description *</label>' +
         '<div style="display:flex;gap:6px;align-items:stretch;">' +
           '<input id="exp-desc" placeholder="e.g. Bought ice, Meralco bill" style="flex:1;min-width:0;">' +
           '<button id="voice-btn-exp-desc" onclick="startVoiceInput(\'exp-desc\')" ' +
             'style="background:#7c3aed;color:#fff;border:none;padding:0 12px;border-radius:8px;font-size:20px;cursor:pointer;flex-shrink:0;">🎤</button>' +
         '</div></div>' +
-      '<div class="field"><label>Amount (₱) *</label>' +
-        '<input id="exp-amount" type="number" step="0.01" placeholder="0.00" inputmode="decimal"></div>' +
+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">' +
+        '<div class="field" style="margin:0;"><label>Quantity</label>' +
+          '<input id="exp-qty" type="number" step="1" min="1" value="1" inputmode="numeric" ' +
+            'oninput="calcExpenseAmount()"></div>' +
+        '<div class="field" style="margin:0;"><label>Unit Price (₱)</label>' +
+          '<input id="exp-unit-price" type="number" step="0.01" placeholder="0.00" inputmode="decimal" ' +
+            'oninput="calcExpenseAmount()"></div>' +
+      '</div>' +
+
+      '<div class="field">' +
+        '<label>Total Amount (₱) *</label>' +
+        '<input id="exp-amount" type="number" step="0.01" placeholder="Auto-calculated or enter directly" ' +
+          'inputmode="decimal" style="font-size:18px;font-weight:bold;background:#f0fdf4;"></div>' +
+
       '<div class="field"><label>Payment Method</label>' +
         '<select id="exp-pay"><option>Cash</option><option>GCash</option><option>Maya</option><option>Credit</option></select></div>' +
+
       '<button class="btn btn-primary" onclick="submitExpense()">Save Expense</button>' +
     '</div></div>';
+}
+
+function updateExpenseCategoryHint() {
+  var sel  = document.getElementById('exp-cat');
+  var hint = document.getElementById('exp-cat-hint');
+  if (!sel || !hint) return;
+  var cat = EXPENSE_CATEGORIES.find(function(c) { return c.value === sel.value; });
+  hint.textContent = cat ? cat.hint : '';
+}
+
+function calcExpenseAmount() {
+  var qty   = Number((document.getElementById('exp-qty')        || {}).value) || 0;
+  var price = Number((document.getElementById('exp-unit-price') || {}).value) || 0;
+  var amtEl = document.getElementById('exp-amount');
+  if (qty > 0 && price > 0 && amtEl) {
+    amtEl.value = (qty * price).toFixed(2);
+  }
 }
 
 async function submitExpense() {
   var desc   = (document.getElementById('exp-desc')   || {}).value || '';
   var amount = (document.getElementById('exp-amount') || {}).value || '';
+  var qty    = Number((document.getElementById('exp-qty')        || {}).value) || 1;
+  var uPrice = Number((document.getElementById('exp-unit-price') || {}).value) || 0;
   if (!desc.trim())        { _showToast('Description is required', true); return; }
   if (Number(amount) <= 0) { _showToast('Amount must be greater than zero', true); return; }
+
+  // Build description suffix if qty/unit price were filled
+  var descFull = desc.trim();
+  if (qty > 1 || uPrice > 0) {
+    descFull += ' (' + qty + ' × ₱' + uPrice.toFixed(2) + ')';
+  }
 
   var payload = {
     Expense_Date:     (document.getElementById('exp-date') || {}).value || new Date().toISOString().substring(0,10),
     Expense_Category: (document.getElementById('exp-cat')  || {}).value || 'Others',
-    Description:      desc.trim(),
+    Description:      descFull,
     Amount:           Number(amount),
-    Payment_Method:   (document.getElementById('exp-pay')  || {}).value || 'Cash'
+    Payment_Method:   (document.getElementById('exp-pay')  || {}).value || 'Cash',
+    Quantity:         qty,
+    Unit_Price:       uPrice
   };
 
   // Offline path
