@@ -1,12 +1,13 @@
 // sw.js — Service Worker for offline-first Store PWA
-const CACHE = 'store-pwa-v6';
+const CACHE = 'store-pwa-v7';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './app.js',
   './api.js',
   './db.js',
-  './manifest.json'
+  './manifest.json',
+  './scanner.html'
 ];
 
 // Install: pre-cache all static assets

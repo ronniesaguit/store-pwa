@@ -1,6 +1,6 @@
 // app.js — Store Management PWA main logic
 
-var SCANNER_URL = 'https://storebarcodereader.netlify.app/';
+var SCANNER_URL = 'https://ronniesaguit.github.io/store-pwa/scanner.html';
 
 var state = {
   session: null,

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Barcode Scanner</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:#111827;color:#fff;font-family:Arial,sans-serif;height:100dvh;display:flex;flex-direction:column;overflow:hidden;}
+    #topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:rgba(0,0,0,.8);flex-shrink:0;}
+    #topbar h2{font-size:17px;font-weight:700;}
+    #close-btn{background:rgba(255,255,255,.15);border:none;color:#fff;width:38px;height:38px;border-radius:50%;font-size:20px;cursor:pointer;}
+    #reader-wrap{flex:1;min-height:0;position:relative;background:#000;overflow:hidden;}
+    #reader{width:100%;height:100%;}
+    /* Override html5-qrcode default styles */
+    #reader video{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;object-fit:cover!important;}
+    #reader img{display:none!important;}
+    #qr-shaded-region{border-width:40px!important;}
+    #bottombar{flex-shrink:0;padding:14px 18px 24px;background:rgba(0,0,0,.88);text-align:center;}
+    #status{color:#d1fae5;font-size:13px;font-weight:600;margin-bottom:12px;}
+    #manual-row{display:flex;gap:8px;max-width:340px;margin:0 auto 10px;}
+    #manual-input{flex:1;padding:12px;border-radius:10px;border:none;font-size:16px;background:#1f2937;color:#fff;}
+    #manual-input::placeholder{color:#6b7280;}
+    #manual-btn{padding:12px 18px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;}
+    #cancel-btn{display:block;width:100%;max-width:340px;margin:0 auto;padding:12px;background:#374151;color:#9ca3af;border:none;border-radius:12px;font-size:14px;cursor:pointer;}
+  </style>
+</head>
+<body>
+  <div id="topbar">
+    <h2>📷 Scan Barcode</h2>
+    <button id="close-btn" onclick="closeScanner()">✕</button>
+  </div>
+
+  <div id="reader-wrap">
+    <div id="reader"></div>
+  </div>
+
+  <div id="bottombar">
+    <p id="status">Point camera at barcode…</p>
+    <div id="manual-row">
+      <input id="manual-input" placeholder="Type barcode manually…" inputmode="numeric" autocomplete="off">
+      <button id="manual-btn" onclick="submitManual()">Go</button>
+    </div>
+    <button id="cancel-btn" onclick="closeScanner()">Cancel</button>
+  </div>
+
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script>
+    // Get the opener origin from URL param
+    var params  = new URLSearchParams(window.location.search);
+    var _origin = decodeURIComponent(params.get('origin') || '*');
+    var _sent   = false;
+
+    function sendBarcode(code) {
+      if (_sent) return;
+      _sent = true;
+      var msg = { type: 'BARCODE_SCANNED', barcode: code };
+      if (window.opener) {
+        try { window.opener.postMessage(msg, _origin === '*' ? '*' : _origin); } catch(e) {}
+      }
+      window.close();
+    }
+
+    function closeScanner() {
+      if (window.opener) {
+        try { window.opener.postMessage({ type: 'SCANNER_CLOSED' }, '*'); } catch(e) {}
+      }
+      window.close();
+    }
+
+    function submitManual() {
+      var val = document.getElementById('manual-input').value.trim();
+      if (val) sendBarcode(val);
+    }
+
+    document.getElementById('manual-input').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') submitManual();
+    });
+
+    // Start html5-qrcode scanner
+    var html5QrCode = new Html5Qrcode('reader');
+    var config = {
+      fps: 15,
+      qrbox: function(w, h) {
+        var side = Math.min(w, h) * 0.72;
+        return { width: Math.round(side), height: Math.round(side * 0.45) };
+      },
+      aspectRatio: window.innerHeight / window.innerWidth,
+      supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
+    };
+
+    Html5Qrcode.getCameras().then(function(devices) {
+      // Prefer back camera
+      var cam = devices.find(function(d) { return /back|rear|environment/i.test(d.label); })
+               || devices[devices.length - 1]
+               || devices[0];
+      if (!cam) { document.getElementById('status').textContent = '⚠ No camera found.'; return; }
+
+      html5QrCode.start(
+        cam.id,
+        config,
+        function(decodedText) {
+          document.getElementById('status').textContent = '✅ Got: ' + decodedText;
+          html5QrCode.stop().catch(function(){});
+          setTimeout(function() { sendBarcode(decodedText); }, 300);
+        },
+        function() { /* scan errors ignored */ }
+      ).catch(function(err) {
+        document.getElementById('status').textContent = '⚠ Camera error. Type barcode below.';
+        console.warn(err);
+      });
+    }).catch(function(err) {
+      document.getElementById('status').textContent = '⚠ Camera not accessible. Type barcode below.';
+      console.warn(err);
+    });
+  </script>
+</body>
+</html>
