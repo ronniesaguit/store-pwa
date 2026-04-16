@@ -472,6 +472,30 @@ async function submitProduct() {
   if (!name.trim())       { _showToast('Product name is required', true); return; }
   if (Number(price) <= 0) { _showToast('Selling price must be greater than zero', true); return; }
 
+  // ── Strict duplicate check ────────────────────────────────────────────────────
+  var nameLower = name.trim().toLowerCase();
+  var duplicate = (state.products || []).find(function(p) {
+    return String(p.Product_Name || '').trim().toLowerCase() === nameLower;
+  });
+  if (duplicate) {
+    document.getElementById('app').innerHTML =
+      '<div class="screen">' +
+      '<div class="topbar"><div class="title" style="margin:0;">⚠ Product Exists</div>' +
+      '<button class="small-btn" onclick="renderAddProductForm()">Back</button></div>' +
+      '<div class="card" style="text-align:center;padding:24px;">' +
+        '<div style="font-size:48px;margin-bottom:12px;">📦</div>' +
+        '<div style="font-size:18px;font-weight:bold;margin-bottom:8px;">' + duplicate.Product_Name + '</div>' +
+        '<div style="color:#6b7280;margin-bottom:6px;">already exists in your products.</div>' +
+        '<div style="color:#6b7280;font-size:14px;margin-bottom:20px;">Current stock: <strong>' + (duplicate.Current_Stock || 0) + ' pcs</strong></div>' +
+        '<div style="background:#fef3c7;border-radius:10px;padding:14px;margin-bottom:20px;color:#92400e;font-size:14px;">' +
+          'If you received new stocks, go to <strong>Inventory → Add Stock</strong> to update the quantity.' +
+        '</div>' +
+        '<button class="btn btn-primary" style="margin-bottom:10px;" onclick="renderAddStock()">➕ Add Stock to this Product</button>' +
+        '<button class="btn btn-secondary" onclick="renderAddProductForm()">Go Back</button>' +
+      '</div></div>';
+    return;
+  }
+
   var payload = {
     Product_Name:  name,
     Category_Name: (document.getElementById('p-category') || {}).value || '',
@@ -590,17 +614,38 @@ async function addNewCategory() {
   var inp  = document.getElementById('new-category-name');
   var name = inp ? inp.value.trim() : '';
   if (!name) { _showToast('Enter a category name', true); return; }
+
+  // ── Strict duplicate check ──────────────────────────────────────────────────
+  var nameLower = name.toLowerCase();
+  var existing = (state.categories || []).find(function(c) {
+    return String(c.Category_Name || '').trim().toLowerCase() === nameLower;
+  });
+  if (existing) {
+    // Clear input, highlight the existing category in the list
+    if (inp) inp.value = '';
+    _showToast('"' + existing.Category_Name + '" already exists', true);
+    // Highlight the existing entry in the modal list
+    var items = document.querySelectorAll('#category-modal .category-item');
+    items.forEach(function(el) {
+      var span = el.querySelector('span');
+      if (span && span.textContent.trim().toLowerCase() === nameLower) {
+        el.style.background = '#fef3c7';
+        el.style.borderRadius = '8px';
+        setTimeout(function() { el.style.background = ''; }, 2500);
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+    return;
+  }
+
   try {
-    // Save to server (Products.gs now calls SpreadsheetApp.flush() before returning)
+    // Save to server
     await API.call('createCategory', { Category_Name: name });
     if (inp) inp.value = '';
 
     // Add to state immediately
     if (!state.categories) state.categories = [];
-    var alreadyExists = state.categories.find(function(c) { return c.Category_Name === name; });
-    if (!alreadyExists) {
-      state.categories.push({ Category_Name: name, Is_Active: 'TRUE', Sort_Order: 99 });
-    }
+    state.categories.push({ Category_Name: name, Is_Active: 'TRUE', Sort_Order: 99 });
 
     // Save current full list to IndexedDB
     try { await DB.saveCategories(state.categories); } catch(e) {}
