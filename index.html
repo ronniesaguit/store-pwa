@@ -139,7 +139,58 @@
     @keyframes ocr-sweep { 0%{top:5%} 100%{top:88%} }
   </style>
 
-  <!-- Scanner overlay -->
+  <!-- Inline Barcode Scanner overlay -->
+  <div id="barcode-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#111827;z-index:10000;flex-direction:column;overflow:hidden;">
+    <!-- Top bar -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:rgba(0,0,0,.8);flex-shrink:0;">
+      <h2 style="color:#fff;font-size:17px;font-weight:700;margin:0;">📷 Scan Barcode</h2>
+      <button onclick="closeScannerModal()" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:38px;height:38px;border-radius:50%;font-size:20px;cursor:pointer;">✕</button>
+    </div>
+
+    <!-- Camera area with viewfinder -->
+    <div style="flex:1;min-height:0;position:relative;background:#000;overflow:hidden;">
+      <video id="barcode-video" autoplay playsinline muted
+        style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;"></video>
+
+      <!-- Viewfinder: wide crop box for barcodes -->
+      <div id="barcode-viewfinder"
+        style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+               width:88%;max-width:340px;aspect-ratio:3.5/1;
+               box-shadow:0 0 0 9999px rgba(0,0,0,.55);
+               border:2px solid rgba(34,197,94,.85);border-radius:8px;pointer-events:none;">
+        <!-- Animated scan line -->
+        <div style="position:absolute;left:0;top:50%;width:100%;height:2px;
+                    background:linear-gradient(to right,transparent,#22c55e,transparent);
+                    animation:barcode-sweep 1.5s ease-in-out infinite;"></div>
+      </div>
+
+      <!-- Fallback div for html5-qrcode -->
+      <div id="barcode-reader-div" style="position:absolute;inset:0;"></div>
+    </div>
+
+    <!-- Bottom controls -->
+    <div style="flex-shrink:0;padding:14px 18px 24px;background:rgba(0,0,0,.88);text-align:center;">
+      <p id="barcode-status" style="color:#d1fae5;font-size:13px;font-weight:600;margin:0 0 12px 0;">
+        Point camera at barcode…
+      </p>
+      <div style="display:flex;gap:8px;max-width:340px;margin:0 auto 10px;">
+        <input id="scan-manual-input" placeholder="Type barcode manually…" inputmode="numeric" autocomplete="off"
+          style="flex:1;padding:12px;border-radius:10px;border:none;font-size:16px;background:#1f2937;color:#fff;">
+        <button onclick="submitManualScan()"
+          style="padding:12px 18px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;">Go</button>
+      </div>
+      <button onclick="closeScannerModal()"
+        style="display:block;width:100%;max-width:340px;margin:0 auto;padding:12px;
+               background:#374151;color:#9ca3af;border:none;border-radius:12px;font-size:14px;cursor:pointer;">
+        Cancel
+      </button>
+    </div>
+  </div>
+  <style>
+    @keyframes barcode-sweep { 0%,100%{opacity:.3} 50%{opacity:1} }
+  </style>
+
+  <!-- Scanner overlay (fallback manual input, kept for compatibility) -->
   <div id="scanner-overlay">
     <h2>📷 Scanner Opening…</h2>
     <p>A scanner window should open.<br>After scanning, the barcode fills in automatically.<br>If the window was blocked, type barcode below.</p>

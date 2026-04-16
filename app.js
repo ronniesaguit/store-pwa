@@ -842,30 +842,26 @@ async function sendCustMsg() {
   catch(e) { _showToast('Error: ' + e.message, true); }
 }
 
-// ── Scanner (opens PWA window, receives postMessage) ──────────────────────────
+// ── Barcode Scanner (inline overlay, no popup window) ────────────────────────
 
-var _scanMode   = null;
-var _scanWindow = null;
-
-window.addEventListener('message', function(e) {
-  var d = e.data;
-  if (!d || d.type !== 'BARCODE_SCANNED' || !d.barcode) return;
-  closeScannerModal();
-  _onBarcodeReceived(d.barcode);
-});
+var _scanMode      = null;
+var _barcodeStream = null;
+var _barcodeTimer  = null;
+var _barcodeSent   = false;
 
 function openScannerModal(mode) {
-  _scanMode = mode || 'quickSell';
-  var origin = encodeURIComponent(window.location.origin || '*');
-  _scanWindow = window.open(SCANNER_URL + '?origin=' + origin, 'barcode_scanner', 'width=480,height=700');
-  document.getElementById('scanner-overlay').style.display = 'flex';
+  _scanMode   = mode || 'quickSell';
+  _barcodeSent = false;
+  var overlay = document.getElementById('barcode-overlay');
+  overlay.style.display = 'flex';
   document.getElementById('scan-manual-input').value = '';
+  document.getElementById('barcode-status').textContent = 'Point camera at barcode…';
+  _startBarcodeCamera();
 }
 
 function closeScannerModal() {
-  document.getElementById('scanner-overlay').style.display = 'none';
-  if (_scanWindow && !_scanWindow.closed) _scanWindow.close();
-  _scanWindow = null;
+  document.getElementById('barcode-overlay').style.display = 'none';
+  _stopBarcodeCamera();
 }
 
 function submitManualScan() {
@@ -873,6 +869,89 @@ function submitManualScan() {
   if (!val) return;
   closeScannerModal();
   _onBarcodeReceived(val);
+}
+
+async function _startBarcodeCamera() {
+  var video  = document.getElementById('barcode-video');
+  var status = document.getElementById('barcode-status');
+  try {
+    _barcodeStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
+    video.srcObject = _barcodeStream;
+  } catch(e) {
+    status.textContent = '⚠ Camera not accessible. Type barcode below.';
+    return;
+  }
+
+  // Native BarcodeDetector (Chrome Android 83+) — fastest
+  if (typeof BarcodeDetector !== 'undefined') {
+    var detector = new BarcodeDetector();
+    _barcodeTimer = setInterval(async function() {
+      if (_barcodeSent || video.readyState < 2) return;
+      try {
+        var results = await detector.detect(video);
+        if (results.length > 0) {
+          _barcodeSent = true;
+          status.textContent = '✅ ' + results[0].rawValue;
+          clearInterval(_barcodeTimer); _barcodeTimer = null;
+          setTimeout(function() {
+            closeScannerModal();
+            _onBarcodeReceived(results[0].rawValue);
+          }, 250);
+        }
+      } catch(e) {}
+    }, 150);
+    return;
+  }
+
+  // Fallback: load html5-qrcode from CDN
+  status.textContent = 'Loading scanner…';
+  if (typeof Html5Qrcode === 'undefined') {
+    await new Promise(function(res, rej) {
+      var s = document.createElement('script');
+      s.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+  }
+  // Stop our own camera stream first — html5-qrcode manages its own
+  _stopBarcodeCamera();
+  var scannerDiv = document.getElementById('barcode-reader-div');
+  scannerDiv.innerHTML = '';
+  var qr = new Html5Qrcode('barcode-reader-div');
+  _barcodeTimer = qr; // store so we can stop it
+  status.textContent = 'Point camera at barcode…';
+  qr.start(
+    { facingMode: 'environment' },
+    { fps: 12, qrbox: { width: 260, height: 100 } },
+    function(decoded) {
+      if (_barcodeSent) return;
+      _barcodeSent = true;
+      status.textContent = '✅ ' + decoded;
+      qr.stop().catch(function(){}).finally(function() {
+        closeScannerModal();
+        _onBarcodeReceived(decoded);
+      });
+    },
+    function() {}
+  ).catch(function(e) {
+    status.textContent = '⚠ Camera error. Type barcode below.';
+  });
+}
+
+function _stopBarcodeCamera() {
+  if (_barcodeTimer) {
+    if (typeof _barcodeTimer === 'number') clearInterval(_barcodeTimer);
+    else if (_barcodeTimer.stop) _barcodeTimer.stop().catch(function(){});
+    _barcodeTimer = null;
+  }
+  if (_barcodeStream) {
+    _barcodeStream.getTracks().forEach(function(t) { t.stop(); });
+    _barcodeStream = null;
+  }
+  var video = document.getElementById('barcode-video');
+  if (video) video.srcObject = null;
 }
 
 function _onBarcodeReceived(barcode) {
