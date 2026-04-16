@@ -1023,13 +1023,207 @@ async function submitExpense() {
   } catch(err) { renderAddExpenseForm(err.message || String(err)); }
 }
 
-// ── Reports & Settings (stubs) ────────────────────────────────────────────────
+// ── Reports ───────────────────────────────────────────────────────────────────
 
 function renderReports() {
+  var today   = new Date();
+  var yyyy    = today.getFullYear();
+  var mm      = String(today.getMonth() + 1).padStart(2, '0');
+  var dd      = String(today.getDate()).padStart(2, '0');
+  var todayStr = yyyy + '-' + mm + '-' + dd;
+
+  // Quarter date range
+  var q        = Math.ceil((today.getMonth() + 1) / 3);
+  var qFrom    = yyyy + '-' + String((q - 1) * 3 + 1).padStart(2, '0') + '-01';
+  var qLastMo  = new Date(yyyy, q * 3, 0);
+  var qTo      = yyyy + '-' + String(q * 3).padStart(2, '0') + '-' + qLastMo.getDate();
+
   document.getElementById('app').innerHTML =
-    '<div class="screen"><div class="topbar"><div class="title">📊 Reports</div>' +
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">📊 Reports</div>' +
     '<button class="small-btn" onclick="goHome()">Back</button></div>' +
-    '<div class="card"><p>Coming soon…</p></div></div>';
+
+    '<div class="card">' +
+      '<div class="subtitle" style="margin-bottom:10px;">Select Report Period</div>' +
+      '<button class="big-btn" style="margin-bottom:8px;" onclick="loadReport(\'daily\',\'' + todayStr + '\')">📅 Daily — Today</button>' +
+      '<button class="big-btn" style="margin-bottom:8px;" onclick="loadReport(\'weekly\')">📆 Weekly — This Week</button>' +
+      '<button class="big-btn" style="margin-bottom:8px;" onclick="loadReport(\'monthly\',' + yyyy + ',' + (today.getMonth()+1) + ')">🗓 Monthly — This Month</button>' +
+      '<button class="big-btn" style="margin-bottom:8px;" onclick="loadReport(\'period\',\'' + qFrom + '\',\'' + qTo + '\')">📊 Quarterly — Q' + q + ' ' + yyyy + '</button>' +
+      '<button class="big-btn" style="margin-bottom:8px;" onclick="loadReport(\'period\',\'' + yyyy + '-01-01\',\'' + yyyy + '-12-31\')">📈 Yearly — ' + yyyy + '</button>' +
+    '</div>' +
+
+    '<div class="card">' +
+      '<div class="subtitle" style="margin-bottom:10px;">Custom Date</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">' +
+        '<div><label style="font-size:12px;font-weight:bold;display:block;margin-bottom:4px;">From</label>' +
+          '<input type="date" id="rpt-from" value="' + todayStr + '" style="width:100%;padding:10px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;"></div>' +
+        '<div><label style="font-size:12px;font-weight:bold;display:block;margin-bottom:4px;">To</label>' +
+          '<input type="date" id="rpt-to" value="' + todayStr + '" style="width:100%;padding:10px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;"></div>' +
+      '</div>' +
+      '<button class="btn btn-primary" onclick="loadReport(\'period\',document.getElementById(\'rpt-from\').value,document.getElementById(\'rpt-to\').value)">View Custom Report</button>' +
+    '</div></div>';
+}
+
+async function loadReport(type, a, b) {
+  showLoading('Generating report…');
+  try {
+    var data;
+    if      (type === 'daily')   data = await API.call('getDailyReport',   { date: a });
+    else if (type === 'weekly')  data = await API.call('getWeeklyReport',  {});
+    else if (type === 'monthly') data = await API.call('getMonthlyReport', { year: a, month: b });
+    else                         data = await API.call('getPeriodReport',  { dateFrom: a, dateTo: b });
+    renderReportScreen(type, data);
+  } catch(e) {
+    _showToast('Error: ' + e.message, true);
+    renderReports();
+  }
+}
+
+function renderReportScreen(type, d) {
+  var s      = d.summary;
+  var title  = type === 'daily'   ? '📅 ' + d.date
+             : type === 'weekly'  ? '📆 ' + d.dateFrom + ' → ' + d.dateTo
+             : type === 'monthly' ? '🗓 ' + _monthName(d.month) + ' ' + d.year
+             : '📊 ' + d.dateFrom + ' → ' + d.dateTo;
+
+  function money(v) { return '₱' + Number(v || 0).toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+
+  // ── Summary cards ──
+  var summaryHtml =
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">' +
+      _rptCard('💰 Revenue',      money(s.revenue),      '#16a34a') +
+      _rptCard('🧾 Transactions', s.txCount + ' sales',  '#2563eb') +
+      _rptCard('📦 Items Sold',   s.totalQty + ' pcs',   '#7c3aed') +
+      _rptCard('📊 Avg Sale',     money(s.avgTx),        '#0891b2') +
+      _rptCard('🏭 Cost of Goods', money(s.cogs),        '#6b7280') +
+      _rptCard('💚 Gross Profit', money(s.grossProfit),  '#16a34a') +
+      _rptCard('💸 Expenses',     money(s.totalExpenses),'#dc2626') +
+      _rptCard('🏆 Net Profit',   money(s.netProfit), s.netProfit >= 0 ? '#16a34a' : '#dc2626') +
+    '</div>';
+
+  // ── Top Products ──
+  var topHtml = '<div class="card"><div class="title" style="font-size:16px;margin-bottom:10px;">🏆 Top Products</div>';
+  if (d.topProducts && d.topProducts.length) {
+    d.topProducts.forEach(function(p, i) {
+      topHtml += '<div style="display:flex;justify-content:space-between;align-items:center;' +
+        'padding:8px 0;border-bottom:1px solid #f3f4f6;">' +
+        '<div><span style="color:#9ca3af;font-size:12px;">#' + (i+1) + ' </span>' +
+        '<strong style="font-size:13px;">' + p.name + '</strong>' +
+        '<span class="muted" style="font-size:12px;"> · ' + p.qty + ' pcs</span></div>' +
+        '<div style="text-align:right;">' +
+          '<div style="font-size:13px;font-weight:bold;color:#16a34a;">' + money(p.revenue) + '</div>' +
+          '<div style="font-size:11px;color:#6b7280;">profit ' + money(p.profit) + '</div>' +
+        '</div></div>';
+    });
+  } else { topHtml += '<div class="muted">No sales in this period.</div>'; }
+  topHtml += '</div>';
+
+  // ── Expense Breakdown ──
+  var expHtml = '<div class="card"><div class="title" style="font-size:16px;margin-bottom:10px;">💸 Expenses by Category</div>';
+  if (d.expenseBreakdown && d.expenseBreakdown.length) {
+    d.expenseBreakdown.forEach(function(e) {
+      expHtml += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3f4f6;">' +
+        '<span style="font-size:13px;">' + e.category + '</span>' +
+        '<strong style="color:#dc2626;font-size:13px;">' + money(e.amount) + '</strong></div>';
+    });
+    expHtml += '<div style="display:flex;justify-content:space-between;padding:10px 0;font-weight:bold;">' +
+      '<span>Total</span><span style="color:#dc2626;">' + money(s.totalExpenses) + '</span></div>';
+  } else { expHtml += '<div class="muted">No expenses in this period.</div>'; }
+  expHtml += '</div>';
+
+  // ── Period breakdown (daily → hourly, weekly → daily, monthly/period → monthly) ──
+  var breakdownHtml = '';
+  if (type === 'daily' && d.hourlySales && d.hourlySales.length) {
+    breakdownHtml = '<div class="card"><div class="title" style="font-size:16px;margin-bottom:10px;">🕐 Sales by Hour</div>';
+    d.hourlySales.forEach(function(h) {
+      breakdownHtml += '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f3f4f6;">' +
+        '<span style="font-size:13px;">' + h.hour + '</span>' +
+        '<span style="font-size:13px;">' + h.count + ' tx · <strong>' + money(h.revenue) + '</strong></span></div>';
+    });
+    breakdownHtml += '</div>';
+  } else if (type === 'weekly' && d.dailyBreakdown) {
+    breakdownHtml = '<div class="card"><div class="title" style="font-size:16px;margin-bottom:10px;">📆 Daily Breakdown</div>';
+    if (d.bestDay) breakdownHtml += '<div style="background:#dcfce7;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:13px;">' +
+      '🏆 Best day: <strong>' + d.bestDay.date + '</strong> — ' + money(d.bestDay.revenue) + '</div>';
+    d.dailyBreakdown.forEach(function(day) {
+      breakdownHtml += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3f4f6;">' +
+        '<div><div style="font-size:13px;font-weight:bold;">' + _formatDate(day.date) + '</div>' +
+          '<div style="font-size:11px;color:#6b7280;">' + day.count + ' transactions</div></div>' +
+        '<div style="text-align:right;"><div style="font-size:13px;font-weight:bold;">' + money(day.revenue) + '</div>' +
+          '<div style="font-size:11px;color:#16a34a;">profit ' + money(day.grossProfit) + '</div></div></div>';
+    });
+    breakdownHtml += '</div>';
+  } else if ((type === 'monthly' || type === 'period') && d.monthlyBreakdown) {
+    breakdownHtml = '<div class="card"><div class="title" style="font-size:16px;margin-bottom:10px;">📅 Monthly Breakdown</div>';
+    if (d.bestMonth) breakdownHtml += '<div style="background:#dcfce7;border-radius:8px;padding:8px 10px;margin-bottom:4px;font-size:13px;">🏆 Best: <strong>' + d.bestMonth.month + '</strong> — ' + money(d.bestMonth.revenue) + '</div>';
+    if (d.worstMonth && d.monthlyBreakdown.length > 1) breakdownHtml += '<div style="background:#fee2e2;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:13px;">📉 Lowest: <strong>' + d.worstMonth.month + '</strong> — ' + money(d.worstMonth.revenue) + '</div>';
+    d.monthlyBreakdown.forEach(function(m) {
+      breakdownHtml += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3f4f6;">' +
+        '<div><div style="font-size:13px;font-weight:bold;">' + m.month + '</div>' +
+          '<div style="font-size:11px;color:#6b7280;">' + m.count + ' transactions</div></div>' +
+        '<div style="text-align:right;"><div style="font-size:13px;font-weight:bold;">' + money(m.revenue) + '</div>' +
+          '<div style="font-size:11px;color:#16a34a;">profit ' + money(m.grossProfit) + '</div></div></div>';
+    });
+    breakdownHtml += '</div>';
+  }
+
+  // ── Low stock ──
+  var lowStockHtml = '';
+  if (type === 'daily' && d.lowStock && d.lowStock.length) {
+    lowStockHtml = '<div class="card"><div class="title" style="font-size:16px;margin-bottom:10px;">⚠ Low Stock Alert</div>';
+    d.lowStock.forEach(function(p) {
+      var color = p.stock === 0 ? '#dc2626' : '#d97706';
+      lowStockHtml += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3f4f6;">' +
+        '<span style="font-size:13px;">' + p.name + '</span>' +
+        '<span style="font-size:13px;font-weight:bold;color:' + color + ';">' +
+          (p.stock === 0 ? 'OUT OF STOCK' : p.stock + ' left') + '</span></div>';
+    });
+    lowStockHtml += '</div>';
+  }
+
+  // ── Dead stock (monthly only) ──
+  var deadStockHtml = '';
+  if (type === 'monthly' && d.deadStock && d.deadStock.length) {
+    deadStockHtml = '<div class="card"><div class="title" style="font-size:16px;margin-bottom:6px;">💤 No Sales This Month</div>' +
+      '<div class="muted" style="font-size:12px;margin-bottom:8px;">Consider discounting or removing these items:</div>';
+    d.deadStock.slice(0, 10).forEach(function(p) {
+      deadStockHtml += '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f3f4f6;">' +
+        '<span style="font-size:13px;">' + p.name + '</span>' +
+        '<span class="muted" style="font-size:12px;">' + p.stock + ' in stock</span></div>';
+    });
+    deadStockHtml += '</div>';
+  }
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar" style="flex-wrap:wrap;gap:4px;">' +
+      '<div style="font-size:14px;font-weight:bold;">' + title + '</div>' +
+      '<button class="small-btn" onclick="renderReports()">← Back</button>' +
+    '</div>' +
+    '<div class="card">' + summaryHtml + '</div>' +
+    breakdownHtml +
+    topHtml +
+    expHtml +
+    lowStockHtml +
+    deadStockHtml +
+    '</div>';
+}
+
+function _rptCard(label, value, color) {
+  return '<div style="background:#f9fafb;border-radius:10px;padding:12px;text-align:center;">' +
+    '<div style="font-size:11px;color:#6b7280;margin-bottom:4px;">' + label + '</div>' +
+    '<div style="font-size:15px;font-weight:bold;color:' + color + ';">' + value + '</div>' +
+    '</div>';
+}
+
+function _monthName(m) {
+  return ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m] || m;
+}
+
+function _formatDate(dateStr) {
+  var days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var d = new Date(dateStr + 'T00:00:00');
+  return days[d.getDay()] + ' ' + dateStr;
 }
 
 function renderSettings() {
