@@ -248,12 +248,13 @@ function renderOwnerDashboard(msg) {
     '<button class="big-btn" onclick="loadProducts()">📦 Products</button>' +
     '<button class="big-btn" onclick="renderQuickSell()">💰 Quick Sell</button>' +
     '<button class="big-btn" onclick="renderInventoryMenu()">📋 Inventory</button>' +
+    '<button class="big-btn" onclick="renderExpenses()">💸 Expenses</button>' +
     '<button class="big-btn" onclick="renderReports()">📊 Reports</button>' +
     '<button class="big-btn" onclick="renderChat()">💬 Chat</button>' +
-    '<button class="big-btn" onclick="renderSettings()">⚙️ Settings</button>' +
     '</div>' +
     '<div class="card"><div class="subtitle">Quick Actions</div>' +
     '<button class="btn btn-secondary" onclick="renderAddProductForm()">+ Add New Product</button>' +
+    '<button class="btn btn-secondary" style="margin-top:8px;" onclick="renderAddExpenseForm()">+ Record Expense</button>' +
     '</div></div>';
 }
 
@@ -269,6 +270,7 @@ function renderWatcherDashboard(msg) {
     offlineBanner +
     '<div class="grid-buttons">' +
     '<button class="big-btn" onclick="renderQuickSell()">💰 Quick Sell</button>' +
+    '<button class="big-btn" onclick="renderExpenses()">💸 Expenses</button>' +
     '</div></div>';
 }
 
@@ -850,6 +852,119 @@ async function submitStock() {
     _showToast('Stock added!', false);
     renderInventoryMenu();
   } catch(err) { _showToast('Error: ' + err.message, true); renderInventoryMenu(); }
+}
+
+// ── Expenses ──────────────────────────────────────────────────────────────────
+
+var EXPENSE_CATEGORIES = ['Supplies','Utilities','Restocking','Transportation','Repairs','Food','Others'];
+
+async function renderExpenses() {
+  showLoading('Loading expenses…');
+  var items = [];
+  try {
+    items = await API.call('getTodayExpenses');
+  } catch(e) {
+    // Offline — show queued expenses from today
+    try {
+      var queue = await DB.getSyncQueue();
+      var today = new Date().toISOString().substring(0, 10);
+      items = queue
+        .filter(function(q) { return q.action === 'createExpense' && (q.data.Expense_Date || '').substring(0,10) === today; })
+        .map(function(q) { return Object.assign({}, q.data, { _pending: true }); });
+    } catch(e2) { items = []; }
+  }
+
+  var total = items.reduce(function(s, x) { return s + (Number(x.Amount) || 0); }, 0);
+
+  var listHtml = items.length ? items.map(function(x) {
+    return '<div style="display:flex;justify-content:space-between;align-items:center;' +
+      'padding:10px 0;border-bottom:1px solid #f3f4f6;">' +
+      '<div style="flex:1;min-width:0;">' +
+        '<div style="font-weight:bold;font-size:14px;">' + x.Description +
+          (x._pending ? ' <span style="color:#d97706;font-size:11px;">⏳</span>' : '') + '</div>' +
+        '<div class="muted" style="font-size:12px;">' + (x.Expense_Category || 'Others') +
+          ' · ' + (x.Expense_Date || '').substring(0,10) +
+          ' · ' + (x.Recorded_By_Name || '') + '</div>' +
+      '</div>' +
+      '<div style="font-weight:bold;color:#dc2626;font-size:15px;margin-left:10px;">₱' +
+        Number(x.Amount).toFixed(2) + '</div>' +
+      '</div>';
+  }).join('') : '<div class="muted" style="padding:16px 0;text-align:center;">No expenses recorded today.</div>';
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">💸 Expenses</div>' +
+    '<button class="small-btn" onclick="goHome()">Back</button></div>' +
+    '<div class="card" style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;">' +
+      '<div><div class="muted" style="font-size:12px;">TODAY\'S TOTAL</div>' +
+        '<div style="font-size:26px;font-weight:bold;color:#dc2626;">₱' + total.toFixed(2) + '</div></div>' +
+      '<button class="btn btn-primary" style="width:auto;padding:12px 18px;margin:0;" onclick="renderAddExpenseForm()">+ Add</button>' +
+    '</div>' +
+    '<div class="card">' + listHtml + '</div>' +
+    '</div>';
+}
+
+function renderAddExpenseForm(msg) {
+  var today = new Date().toISOString().substring(0, 10);
+  var catsHtml = EXPENSE_CATEGORIES.map(function(c) {
+    return '<option value="' + c + '">' + c + '</option>';
+  }).join('');
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">+ Record Expense</div>' +
+    '<button class="small-btn" onclick="renderExpenses()">Back</button></div>' +
+    (msg ? '<div class="message message-error">' + msg + '</div>' : '') +
+    '<div class="card">' +
+      '<div class="field"><label>Date</label>' +
+        '<input id="exp-date" type="date" value="' + today + '"></div>' +
+      '<div class="field"><label>Category</label>' +
+        '<select id="exp-cat">' + catsHtml + '</select></div>' +
+      '<div class="field"><label>Description *</label>' +
+        '<div style="display:flex;gap:6px;align-items:stretch;">' +
+          '<input id="exp-desc" placeholder="e.g. Bought ice, Meralco bill" style="flex:1;min-width:0;">' +
+          '<button id="voice-btn-exp-desc" onclick="startVoiceInput(\'exp-desc\')" ' +
+            'style="background:#7c3aed;color:#fff;border:none;padding:0 12px;border-radius:8px;font-size:20px;cursor:pointer;flex-shrink:0;">🎤</button>' +
+        '</div></div>' +
+      '<div class="field"><label>Amount (₱) *</label>' +
+        '<input id="exp-amount" type="number" step="0.01" placeholder="0.00" inputmode="decimal"></div>' +
+      '<div class="field"><label>Payment Method</label>' +
+        '<select id="exp-pay"><option>Cash</option><option>GCash</option><option>Maya</option><option>Credit</option></select></div>' +
+      '<button class="btn btn-primary" onclick="submitExpense()">Save Expense</button>' +
+    '</div></div>';
+}
+
+async function submitExpense() {
+  var desc   = (document.getElementById('exp-desc')   || {}).value || '';
+  var amount = (document.getElementById('exp-amount') || {}).value || '';
+  if (!desc.trim())        { _showToast('Description is required', true); return; }
+  if (Number(amount) <= 0) { _showToast('Amount must be greater than zero', true); return; }
+
+  var payload = {
+    Expense_Date:     (document.getElementById('exp-date') || {}).value || new Date().toISOString().substring(0,10),
+    Expense_Category: (document.getElementById('exp-cat')  || {}).value || 'Others',
+    Description:      desc.trim(),
+    Amount:           Number(amount),
+    Payment_Method:   (document.getElementById('exp-pay')  || {}).value || 'Cash'
+  };
+
+  // Offline path
+  if (!navigator.onLine) {
+    try {
+      await DB.addToSyncQueue({ action: 'createExpense', data: payload });
+      _showToast('Expense saved offline — will sync when online', false);
+      renderExpenses();
+    } catch(e) { _showToast('Failed to save offline', true); }
+    return;
+  }
+
+  // Online path
+  showLoading('Saving expense…');
+  try {
+    await API.call('createExpense', payload);
+    _showToast('Expense recorded!', false);
+    renderExpenses();
+  } catch(err) { renderAddExpenseForm(err.message || String(err)); }
 }
 
 // ── Reports & Settings (stubs) ────────────────────────────────────────────────
