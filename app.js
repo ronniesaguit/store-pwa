@@ -264,6 +264,7 @@ function renderOwnerDashboard(msg) {
     '<button class="big-btn" onclick="renderReports()">📊 Reports</button>' +
     '<button class="big-btn" onclick="renderChat()">💬 Chat</button>' +
     '<button class="big-btn" onclick="renderSettings()">⚙️ Settings</button>' +
+    '<button class="big-btn" onclick="renderROIMonitor()">📈 ROI</button>' +
     '<button class="big-btn" onclick="renderSupport()">📞 Help</button>' +
     '</div>' +
     '<div class="card"><div class="subtitle">Quick Actions</div>' +
@@ -1798,6 +1799,287 @@ async function _submitHealthSnapshot() {
       revenue7Days:     0
     });
   } catch(e) { /* silent */ }
+}
+
+// ── Capital & ROI Monitor ─────────────────────────────────────────────────────
+
+var CAPITAL_CATEGORIES = [
+  'Initial Inventory','Store Fixtures & Shelving','Equipment & Appliances',
+  'Renovation & Construction','Working Capital','License & Permits',
+  'Marketing & Signage','Vehicles & Transport','Other'
+];
+
+async function renderROIMonitor() {
+  showLoading('Loading ROI data…');
+  var d;
+  try { d = await API.call('getROIData'); } catch(e) {
+    _showToast('Error: ' + e.message, true); goHome(); return;
+  }
+
+  var perf    = d.performance;
+  var proj    = d.projection;
+  var summary = d.summary;
+  var prog    = perf.progressPercent;
+  var hasCapital = summary.totalCostOfCapital > 0;
+
+  // ── Progress bar color ──
+  var barColor = prog >= 75 ? '#16a34a' : prog >= 40 ? '#d97706' : '#dc2626';
+
+  // ── Monthly chart (last 6 months) ──
+  var last6     = (d.monthly || []).slice(-6);
+  var maxAbs    = last6.reduce(function(m, r) { return Math.max(m, Math.abs(r.netProfit)); }, 1);
+  var chartBars = last6.map(function(m) {
+    var pct   = Math.round(Math.abs(m.netProfit) / maxAbs * 100);
+    var color = m.netProfit >= 0 ? '#16a34a' : '#dc2626';
+    var label = m.netProfit >= 0 ? '+' + _moneyShort(m.netProfit) : '-' + _moneyShort(Math.abs(m.netProfit));
+    return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;">' +
+      '<div style="font-size:9px;color:#6b7280;writing-mode:vertical-lr;transform:rotate(180deg);height:28px;overflow:hidden;">' + m.monthName + '</div>' +
+      '<div style="width:100%;height:' + pct + 'px;min-height:4px;background:' + color + ';border-radius:3px 3px 0 0;"></div>' +
+      '<div style="font-size:9px;color:' + color + ';font-weight:bold;">' + label + '</div>' +
+      '</div>';
+  }).join('');
+
+  // ── Loan pill ──
+  var loanHtml = summary.loanPrincipal > 0
+    ? '<div style="background:#fef9c3;border:1px solid #fde047;border-radius:8px;padding:10px;margin-bottom:10px;font-size:13px;">' +
+      '<div style="font-weight:bold;margin-bottom:4px;">💳 Loan / Financing</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;color:#374151;">' +
+      '<div>Principal: <strong>' + _money(summary.loanPrincipal) + '</strong></div>' +
+      '<div>Rate: <strong>' + summary.loanRateAnnual + '% / yr</strong></div>' +
+      '<div>Monthly interest: <strong>' + _money(summary.loanMonthlyInterest) + '</strong></div>' +
+      '<div>Total interest cost: <strong>' + _money(summary.totalInterestCost) + '</strong></div>' +
+      '<div>Interest paid to date: <strong>' + _money(summary.interestPaidToDate) + '</strong></div>' +
+      '</div></div>'
+    : '';
+
+  // ── Projection block ──
+  var projHtml;
+  if (!hasCapital) {
+    projHtml = '<div class="muted" style="text-align:center;padding:12px;">Set up your initial capital below to enable projections.</div>';
+  } else if (proj.projectedMonths === 0) {
+    projHtml = '<div style="text-align:center;padding:16px;background:#f0fdf4;border-radius:8px;">' +
+      '<div style="font-size:32px;">🎉</div>' +
+      '<div style="font-weight:bold;color:#16a34a;font-size:16px;">ROI Already Achieved!</div>' +
+      '<div class="muted" style="margin-top:4px;">Your business has fully recovered its capital investment.</div></div>';
+  } else if (proj.projectedMonths !== null) {
+    projHtml = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+      '<div class="stat-card" style="background:#eff6ff;">' +
+      '<div class="val" style="font-size:18px;color:#1d4ed8;">' + proj.projectedMonths + '</div>' +
+      '<div class="lbl">Months to ROI</div></div>' +
+      '<div class="stat-card" style="background:#f0fdf4;">' +
+      '<div class="val" style="font-size:15px;color:#16a34a;">' + (proj.projectedDate || '—') + '</div>' +
+      '<div class="lbl">Projected Date</div></div>' +
+      '<div class="stat-card">' +
+      '<div class="val" style="font-size:16px;">' + _money(proj.avgMonthlyNet) + '</div>' +
+      '<div class="lbl">Avg Monthly Net<br><span style="font-size:9px;font-weight:normal;">(last ' + proj.activeMonthsUsed + ' active mo.)</span></div></div>' +
+      '<div class="stat-card">' +
+      '<div class="val" style="font-size:16px;">' + _money(proj.avgDailyNet) + '</div>' +
+      '<div class="lbl">Avg Daily Net</div></div>' +
+      '</div>';
+  } else {
+    projHtml = '<div class="muted" style="text-align:center;padding:12px;">Not enough sales data yet. Projection available after first month.</div>';
+  }
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title">📈 ROI Monitor</div>' +
+    '<button class="small-btn" onclick="goHome()">Back</button></div>' +
+
+    // ── Progress ──
+    (hasCapital ? '<div class="card">' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:6px;">' +
+      '<span style="font-weight:bold;">Capital Recovery</span>' +
+      '<span style="font-weight:bold;color:' + barColor + ';">' + prog + '%</span></div>' +
+      '<div style="background:#e5e7eb;border-radius:999px;height:14px;overflow:hidden;">' +
+      '<div style="width:' + prog + '%;height:100%;background:' + barColor + ';border-radius:999px;transition:width .4s;"></div></div>' +
+      '<div style="display:flex;justify-content:space-between;font-size:12px;margin-top:4px;color:#6b7280;">' +
+      '<span>₱0</span><span>' + _money(summary.totalCostOfCapital) + ' total cost</span></div>' +
+      '</div>' : '') +
+
+    // ── Key numbers ──
+    '<div class="card">' +
+    '<div class="section-title">💰 Capital Overview</div>' +
+    '<div style="font-size:13px;line-height:2.2;">' +
+    '<div style="display:flex;justify-content:space-between;border-bottom:1px solid #f3f4f6;"><span>Items invested</span><strong>' + _money(summary.totalCapital) + '</strong></div>' +
+    (summary.loanPrincipal > 0 ? '<div style="display:flex;justify-content:space-between;border-bottom:1px solid #f3f4f6;"><span>+ Total interest cost</span><strong style="color:#d97706;">+' + _money(summary.totalInterestCost) + '</strong></div>' : '') +
+    '<div style="display:flex;justify-content:space-between;border-bottom:1px solid #f3f4f6;padding-bottom:2px;"><span style="font-weight:bold;">Total cost of capital</span><strong>' + _money(summary.totalCostOfCapital) + '</strong></div>' +
+    '</div>' +
+    loanHtml +
+    '<div style="font-size:13px;line-height:2.2;margin-top:8px;">' +
+    '<div style="display:flex;justify-content:space-between;border-bottom:1px solid #f3f4f6;"><span>All-time Revenue</span><strong>' + _money(perf.totalRevenue) + '</strong></div>' +
+    '<div style="display:flex;justify-content:space-between;border-bottom:1px solid #f3f4f6;"><span>— Cost of Goods Sold</span><span style="color:#dc2626;">−' + _money(perf.totalCOGS) + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;border-bottom:1px solid #f3f4f6;"><span>— Total Expenses</span><span style="color:#dc2626;">−' + _money(perf.totalExpenses) + '</span></div>' +
+    (perf.interestPaid > 0 ? '<div style="display:flex;justify-content:space-between;border-bottom:1px solid #f3f4f6;"><span>— Interest Paid</span><span style="color:#dc2626;">−' + _money(perf.interestPaid) + '</span></div>' : '') +
+    '<div style="display:flex;justify-content:space-between;padding-top:2px;"><span style="font-weight:bold;">Cumulative Net Profit</span>' +
+    '<strong style="color:' + (perf.cumulativeNetProfit >= 0 ? '#16a34a' : '#dc2626') + ';">' + _money(perf.cumulativeNetProfit) + '</strong></div>' +
+    '</div>' +
+    '<div style="display:flex;justify-content:space-between;background:#f0fdf4;border-radius:8px;padding:10px;margin-top:8px;font-size:14px;">' +
+    '<span>Capital Still to Recover</span><strong style="color:' + (perf.capitalRemaining > 0 ? '#dc2626' : '#16a34a') + ';">' + _money(perf.capitalRemaining) + '</strong></div>' +
+    '</div>' +
+
+    // ── Projection ──
+    '<div class="card"><div class="section-title">🔭 Projection</div>' + projHtml + '</div>' +
+
+    // ── Monthly chart ──
+    (last6.length > 0 ? '<div class="card"><div class="section-title">📊 Monthly Net Profit (last 6 mo.)</div>' +
+      '<div style="display:flex;align-items:flex-end;height:100px;gap:4px;padding-bottom:4px;border-bottom:1px solid #e5e7eb;">' +
+      chartBars + '</div></div>' : '') +
+
+    // ── Actions ──
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:24px;">' +
+    '<button class="btn btn-primary" onclick="renderCapitalSetup()">✏️ Edit Capital</button>' +
+    '<button class="btn btn-secondary" onclick="renderROIMonitor()">🔄 Refresh</button>' +
+    '</div></div>';
+}
+
+async function renderCapitalSetup() {
+  showLoading('Loading capital setup…');
+  var items, loan;
+  try {
+    items = await API.call('getCapitalItems');
+    loan  = await API.call('getLoanSettings');
+  } catch(e) { _showToast('Error: ' + e.message, true); return; }
+
+  _renderCapitalSetupScreen(items, loan);
+}
+
+function _renderCapitalSetupScreen(items, loan, msg) {
+  var totalCapital = items.reduce(function(s, c) { return s + Number(c.Amount || 0); }, 0);
+
+  var itemRows = items.length > 0
+    ? items.map(function(c) {
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f3f4f6;">' +
+          '<div><div style="font-size:13px;font-weight:bold;">' + _escHtml(c.Category) + '</div>' +
+          '<div class="muted" style="font-size:12px;">' + _escHtml(c.Description) + (c.Date_Added ? ' · ' + String(c.Date_Added).substring(0,10) : '') + '</div>' +
+          '</div>' +
+          '<div style="display:flex;align-items:center;gap:8px;">' +
+          '<span style="font-weight:bold;">' + _money(c.Amount) + '</span>' +
+          '<button class="small-btn" style="background:#fee2e2;color:#dc2626;" onclick="deleteCapitalItem(\'' + c.Capital_ID + '\')">✕</button>' +
+          '</div></div>';
+      }).join('')
+    : '<div class="muted" style="padding:8px;">No capital items yet. Add your startup costs below.</div>';
+
+  var catsHtml = CAPITAL_CATEGORIES.map(function(c) {
+    return '<option value="' + c + '">' + c + '</option>';
+  }).join('');
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title">💰 Capital Setup</div>' +
+    '<button class="small-btn" onclick="renderROIMonitor()">← Back</button></div>' +
+    (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
+
+    '<div class="card">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
+    '<div class="section-title" style="margin:0;">📦 Itemized Capital</div>' +
+    '<div style="font-weight:bold;color:#1d4ed8;">' + _money(totalCapital) + ' total</div></div>' +
+    itemRows + '</div>' +
+
+    '<div class="card">' +
+    '<div class="section-title">➕ Add Capital Item</div>' +
+    '<div class="field"><label>Category</label><select id="cap-cat">' + catsHtml + '</select></div>' +
+    '<div class="field"><label>Description *</label><input id="cap-desc" placeholder="e.g. Refrigerator, opening stock…"></div>' +
+    '<div class="field"><label>Amount (₱) *</label><input id="cap-amt" type="number" min="0" placeholder="0.00"></div>' +
+    '<div class="field"><label>Date invested</label><input id="cap-date" type="date" value="' + _todayInput() + '"></div>' +
+    '<div class="field"><label>Notes</label><input id="cap-notes" placeholder="Optional"></div>' +
+    '<button class="btn btn-primary" onclick="addCapitalItem()">+ Add Item</button>' +
+    '</div>' +
+
+    '<div class="card">' +
+    '<div class="section-title">💳 Loan / Financing (optional)</div>' +
+    '<div class="muted" style="font-size:12px;margin-bottom:10px;">If any of your capital was borrowed, enter the loan details here so interest cost is included in your ROI calculation.</div>' +
+    '<div class="field"><label>Loan Description</label><input id="loan-desc" placeholder="e.g. SSS Salary Loan, 5/6 loan…" value="' + _escAttr(loan.loanDescription) + '"></div>' +
+    '<div class="field"><label>Principal Amount (₱)</label><input id="loan-principal" type="number" min="0" value="' + (loan.loanPrincipal || 0) + '"></div>' +
+    '<div class="field"><label>Annual Interest Rate (%)</label><input id="loan-rate" type="number" min="0" step="0.1" value="' + (loan.loanRateAnnual || 0) + '" placeholder="e.g. 12 for 12%/year"></div>' +
+    '<div class="field"><label>Loan Term (months)</label><input id="loan-term" type="number" min="0" value="' + (loan.loanTermMonths || 0) + '" placeholder="e.g. 12 for 1 year"></div>' +
+    '<div class="field"><label>Loan Start Date</label><input id="loan-start" type="date" value="' + (loan.loanStartDate || _todayInput()) + '"></div>' +
+    '<div id="loan-preview" style="font-size:12px;color:#6b7280;margin-bottom:8px;"></div>' +
+    '<button class="btn btn-secondary" onclick="previewLoanCost()">💡 Preview Cost</button>' +
+    '<button class="btn btn-primary" style="margin-top:8px;" onclick="saveLoanSettings()">💾 Save Loan Settings</button>' +
+    '</div>' +
+
+    '<div style="height:24px;"></div></div>';
+}
+
+async function addCapitalItem() {
+  var desc = (document.getElementById('cap-desc').value || '').trim();
+  var amt  = Number(document.getElementById('cap-amt').value) || 0;
+  if (!desc) { _showToast('Enter a description', true); return; }
+  if (amt <= 0) { _showToast('Enter a valid amount', true); return; }
+  var data = {
+    category:    document.getElementById('cap-cat').value,
+    description: desc,
+    amount:      amt,
+    dateAdded:   document.getElementById('cap-date').value || '',
+    notes:       (document.getElementById('cap-notes').value || '').trim()
+  };
+  try {
+    await API.call('saveCapitalItem', data);
+    var items = await API.call('getCapitalItems');
+    var loan  = await API.call('getLoanSettings');
+    _renderCapitalSetupScreen(items, loan, '✓ Item added!');
+  } catch(e) { _showToast('Error: ' + e.message, true); }
+}
+
+async function deleteCapitalItem(capitalId) {
+  if (!confirm('Remove this capital item?')) return;
+  try {
+    await API.call('deleteCapitalItem', { capitalId: capitalId });
+    var items = await API.call('getCapitalItems');
+    var loan  = await API.call('getLoanSettings');
+    _renderCapitalSetupScreen(items, loan);
+  } catch(e) { _showToast('Error: ' + e.message, true); }
+}
+
+function previewLoanCost() {
+  var principal = Number(document.getElementById('loan-principal').value) || 0;
+  var rate      = Number(document.getElementById('loan-rate').value) || 0;
+  var term      = Number(document.getElementById('loan-term').value) || 0;
+  var el        = document.getElementById('loan-preview');
+  if (!el) return;
+  if (principal <= 0 || rate <= 0 || term <= 0) {
+    el.textContent = 'Fill in principal, rate, and term to preview.';
+    return;
+  }
+  var monthly       = principal * (rate / 100 / 12);
+  var totalInterest = monthly * term;
+  var totalCost     = principal + totalInterest;
+  el.innerHTML = '<strong>Monthly interest: ' + _money(monthly) + '</strong> · ' +
+    'Total interest over ' + term + ' months: <strong>' + _money(totalInterest) + '</strong> · ' +
+    'Total repayment: <strong>' + _money(totalCost) + '</strong>';
+}
+
+async function saveLoanSettings() {
+  var data = {
+    loanDescription: (document.getElementById('loan-desc').value      || '').trim(),
+    loanPrincipal:   Number(document.getElementById('loan-principal').value) || 0,
+    loanRateAnnual:  Number(document.getElementById('loan-rate').value)      || 0,
+    loanTermMonths:  Number(document.getElementById('loan-term').value)      || 0,
+    loanStartDate:   document.getElementById('loan-start').value || ''
+  };
+  try {
+    await API.call('saveLoanSettings', data);
+    _showToast('Loan settings saved!');
+    var items = await API.call('getCapitalItems');
+    _renderCapitalSetupScreen(items, data, '✓ Loan settings saved!');
+  } catch(e) { _showToast('Error: ' + e.message, true); }
+}
+
+function _moneyShort(v) {
+  var n = Number(v || 0);
+  if (n >= 1000) return '₱' + (n / 1000).toFixed(1) + 'k';
+  return '₱' + n.toFixed(0);
+}
+
+function _todayInput() {
+  var d = new Date();
+  return d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0');
+}
+
+function _escAttr(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
 }
 
 // ── Support chat (store ↔ admin) ──────────────────────────────────────────────
