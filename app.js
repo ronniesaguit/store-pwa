@@ -324,8 +324,12 @@ function renderProductsList() {
     '<div class="card">' + html + '</div></div>';
 }
 
-function renderAddProductForm(msg, scannedCode, existingImage) {
+async function renderAddProductForm(msg, scannedCode, existingImage) {
   _pendingProductImage = existingImage || null;
+  // Always fetch fresh categories so the dropdown is never stale or empty
+  if (!state.isOffline) {
+    try { state.categories = await API.call('getCategories'); } catch(e) {}
+  }
   var catsHtml = (state.categories || []).map(function(c) {
     return '<option value="' + c.Category_Name + '">' + c.Category_Name + '</option>';
   }).join('');
@@ -1403,6 +1407,17 @@ function _renderFixedCostsForm(fc) {
     '<button class="btn btn-secondary" style="margin-top:8px;" onclick="_addSalaryRow()">+ Add Person</button></div>' +
 
     '<button class="btn btn-primary" style="margin-top:8px;" onclick="saveFixedCostsSettings()">💾 Save Fixed Costs</button>' +
+    '</div>' +
+
+    '<div class="card">' +
+    '<div class="subtitle" style="margin-bottom:4px;">🔐 Change Password</div>' +
+    '<div class="field"><label>Current Password</label>' +
+    '<input id="pw-current" type="password" placeholder="Enter current password"></div>' +
+    '<div class="field"><label>New Password</label>' +
+    '<input id="pw-new" type="password" placeholder="At least 4 characters"></div>' +
+    '<div class="field"><label>Confirm New Password</label>' +
+    '<input id="pw-confirm" type="password" placeholder="Repeat new password"></div>' +
+    '<button class="btn btn-secondary" onclick="submitChangePassword()">🔐 Change Password</button>' +
     '</div></div>';
 }
 
@@ -1447,6 +1462,22 @@ async function saveFixedCostsSettings() {
   } catch(e) {
     _showToast('Error: ' + e.message, true);
   }
+}
+
+async function submitChangePassword() {
+  var current = document.getElementById('pw-current').value;
+  var newPw   = document.getElementById('pw-new').value;
+  var confirm = document.getElementById('pw-confirm').value;
+  if (!current || !newPw) { _showToast('Fill in all password fields', true); return; }
+  if (newPw !== confirm)  { _showToast('New passwords do not match', true); return; }
+  if (newPw.length < 4)   { _showToast('Password must be at least 4 characters', true); return; }
+  try {
+    await API.call('changePassword', { currentPassword: current, newPassword: newPw });
+    _showToast('Password changed successfully!');
+    document.getElementById('pw-current').value = '';
+    document.getElementById('pw-new').value = '';
+    document.getElementById('pw-confirm').value = '';
+  } catch(e) { _showToast(e.message, true); }
 }
 
 // ── Print / PDF utilities ─────────────────────────────────────────────────────
