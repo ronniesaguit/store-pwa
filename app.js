@@ -246,21 +246,26 @@ async function logout() {
 
 // ── Dashboards ────────────────────────────────────────────────────────────────
 
+function _dashboardHeader_(storeName, subLabel, onlineLabel, isOffline) {
+  var statusPill = isOffline
+    ? '<span style="display:inline-block;background:rgba(231,76,60,0.25);color:#e74c3c;border:1px solid rgba(231,76,60,0.5);border-radius:20px;padding:1px 10px;font-size:0.7rem;font-weight:600;letter-spacing:.3px;">🔴 Offline</span>'
+    : '<span style="display:inline-block;background:rgba(46,204,113,0.2);color:#2ecc71;border:1px solid rgba(46,204,113,0.4);border-radius:20px;padding:1px 10px;font-size:0.7rem;font-weight:600;letter-spacing:.3px;">🟢 Online</span>';
+  return '<div style="background:var(--primary,#2c3e50);padding:14px 16px 10px;text-align:center;position:relative;">' +
+    '<button class="small-btn" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);" onclick="logout()">Logout</button>' +
+    '<div style="font-size:1.45rem;font-weight:700;letter-spacing:.3px;line-height:1.15;color:#fff;">' + _escAttr(storeName) + '</div>' +
+    '<div style="font-size:0.78rem;opacity:0.75;color:#fff;margin-top:2px;">👤 ' + _escAttr(subLabel) + '</div>' +
+    '<div style="margin-top:6px;">' + statusPill + '</div>' +
+    '</div>';
+}
+
 function renderOwnerDashboard(msg) {
-  var storeName  = (state.storeProfile && state.storeProfile.Store_Name) || 'My Store';
-  var ownerName  = (state.storeProfile && state.storeProfile.Owner_Name) || state.session.user.Full_Name;
-  var offlineBanner = state.isOffline
-    ? '<div class="message message-offline">🔴 Offline mode — changes will sync when connected</div>' : '';
+  var storeName = (state.storeProfile && state.storeProfile.Store_Name) || 'My Store';
+  var ownerName = (state.storeProfile && state.storeProfile.Owner_Name) || state.session.user.Full_Name;
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar">' +
-    '<div style="margin:0;line-height:1.2;">' +
-    '<div class="title" style="margin:0;font-size:1.1rem;">' + _escAttr(storeName) + '</div>' +
-    '<div style="font-size:0.78rem;opacity:0.8;">👤 ' + _escAttr(ownerName) + '</div>' +
-    '</div>' +
-    '<button class="small-btn" onclick="logout()">Logout</button></div>' +
+    _dashboardHeader_(storeName, ownerName, '', state.isOffline) +
     (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
-    offlineBanner +
+    (state.isOffline ? '<div class="message message-offline" style="text-align:center;font-size:0.82rem;">Changes will sync when back online</div>' : '') +
     '<div class="grid-buttons">' +
     '<button class="big-btn" onclick="loadProducts()">📦 Products</button>' +
     '<button class="big-btn" onclick="renderQuickSell()">💰 Quick Sell</button>' +
@@ -282,18 +287,11 @@ function renderOwnerDashboard(msg) {
 function renderWatcherDashboard(msg) {
   var storeName = (state.storeProfile && state.storeProfile.Store_Name) || 'My Store';
   var userName  = state.session.user.Full_Name;
-  var offlineBanner = state.isOffline
-    ? '<div class="message message-offline">🔴 Offline mode — sales will sync when connected</div>' : '';
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar">' +
-    '<div style="margin:0;line-height:1.2;">' +
-    '<div class="title" style="margin:0;font-size:1.1rem;">' + _escAttr(storeName) + '</div>' +
-    '<div style="font-size:0.78rem;opacity:0.8;">👤 ' + _escAttr(userName) + '</div>' +
-    '</div>' +
-    '<button class="small-btn" onclick="logout()">Logout</button></div>' +
+    _dashboardHeader_(storeName, userName, '', state.isOffline) +
     (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
-    offlineBanner +
+    (state.isOffline ? '<div class="message message-offline" style="text-align:center;font-size:0.82rem;">Sales will sync when back online</div>' : '') +
     '<div class="grid-buttons">' +
     '<button class="big-btn" onclick="renderQuickSell()">💰 Quick Sell</button>' +
     '<button class="big-btn" onclick="renderExpenses()">💸 Expenses</button>' +
