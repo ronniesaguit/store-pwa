@@ -161,6 +161,8 @@ function renderDashboard() {
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">' +
     '<button class="btn btn-primary" style="margin:0;" onclick="renderCreateStore()">+ New Store</button>' +
     '<button class="btn btn-secondary" style="margin:0;" onclick="renderPlatformSettings()">⚙️ Settings</button>' +
+    '<button class="btn btn-secondary" style="margin:0;" onclick="renderHealthMonitor()">🏥 Health Monitor</button>' +
+    '<button class="btn btn-secondary" style="margin:0;position:relative;" id="msg-btn" onclick="renderMessagesInbox()">📬 Messages</button>' +
     '</div>' +
 
     '<div class="card">' +
@@ -537,4 +539,276 @@ async function changeAdminPassword() {
     _toast('Password changed! Please log in again.');
     setTimeout(function() { ADMIN_API.clearToken(); renderAdminLogin(); }, 1500);
   } catch(e) { _toast(e.message, true); }
+}
+
+// ── Health Monitoring ─────────────────────────────────────────────────────────
+
+async function renderHealthMonitor() {
+  _app('<div style="text-align:center;padding:60px 20px;color:#6b7280;">Loading health data…</div>');
+  var healthRows = [];
+  try { healthRows = await ADMIN_API.call('adminGetAllStoreHealth'); } catch(e) {
+    _app('<div class="screen">' + _topbar('🏥 Store Health', 'renderDashboard()') +
+      '<div class="msg-err">Failed to load health data: ' + e.message + '</div></div>');
+    return;
+  }
+
+  var stores = adminState.stores;
+
+  // Build map of storeId → health data
+  var healthMap = {};
+  healthRows.forEach(function(h) { healthMap[h.Store_ID] = h; });
+
+  var rows = stores.map(function(st) {
+    var h = healthMap[st.Store_ID];
+    var score = h ? Number(h.Health_Score) : null;
+    var status = h ? String(h.Health_Status) : 'UNKNOWN';
+    var dot = status === 'HEALTHY' ? '🟢' : status === 'WARNING' ? '🟡' : status === 'ALERT' ? '🔴' : '⚪';
+    var lastSeen = h ? String(h.Last_Seen_At || '').substring(0, 16).replace('T', ' ') : 'Never';
+    var revenueToday = h ? _money(h.Revenue_Today) : '—';
+    var lowStock = h ? Number(h.Low_Stock_Count) : '—';
+    return '<div class="store-row" style="cursor:pointer;" onclick="renderStoreSnapshot(\'' + st.Store_ID + '\')">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;">' +
+      '<div style="flex:1;">' +
+      '<div style="font-size:14px;font-weight:bold;">' + dot + ' ' + st.Store_Name + '</div>' +
+      '<div class="muted" style="font-size:12px;">' + st.Owner_Name + ' · ' + st.Owner_Phone + '</div>' +
+      (h ? '<div style="font-size:12px;margin-top:2px;color:#374151;">' +
+        'Revenue: <strong>' + revenueToday + '</strong> · ' +
+        'Low stock: <strong>' + lowStock + '</strong> · ' +
+        'Score: <strong>' + score + '</strong>' +
+        '</div>' : '') +
+      '<div class="muted" style="font-size:11px;">Last seen: ' + lastSeen + '</div>' +
+      '</div>' +
+      '<button class="small-btn" style="margin-left:8px;margin-top:4px;" onclick="event.stopPropagation();renderSendMessageToStore(\'' + st.Store_ID + '\',\'' + _esc(st.Store_Name) + '\')">✉ Message</button>' +
+      '</div></div>';
+  }).join('');
+
+  _app('<div class="screen">' +
+    _topbar('🏥 Store Health Monitor', 'renderDashboard()') +
+    '<div style="font-size:12px;color:#6b7280;margin-bottom:8px;text-align:center;">Click a store to view full snapshot · Updated on each owner login</div>' +
+    '<div class="card" style="padding:0;">' +
+    (rows || '<div class="muted" style="padding:12px;">No stores yet.</div>') +
+    '</div></div>');
+}
+
+async function renderStoreSnapshot(storeId) {
+  _app('<div style="text-align:center;padding:60px 20px;color:#6b7280;">Loading store data…</div>');
+  var snap;
+  try { snap = await ADMIN_API.call('adminGetStoreSnapshot', { storeId: storeId }); } catch(e) {
+    _app('<div class="screen">' + _topbar('Store Snapshot', 'renderHealthMonitor()') +
+      '<div class="msg-err">Failed: ' + e.message + '</div></div>');
+    return;
+  }
+
+  var st = snap.store || {};
+
+  var lowStockHtml = (snap.lowStockItems || []).map(function(p) {
+    return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px solid #f3f4f6;">' +
+      '<span>' + _esc(p.name) + '</span>' +
+      '<span style="color:#dc2626;font-weight:bold;">' + p.stock + ' / ' + p.reorder + '</span></div>';
+  }).join('') || '<div class="muted">No low stock items.</div>';
+
+  var recentSalesHtml = (snap.recentSales || []).map(function(s) {
+    return '<div style="font-size:12px;padding:4px 0;border-bottom:1px solid #f3f4f6;">' +
+      '<span style="color:#6b7280;">' + s.date + ' ' + s.time + '</span> · ' +
+      '<strong>' + _money(s.total) + '</strong> · ' + _esc(s.soldBy) +
+      ' <span style="color:#6b7280;font-size:11px;">[' + (s.paymentMethod || '') + ']</span>' +
+      '</div>';
+  }).join('') || '<div class="muted">No recent sales.</div>';
+
+  var recentExpHtml = (snap.recentExpenses || []).map(function(e) {
+    return '<div style="font-size:12px;padding:4px 0;border-bottom:1px solid #f3f4f6;">' +
+      '<span style="color:#6b7280;">' + e.date + '</span> · ' +
+      _esc(e.category) + ' — <em>' + _esc(e.description) + '</em> · ' +
+      '<strong>' + _money(e.amount) + '</strong>' +
+      '</div>';
+  }).join('') || '<div class="muted">No recent expenses.</div>';
+
+  _app('<div class="screen">' +
+    _topbar('🔍 ' + _esc(st.name || ''), 'renderHealthMonitor()') +
+
+    '<div class="card">' +
+    '<div class="muted" style="font-size:12px;margin-bottom:8px;">' + snap.today + ' · Plan: ' + st.plan + '</div>' +
+    '<div class="stat-grid">' +
+    '<div class="stat-card"><div class="val" style="font-size:16px;">' + _money(snap.revenueToday) + '</div><div class="lbl">Revenue Today</div></div>' +
+    '<div class="stat-card"><div class="val" style="font-size:16px;">' + snap.txToday + '</div><div class="lbl">Transactions</div></div>' +
+    '<div class="stat-card"><div class="val" style="font-size:16px;">' + _money(snap.grossToday) + '</div><div class="lbl">Gross Profit</div></div>' +
+    '<div class="stat-card"><div class="val" style="font-size:16px;">' + _money(snap.netToday) + '</div><div class="lbl">Net Today</div></div>' +
+    '</div>' +
+    '<div style="font-size:13px;line-height:2;margin-top:8px;">' +
+    '<div>Revenue (7 days): <strong>' + _money(snap.revenue7Days) + '</strong></div>' +
+    '<div>COGS Today: <strong>' + _money(snap.cogsToday) + '</strong> · Expenses: <strong>' + _money(snap.expToday) + '</strong></div>' +
+    '<div>Products: <strong>' + snap.productCount + '</strong> · Low stock: <strong style="color:#d97706;">' + snap.lowStockCount + '</strong> · Out of stock: <strong style="color:#dc2626;">' + snap.outOfStockCount + '</strong></div>' +
+    '</div></div>' +
+
+    '<div class="card">' +
+    '<div class="section-title">⚠️ Low / Out of Stock</div>' +
+    lowStockHtml + '</div>' +
+
+    '<div class="card">' +
+    '<div class="section-title">🛒 Recent Sales</div>' +
+    recentSalesHtml + '</div>' +
+
+    '<div class="card">' +
+    '<div class="section-title">💸 Recent Expenses</div>' +
+    recentExpHtml + '</div>' +
+
+    '<div class="card">' +
+    '<button class="btn btn-secondary" onclick="renderSendMessageToStore(\'' + storeId + '\',\'' + _esc(st.name || '') + '\')">✉ Message Owner</button>' +
+    '</div></div>');
+}
+
+// ── Messaging ─────────────────────────────────────────────────────────────────
+
+var _msgPollInterval = null;
+
+function _stopMsgPoll() {
+  if (_msgPollInterval) { clearInterval(_msgPollInterval); _msgPollInterval = null; }
+}
+
+async function renderMessagesInbox() {
+  _app('<div style="text-align:center;padding:60px 20px;color:#6b7280;">Loading messages…</div>');
+  var unread, allMsgs;
+  try {
+    unread  = await ADMIN_API.call('adminGetUnreadCount');
+    allMsgs = await ADMIN_API.call('adminGetAllMessages');
+  } catch(e) {
+    _app('<div class="screen">' + _topbar('📬 Messages', 'renderDashboard()') +
+      '<div class="msg-err">Failed to load messages: ' + e.message + '</div></div>');
+    return;
+  }
+
+  // Group messages by store
+  var byStore = {};
+  allMsgs.forEach(function(m) {
+    if (!byStore[m.Store_ID]) byStore[m.Store_ID] = { storeId: m.Store_ID, storeName: m.Store_Name, msgs: [], unread: 0 };
+    byStore[m.Store_ID].msgs.push(m);
+  });
+  // Mark unread counts
+  (unread.stores || []).forEach(function(u) {
+    if (byStore[u.storeId]) byStore[u.storeId].unread = u.count;
+  });
+
+  var threads = Object.values(byStore).sort(function(a, b) {
+    var la = a.msgs[a.msgs.length - 1] || {};
+    var lb = b.msgs[b.msgs.length - 1] || {};
+    return String(lb.Created_At || '').localeCompare(String(la.Created_At || ''));
+  });
+
+  var threadRows = threads.map(function(t) {
+    var last = t.msgs[t.msgs.length - 1] || {};
+    var preview = String(last.Message || '').substring(0, 60);
+    var time = String(last.Created_At || '').substring(0, 16).replace('T', ' ');
+    return '<div class="store-row" onclick="renderStoreMessageThread(\'' + t.storeId + '\',\'' + _esc(t.storeName) + '\')" style="cursor:pointer;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;">' +
+      '<div style="flex:1;">' +
+      '<div style="font-weight:bold;font-size:14px;">' + _esc(t.storeName) +
+      (t.unread > 0 ? ' <span style="background:#dc2626;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;">' + t.unread + '</span>' : '') +
+      '</div>' +
+      '<div class="muted" style="font-size:12px;">' + _esc(preview) + (preview.length >= 60 ? '…' : '') + '</div>' +
+      '<div class="muted" style="font-size:11px;">' + time + '</div>' +
+      '</div>' +
+      '</div></div>';
+  }).join('') || '<div class="muted" style="padding:12px;">No messages yet.</div>';
+
+  var totalUnread = unread.count || 0;
+  _app('<div class="screen">' +
+    _topbar('📬 Messages' + (totalUnread > 0 ? ' (' + totalUnread + ' unread)' : ''), 'renderDashboard()') +
+    '<div class="card" style="padding:0;">' + threadRows + '</div></div>');
+}
+
+async function renderStoreMessageThread(storeId, storeName) {
+  _stopMsgPoll();
+  _app('<div style="text-align:center;padding:60px 20px;color:#6b7280;">Loading conversation…</div>');
+  var msgs;
+  try { msgs = await ADMIN_API.call('adminGetStoreMessages', { storeId: storeId }); } catch(e) {
+    _app('<div class="screen">' + _topbar('Messages', 'renderMessagesInbox()') +
+      '<div class="msg-err">' + e.message + '</div></div>');
+    return;
+  }
+  _renderThreadScreen(storeId, storeName, msgs);
+
+  _msgPollInterval = setInterval(async function() {
+    if (!document.getElementById('thread-msgs-' + storeId)) { _stopMsgPoll(); return; }
+    try {
+      var fresh = await ADMIN_API.call('adminGetStoreMessages', { storeId: storeId });
+      var el = document.getElementById('thread-msgs-' + storeId);
+      if (!el) { _stopMsgPoll(); return; }
+      el.innerHTML = _buildBubbles(fresh, false);
+      el.scrollTop = el.scrollHeight;
+    } catch(e) {}
+  }, 15000);
+}
+
+function _buildBubbles(msgs, isStoreView) {
+  if (!msgs || !msgs.length) return '<div class="muted" style="padding:12px;">No messages yet.</div>';
+  return msgs.map(function(m) {
+    var fromStore = m.Direction === 'TO_ADMIN';
+    var isRight = isStoreView ? !fromStore : fromStore;
+    var bg   = isRight ? '#dcfce7' : '#dbeafe';
+    var align = isRight ? 'flex-end' : 'flex-start';
+    var time = String(m.Created_At || '').substring(0, 16).replace('T', ' ');
+    return '<div style="display:flex;flex-direction:column;align-items:' + align + ';margin-bottom:8px;">' +
+      '<div style="background:' + bg + ';border-radius:12px;padding:8px 12px;max-width:80%;font-size:13px;">' +
+      '<strong style="font-size:11px;color:#6b7280;">' + _esc(m.From_Name || '') + '</strong><br>' +
+      _esc(m.Message || '') + '</div>' +
+      '<div style="font-size:10px;color:#9ca3af;margin-top:2px;">' + time + '</div>' +
+      '</div>';
+  }).join('');
+}
+
+function _renderThreadScreen(storeId, storeName, msgs) {
+  var bubblesHtml = _buildBubbles(msgs, false);
+  _app('<div class="screen">' +
+    '<div class="topbar"><div class="title">' + _esc(storeName) + '</div>' +
+    '<button class="small-btn" onclick="_stopMsgPoll();renderMessagesInbox();">← Back</button></div>' +
+
+    '<div id="thread-msgs-' + storeId + '" style="flex:1;overflow-y:auto;padding:12px;background:#f9fafb;min-height:200px;max-height:50vh;border-radius:8px;margin-bottom:8px;">' +
+    bubblesHtml + '</div>' +
+
+    '<div class="card" style="margin-top:0;">' +
+    '<div class="field">' +
+    '<textarea id="admin-msg-text" placeholder="Type a message…" rows="3" style="resize:none;"></textarea>' +
+    '</div>' +
+    '<button class="btn btn-primary" onclick="_sendAdminMessage(\'' + storeId + '\')">Send ✉</button>' +
+    '</div></div>');
+
+  // Scroll to bottom
+  var el = document.getElementById('thread-msgs-' + storeId);
+  if (el) el.scrollTop = el.scrollHeight;
+}
+
+async function renderSendMessageToStore(storeId, storeName) {
+  _stopMsgPoll();
+  var msgs;
+  try { msgs = await ADMIN_API.call('adminGetStoreMessages', { storeId: storeId }); } catch(e) { msgs = []; }
+  _renderThreadScreen(storeId, storeName, msgs);
+
+  _msgPollInterval = setInterval(async function() {
+    if (!document.getElementById('thread-msgs-' + storeId)) { _stopMsgPoll(); return; }
+    try {
+      var fresh = await ADMIN_API.call('adminGetStoreMessages', { storeId: storeId });
+      var el = document.getElementById('thread-msgs-' + storeId);
+      if (!el) { _stopMsgPoll(); return; }
+      el.innerHTML = _buildBubbles(fresh, false);
+      el.scrollTop = el.scrollHeight;
+    } catch(e) {}
+  }, 15000);
+}
+
+async function _sendAdminMessage(storeId) {
+  var msg = (document.getElementById('admin-msg-text').value || '').trim();
+  if (!msg) { _toast('Type a message first', true); return; }
+  try {
+    await ADMIN_API.call('adminSendMessage', { storeId: storeId, message: msg });
+    document.getElementById('admin-msg-text').value = '';
+    var fresh = await ADMIN_API.call('adminGetStoreMessages', { storeId: storeId });
+    var el = document.getElementById('thread-msgs-' + storeId);
+    if (el) { el.innerHTML = _buildBubbles(fresh, false); el.scrollTop = el.scrollHeight; }
+  } catch(e) { _toast(e.message, true); }
+}
+
+// ── Escape helper ─────────────────────────────────────────────────────────────
+
+function _esc(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }

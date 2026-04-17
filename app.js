@@ -58,6 +58,7 @@ async function boot() {
 
       try { state.storeProfile = await API.call('getStoreProfile'); } catch(e2) {}
       routeToDashboard();
+      _submitHealthSnapshot();  // fire-and-forget after routing
       return;
     } catch(e) {
       console.warn('Online session failed, checking cache:', e.message);
@@ -263,6 +264,7 @@ function renderOwnerDashboard(msg) {
     '<button class="big-btn" onclick="renderReports()">📊 Reports</button>' +
     '<button class="big-btn" onclick="renderChat()">💬 Chat</button>' +
     '<button class="big-btn" onclick="renderSettings()">⚙️ Settings</button>' +
+    '<button class="big-btn" onclick="renderSupport()">📞 Help</button>' +
     '</div>' +
     '<div class="card"><div class="subtitle">Quick Actions</div>' +
     '<button class="btn btn-secondary" onclick="renderAddProductForm()">+ Add New Product</button>' +
@@ -283,6 +285,7 @@ function renderWatcherDashboard(msg) {
     '<div class="grid-buttons">' +
     '<button class="big-btn" onclick="renderQuickSell()">💰 Quick Sell</button>' +
     '<button class="big-btn" onclick="renderExpenses()">💸 Expenses</button>' +
+    '<button class="big-btn" onclick="renderSupport()">📞 Help</button>' +
     '</div></div>';
 }
 
@@ -1776,6 +1779,126 @@ function printBIRData(d) {
     '</div>';
 
   _openPrintWindow('BIR Filing Data ' + d.year, html);
+}
+
+// ── Health snapshot (silent, fire-and-forget) ─────────────────────────────────
+
+async function _submitHealthSnapshot() {
+  if (!navigator.onLine || !state.session || state.session.user.Role !== 'OWNER') return;
+  try {
+    var products    = state.products || [];
+    var lowStock    = products.filter(function(p) { return Number(p.Current_Stock) <= Number(p.Reorder_Level || 5) && Number(p.Current_Stock) > 0; }).length;
+    var outOfStock  = products.filter(function(p) { return Number(p.Current_Stock) === 0; }).length;
+    await API.call('submitHealthSnapshot', {
+      productCount:     products.length,
+      lowStockCount:    lowStock,
+      outOfStockCount:  outOfStock,
+      revenueToday:     0,
+      txToday:          0,
+      revenue7Days:     0
+    });
+  } catch(e) { /* silent */ }
+}
+
+// ── Support chat (store ↔ admin) ──────────────────────────────────────────────
+
+var _supportPollTimer = null;
+
+async function renderSupport() {
+  showLoading('Loading support messages…');
+  var msgs = [];
+  try { msgs = await API.call('getSupportMessages'); } catch(e) {}
+  _renderSupportScreen(msgs);
+}
+
+function _renderSupportScreen(msgs) {
+  var bubbles = msgs.map(function(m) {
+    var isAdmin = m.Direction === 'TO_STORE';
+    var time    = String(m.Created_At || '').substring(0, 16).replace('T', ' ');
+    return '<div style="display:flex;flex-direction:column;align-items:' + (isAdmin ? 'flex-start' : 'flex-end') + ';margin-bottom:10px;">' +
+      '<div style="max-width:82%;background:' + (isAdmin ? '#e8f0fe' : '#dcfce7') + ';' +
+        'border-radius:' + (isAdmin ? '4px 14px 14px 14px' : '14px 4px 14px 14px') + ';' +
+        'padding:10px 14px;font-size:14px;">' + _escHtml(m.Message) + '</div>' +
+      '<div style="font-size:10px;color:#9ca3af;margin-top:2px;">' +
+        (isAdmin ? '🏪 Tindahan Hub Admin' : '👤 ' + _escHtml(m.From_Name || 'You')) +
+        ' · ' + time + '</div></div>';
+  }).join('');
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">📞 Support Chat</div>' +
+    '<button class="small-btn" onclick="_stopSupportPoll();goHome();">← Back</button></div>' +
+
+    '<div style="background:#fff;border-radius:0;padding:12px;margin-bottom:0;">' +
+    '<div style="font-size:12px;color:#6b7280;text-align:center;margin-bottom:8px;">Chat with Tindahan Hub Admin · ' +
+    '<strong>09163561251</strong> (GCash/Viber)</div>' +
+    '</div>' +
+
+    '<div id="support-msgs" style="padding:12px;min-height:200px;">' +
+    (bubbles || '<div style="text-align:center;color:#9ca3af;padding:32px;font-size:13px;">No messages yet.<br>Send us a message below!</div>') +
+    '</div>' +
+
+    '<div style="position:sticky;bottom:0;background:#fff;border-top:1px solid #e5e7eb;padding:12px;">' +
+    '<div style="display:flex;gap:8px;">' +
+    '<textarea id="support-input" rows="2" placeholder="Type your message…" ' +
+      'style="flex:1;padding:10px;border:1px solid #e5e7eb;border-radius:10px;font-size:14px;resize:none;"></textarea>' +
+    '<button onclick="submitSupportMessage()" ' +
+      'style="padding:10px 16px;background:#1e3a5f;color:#fff;border:none;border-radius:10px;font-size:20px;cursor:pointer;">➤</button>' +
+    '</div></div></div>';
+
+  // Scroll to bottom
+  setTimeout(function() {
+    var el = document.getElementById('support-msgs');
+    if (el) el.scrollTop = el.scrollHeight;
+  }, 100);
+
+  // Poll for new messages every 15 seconds while screen is open
+  _stopSupportPoll();
+  _supportPollTimer = setInterval(async function() {
+    if (!document.getElementById('support-msgs')) { _stopSupportPoll(); return; }
+    try {
+      var fresh = await API.call('getSupportMessages');
+      var el    = document.getElementById('support-msgs');
+      if (!el) { _stopSupportPoll(); return; }
+      var newBubbles = fresh.map(function(m) {
+        var isAdmin = m.Direction === 'TO_STORE';
+        var time    = String(m.Created_At || '').substring(0, 16).replace('T', ' ');
+        return '<div style="display:flex;flex-direction:column;align-items:' + (isAdmin ? 'flex-start' : 'flex-end') + ';margin-bottom:10px;">' +
+          '<div style="max-width:82%;background:' + (isAdmin ? '#e8f0fe' : '#dcfce7') + ';' +
+            'border-radius:' + (isAdmin ? '4px 14px 14px 14px' : '14px 4px 14px 14px') + ';' +
+            'padding:10px 14px;font-size:14px;">' + _escHtml(m.Message) + '</div>' +
+          '<div style="font-size:10px;color:#9ca3af;margin-top:2px;">' +
+            (isAdmin ? '🏪 Tindahan Hub Admin' : '👤 ' + _escHtml(m.From_Name || 'You')) +
+            ' · ' + time + '</div></div>';
+      }).join('');
+      el.innerHTML = newBubbles || el.innerHTML;
+      el.scrollTop = el.scrollHeight;
+    } catch(e) {}
+  }, 15000);
+}
+
+function _stopSupportPoll() {
+  if (_supportPollTimer) { clearInterval(_supportPollTimer); _supportPollTimer = null; }
+}
+
+async function submitSupportMessage() {
+  var inp = document.getElementById('support-input');
+  var msg = (inp ? inp.value : '').trim();
+  if (!msg) return;
+  inp.value = '';
+  inp.disabled = true;
+  try {
+    await API.call('sendSupportMessage', { message: msg });
+    var msgs = await API.call('getSupportMessages');
+    _renderSupportScreen(msgs);
+  } catch(e) {
+    _showToast('Error: ' + e.message, true);
+    if (inp) inp.disabled = false;
+  }
+}
+
+function _escHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // ── Subscription / Store Key screens ─────────────────────────────────────────
