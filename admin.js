@@ -450,20 +450,34 @@ function renderProvisionSuccess(r) {
     _topbar('✅ Store Created!', 'renderDashboard()') +
     '<div class="card" style="text-align:center;">' +
     '<div style="font-size:48px;margin-bottom:8px;">🎉</div>' +
-    '<h3 style="margin-bottom:4px;">' + r.storeName + '</h3>' +
+    '<h3 style="margin-bottom:4px;">' + _esc(r.storeName) + '</h3>' +
     '<div class="muted" style="margin-bottom:16px;">Store provisioned successfully</div>' +
-    '<div style="background:#f0fdf4;border-radius:8px;padding:12px;margin-bottom:12px;text-align:left;">' +
-    '<div style="font-size:12px;font-weight:bold;color:#15803d;margin-bottom:6px;">📱 PWA Link (send to store owner)</div>' +
-    '<div style="font-size:13px;word-break:break-all;color:#1d4ed8;">' + pwaUrl + '</div>' +
+
+    '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:14px;margin-bottom:12px;text-align:left;">' +
+    '<div style="font-size:12px;font-weight:bold;color:#15803d;margin-bottom:8px;">📱 PWA Link — send this to the store owner</div>' +
+    '<div style="font-size:13px;word-break:break-all;color:#1d4ed8;margin-bottom:0;">' + pwaUrl + '</div>' +
     '</div>' +
+
+    '<div style="background:#fef9c3;border:1px solid #fde047;border-radius:8px;padding:14px;margin-bottom:12px;text-align:left;">' +
+    '<div style="font-size:12px;font-weight:bold;color:#854d0e;margin-bottom:8px;">🔐 Default Login Credentials</div>' +
+    '<div style="font-size:13px;line-height:2.2;">' +
+    '<div style="display:flex;justify-content:space-between;border-bottom:1px solid #fde047;">' +
+    '<span>Username</span><strong style="font-family:monospace;font-size:15px;">' + _esc(r.ownerUsername || 'owner') + '</strong></div>' +
+    '<div style="display:flex;justify-content:space-between;">' +
+    '<span>Password</span><strong style="font-family:monospace;font-size:15px;">' + _esc(r.ownerPassword || '1234') + '</strong></div>' +
+    '</div>' +
+    '<div style="font-size:11px;color:#92400e;margin-top:8px;">⚠ Remind the owner to change their password after first login.</div>' +
+    '</div>' +
+
     '<div style="background:#f9fafb;border-radius:8px;padding:12px;text-align:left;">' +
     '<div style="font-size:12px;line-height:2;color:#374151;">' +
-    '<div>🔑 API Key: <strong style="word-break:break-all;">' + r.apiKey + '</strong></div>' +
     '<div>🎁 Trial ends: <strong>' + r.trialEnd + '</strong></div>' +
     '<div>📋 Plan: <strong>' + r.plan + '</strong></div>' +
     (r.monthlyFee ? '<div>💰 Monthly fee: <strong>' + _money(r.monthlyFee) + '</strong></div>' : '') +
+    '<div>🔑 API Key: <span style="word-break:break-all;font-size:11px;">' + r.apiKey + '</span></div>' +
     '</div></div>' +
     '</div>' +
+
     '<button class="btn btn-primary" onclick="renderDashboard()">Back to Dashboard</button>' +
     '</div>');
 }
