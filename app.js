@@ -247,12 +247,17 @@ async function logout() {
 // ── Dashboards ────────────────────────────────────────────────────────────────
 
 function renderOwnerDashboard(msg) {
-  var name = state.session.user.Full_Name;
+  var storeName  = (state.storeProfile && state.storeProfile.Store_Name) || 'My Store';
+  var ownerName  = (state.storeProfile && state.storeProfile.Owner_Name) || state.session.user.Full_Name;
   var offlineBanner = state.isOffline
     ? '<div class="message message-offline">🔴 Offline mode — changes will sync when connected</div>' : '';
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">👋 ' + name + '</div>' +
+    '<div class="topbar">' +
+    '<div style="margin:0;line-height:1.2;">' +
+    '<div class="title" style="margin:0;font-size:1.1rem;">' + _escAttr(storeName) + '</div>' +
+    '<div style="font-size:0.78rem;opacity:0.8;">👤 ' + _escAttr(ownerName) + '</div>' +
+    '</div>' +
     '<button class="small-btn" onclick="logout()">Logout</button></div>' +
     (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
     offlineBanner +
@@ -265,6 +270,7 @@ function renderOwnerDashboard(msg) {
     '<button class="big-btn" onclick="renderChat()">💬 Chat</button>' +
     '<button class="big-btn" onclick="renderSettings()">⚙️ Settings</button>' +
     '<button class="big-btn" onclick="renderROIMonitor()">📈 ROI</button>' +
+    '<button class="big-btn" onclick="renderManageStaff()">👥 Staff</button>' +
     '<button class="big-btn" onclick="renderSupport()">📞 Help</button>' +
     '</div>' +
     '<div class="card"><div class="subtitle">Quick Actions</div>' +
@@ -274,12 +280,17 @@ function renderOwnerDashboard(msg) {
 }
 
 function renderWatcherDashboard(msg) {
-  var name = state.session.user.Full_Name;
+  var storeName = (state.storeProfile && state.storeProfile.Store_Name) || 'My Store';
+  var userName  = state.session.user.Full_Name;
   var offlineBanner = state.isOffline
     ? '<div class="message message-offline">🔴 Offline mode — sales will sync when connected</div>' : '';
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">👋 ' + name + '</div>' +
+    '<div class="topbar">' +
+    '<div style="margin:0;line-height:1.2;">' +
+    '<div class="title" style="margin:0;font-size:1.1rem;">' + _escAttr(storeName) + '</div>' +
+    '<div style="font-size:0.78rem;opacity:0.8;">👤 ' + _escAttr(userName) + '</div>' +
+    '</div>' +
     '<button class="small-btn" onclick="logout()">Logout</button></div>' +
     (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
     offlineBanner +
@@ -288,6 +299,70 @@ function renderWatcherDashboard(msg) {
     '<button class="big-btn" onclick="renderExpenses()">💸 Expenses</button>' +
     '<button class="big-btn" onclick="renderSupport()">📞 Help</button>' +
     '</div></div>';
+}
+
+// ── Staff Management ─────────────────────────────────────────────────────────
+
+async function renderManageStaff() {
+  showLoading('Loading staff…');
+  var users;
+  try {
+    users = await API.call('getStoreUsers');
+  } catch(err) { _showToast('Error: ' + err.message, true); goHome(); return; }
+
+  var staffRows = users.filter(function(u) { return u.Role !== 'OWNER'; }).map(function(u) {
+    return '<div class="card" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">' +
+      '<div>' +
+      '<div style="font-weight:600;">' + _escAttr(u.Full_Name || u.Username) + '</div>' +
+      '<div style="font-size:0.82rem;opacity:0.7;">@' + _escAttr(u.Username) + ' · ' + _escAttr(u.Role) + '</div>' +
+      '</div>' +
+      '<button class="small-btn" style="background:#e74c3c;" onclick="removeStaffUser(\'' + _escAttr(u.User_ID) + '\',\'' + _escAttr(u.Full_Name || u.Username) + '\')">Remove</button>' +
+      '</div>';
+  }).join('');
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">👥 Staff</div>' +
+    '<button class="small-btn" onclick="goHome()">← Back</button></div>' +
+    '<div class="card">' +
+    '<div class="subtitle">Add Staff Account</div>' +
+    '<label>Full Name</label>' +
+    '<input id="staff-fullname" class="input" placeholder="e.g. Maria Santos">' +
+    '<label style="margin-top:8px;">Username</label>' +
+    '<input id="staff-username" class="input" placeholder="e.g. maria">' +
+    '<label style="margin-top:8px;">Password</label>' +
+    '<input id="staff-password" class="input" type="password" placeholder="Min. 4 characters">' +
+    '<button class="btn" style="margin-top:12px;" onclick="submitAddStaff()">➕ Add Staff</button>' +
+    '</div>' +
+    (staffRows
+      ? '<div class="subtitle" style="margin:12px 0 6px;">Current Staff</div>' + staffRows
+      : '<div class="message" style="text-align:center;opacity:0.6;">No staff accounts yet.</div>') +
+    '</div>';
+}
+
+async function submitAddStaff() {
+  var fullName = document.getElementById('staff-fullname').value.trim();
+  var username = document.getElementById('staff-username').value.trim();
+  var password = document.getElementById('staff-password').value;
+  if (!fullName) { _showToast('Full name is required.', true); return; }
+  if (!username) { _showToast('Username is required.', true); return; }
+  if (!password || password.length < 4) { _showToast('Password must be at least 4 characters.', true); return; }
+  showLoading('Creating account…');
+  try {
+    await API.call('createStoreUser', { fullName: fullName, username: username, password: password });
+    renderManageStaff();
+    _showToast('Staff account created!');
+  } catch(err) { _showToast('Error: ' + err.message, true); renderManageStaff(); }
+}
+
+async function removeStaffUser(userId, name) {
+  if (!confirm('Remove staff account "' + name + '"?')) return;
+  showLoading('Removing…');
+  try {
+    await API.call('deleteStoreUser', { userId: userId });
+    renderManageStaff();
+    _showToast('Staff account removed.');
+  } catch(err) { _showToast('Error: ' + err.message, true); renderManageStaff(); }
 }
 
 // ── Products ──────────────────────────────────────────────────────────────────
