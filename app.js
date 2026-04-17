@@ -7,7 +7,11 @@ var state = {
   products: [],
   categories: [],
   cart: [],
-  isOffline: false
+  isOffline: false,
+  storeProfile: null,
+  lastReceipt: null,  // holds last completed sale data for printing
+  lastReport:  null,  // holds last viewed report data for printing
+  lastBIRData: null   // holds last generated BIR data for printing
 };
 
 // ── Boot ─────────────────────────────────────────────────────────────────────
@@ -52,6 +56,7 @@ async function boot() {
       state.categories = merged;
       try { await DB.saveCategories(state.categories); } catch(e) {}
 
+      try { state.storeProfile = await API.call('getStoreProfile'); } catch(e2) {}
       routeToDashboard();
       return;
     } catch(e) {
@@ -785,6 +790,9 @@ async function checkoutSale() {
 
   showLoading('Processing sale…');
 
+  // Capture cart snapshot BEFORE clearing for receipt printing
+  var cartSnapshot = state.cart.slice();
+
   var salePayload = {
     items: state.cart.map(function(i) { return { productId: i.id, qty: i.qty }; }),
     amountPaid: paid,
@@ -792,28 +800,75 @@ async function checkoutSale() {
   };
 
   try {
+    var saleResult = null;
     if (navigator.onLine) {
-      var result = await API.call('createSale', salePayload);
-      state.cart = [];
-      _showToast('Sale done! Change: ₱' + (paid - total).toFixed(2), false);
+      saleResult = await API.call('createSale', salePayload);
     } else {
       await DB.addToSyncQueue({ action: 'createSale', data: salePayload });
-      state.cart = [];
-      _showToast('Sale saved offline! Change: ₱' + (paid - total).toFixed(2), false);
     }
-    renderQuickSell();
+    state.cart = [];
+    renderReceiptModal(cartSnapshot, total, paid, method, saleResult);
   } catch(err) {
-    // Fall back to offline queue on server error
     try {
       await DB.addToSyncQueue({ action: 'createSale', data: salePayload });
       state.cart = [];
-      _showToast('Saved offline. Change: ₱' + (paid - total).toFixed(2), false);
-      renderQuickSell();
+      renderReceiptModal(cartSnapshot, total, paid, method, null);
     } catch(e2) {
       _showToast('Error: ' + (err.message || String(err)), true);
       renderQuickSell();
     }
   }
+}
+
+function renderReceiptModal(cartItems, total, paid, method, saleResult) {
+  state.lastReceipt = { cartItems: cartItems, total: total, paid: paid, method: method, saleResult: saleResult };
+  var change    = paid - total;
+  var receiptNo = saleResult ? saleResult.receiptNo : '(offline)';
+  var now       = new Date();
+  var dateStr   = now.toLocaleDateString('en-PH');
+  var timeStr   = now.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' });
+  var cashier   = state.session && state.session.user ? state.session.user.Full_Name : '';
+
+  function money(v) { return '₱' + Number(v||0).toFixed(2); }
+
+  var itemRows = cartItems.map(function(i) {
+    return '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:14px;">' +
+      '<span>' + i.qty + 'x ' + i.name + '</span>' +
+      '<span>' + money(i.total) + '</span></div>';
+  }).join('');
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">🧾 Receipt</div></div>' +
+
+    '<div class="card" style="font-family:monospace;">' +
+    '<div style="text-align:center;margin-bottom:10px;">' +
+    '<div style="font-weight:bold;font-size:15px;">' + (state.storeProfile ? state.storeProfile.storeName : 'Store') + '</div>' +
+    (state.storeProfile && state.storeProfile.address ? '<div style="font-size:12px;color:#6b7280;">' + state.storeProfile.address + '</div>' : '') +
+    (state.storeProfile && state.storeProfile.phone   ? '<div style="font-size:12px;color:#6b7280;">' + state.storeProfile.phone + '</div>' : '') +
+    '</div>' +
+    '<div style="border-top:1px dashed #ccc;margin:8px 0;"></div>' +
+    '<div style="font-size:12px;color:#6b7280;margin-bottom:8px;">' +
+    'Receipt#: <strong>' + receiptNo + '</strong><br>' +
+    dateStr + ' ' + timeStr + '<br>' +
+    (cashier ? 'Cashier: ' + cashier : '') +
+    '</div>' +
+    '<div style="border-top:1px dashed #ccc;margin:8px 0;"></div>' +
+    itemRows +
+    '<div style="border-top:1px dashed #ccc;margin:8px 0;"></div>' +
+    '<div style="display:flex;justify-content:space-between;font-size:15px;font-weight:bold;padding:4px 0;">' +
+      '<span>TOTAL</span><span>' + money(total) + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;font-size:14px;padding:2px 0;">' +
+      '<span>Cash (' + method + ')</span><span>' + money(paid) + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:bold;color:#16a34a;padding:2px 0;">' +
+      '<span>CHANGE</span><span>' + money(change) + '</span></div>' +
+    '<div style="border-top:1px dashed #ccc;margin:8px 0;"></div>' +
+    '<div style="text-align:center;font-size:11px;color:#9ca3af;">*UNOFFICIAL RECEIPT*<br>Not a BIR official receipt</div>' +
+    '</div>' +
+
+    '<button class="btn btn-primary" style="margin-top:4px;" onclick="printLastReceipt()">🖨️ Print / Save as PDF</button>' +
+    '<button class="btn btn-secondary" onclick="renderQuickSell()">✅ New Sale</button>' +
+    '</div>';
 }
 
 // ── Inventory ─────────────────────────────────────────────────────────────────
@@ -1059,6 +1114,7 @@ function renderReports() {
       '<button class="big-btn" style="margin-bottom:8px;" onclick="loadReport(\'monthly\',' + yyyy + ',' + (today.getMonth()+1) + ')">🗓 Monthly — This Month</button>' +
       '<button class="big-btn" style="margin-bottom:8px;" onclick="loadReport(\'period\',\'' + qFrom + '\',\'' + qTo + '\')">📊 Quarterly — Q' + q + ' ' + yyyy + '</button>' +
       '<button class="big-btn" style="margin-bottom:8px;" onclick="loadReport(\'period\',\'' + yyyy + '-01-01\',\'' + yyyy + '-12-31\')">📈 Yearly — ' + yyyy + '</button>' +
+      '<button class="big-btn" style="margin-bottom:8px;background:#1e3a5f;color:#fff;" onclick="renderBIRData()">🏛️ BIR Filing Data</button>' +
     '</div>' +
 
     '<div class="card">' +
@@ -1272,11 +1328,16 @@ function renderReportScreen(type, d, fixedCosts) {
     deadStockHtml += '</div>';
   }
 
+  state.lastReport = { type: type, d: d };
+
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
     '<div class="topbar" style="flex-wrap:wrap;gap:4px;">' +
       '<div style="font-size:14px;font-weight:bold;">' + title + '</div>' +
-      '<button class="small-btn" onclick="renderReports()">← Back</button>' +
+      '<div style="display:flex;gap:6px;">' +
+        '<button class="small-btn" onclick="printLastReport()">📄 PDF</button>' +
+        '<button class="small-btn" onclick="renderReports()">← Back</button>' +
+      '</div>' +
     '</div>' +
     '<div class="card">' + summaryHtml + '</div>' +
     healthHtml +
@@ -1382,6 +1443,339 @@ async function saveFixedCostsSettings() {
   } catch(e) {
     _showToast('Error: ' + e.message, true);
   }
+}
+
+// ── Print / PDF utilities ─────────────────────────────────────────────────────
+
+function _openPrintWindow(title, htmlBody, extraStyles) {
+  var w = window.open('', '_blank');
+  if (!w) { _showToast('Allow pop-ups to print/save PDF', true); return; }
+  var css = [
+    '* { box-sizing:border-box; margin:0; padding:0; }',
+    'body { font-family: Arial, sans-serif; font-size: 13px; color: #111; }',
+    'table { width:100%; border-collapse:collapse; }',
+    'th, td { border: 1px solid #ccc; padding: 6px 8px; text-align:left; }',
+    'th { background:#1e3a5f; color:#fff; }',
+    'tr:nth-child(even) { background:#f9fafb; }',
+    '.center { text-align:center; }',
+    '.right  { text-align:right; }',
+    '.bold   { font-weight:bold; }',
+    '.divider { border-top:1px dashed #999; margin:8px 0; }',
+    '.no-print { display:none; }',
+    '@media print { @page { margin: 12mm; } }',
+    extraStyles || ''
+  ].join('\n');
+  w.document.write(
+    '<!DOCTYPE html><html><head><meta charset="UTF-8">' +
+    '<title>' + title + '</title>' +
+    '<style>' + css + '</style></head><body>' +
+    '<div style="text-align:right;margin-bottom:12px;" class="no-print">' +
+    '<button onclick="window.print()" style="padding:8px 16px;background:#1e3a5f;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;">🖨️ Print / Save as PDF</button>' +
+    '</div>' + htmlBody + '</body></html>'
+  );
+  w.document.close();
+  w.focus();
+}
+
+// ── Receipt printing ──────────────────────────────────────────────────────────
+
+function printLastReceipt() {
+  var r = state.lastReceipt;
+  if (!r) { _showToast('No receipt to print', true); return; }
+  _printReceiptHtml(r.cartItems, r.total, r.paid, r.method, r.saleResult);
+}
+
+function _printReceiptHtml(cartItems, total, paid, method, saleResult) {
+  var sp        = state.storeProfile || {};
+  var change    = paid - total;
+  var receiptNo = saleResult && saleResult.receiptNo ? saleResult.receiptNo : '(offline)';
+  var now       = new Date();
+  var dateStr   = now.toLocaleDateString('en-PH', { year:'numeric', month:'long', day:'numeric' });
+  var timeStr   = now.toLocaleTimeString('en-PH', { hour:'2-digit', minute:'2-digit' });
+  var cashier   = state.session && state.session.user ? state.session.user.Full_Name : '';
+
+  function money(v) { return '₱' + Number(v||0).toFixed(2); }
+
+  var itemRows = cartItems.map(function(i) {
+    return '<tr><td>' + i.qty + 'x ' + i.name + '</td><td class="right">' + money(i.total) + '</td></tr>';
+  }).join('');
+
+  var html =
+    '<div style="max-width:280px;margin:0 auto;font-family:monospace;">' +
+    '<div class="center" style="margin-bottom:8px;">' +
+    '<div class="bold" style="font-size:15px;">' + (sp.storeName || 'Store') + '</div>' +
+    (sp.address ? '<div style="font-size:11px;">' + sp.address + '</div>' : '') +
+    (sp.phone   ? '<div style="font-size:11px;">' + sp.phone   + '</div>' : '') +
+    (sp.receiptHeader ? '<div style="font-size:11px;margin-top:4px;">' + sp.receiptHeader + '</div>' : '') +
+    '</div>' +
+    '<div class="divider"></div>' +
+    '<div style="font-size:11px;margin-bottom:6px;">' +
+    'Receipt #: <strong>' + receiptNo + '</strong><br>' +
+    'Date: ' + dateStr + '<br>Time: ' + timeStr +
+    (cashier ? '<br>Cashier: ' + cashier : '') +
+    '</div>' +
+    '<div class="divider"></div>' +
+    '<table style="border:none;"><tbody>' + itemRows + '</tbody></table>' +
+    '<div class="divider"></div>' +
+    '<table style="border:none;"><tbody>' +
+    '<tr><td class="bold">TOTAL</td><td class="right bold">' + money(total) + '</td></tr>' +
+    '<tr><td>Cash (' + method + ')</td><td class="right">' + money(paid) + '</td></tr>' +
+    '<tr><td class="bold" style="color:#16a34a;">CHANGE</td><td class="right bold" style="color:#16a34a;">' + money(change) + '</td></tr>' +
+    '</tbody></table>' +
+    '<div class="divider"></div>' +
+    '<div class="center" style="font-size:10px;color:#666;">' +
+    '--- UNOFFICIAL RECEIPT ---<br>' +
+    'This is NOT a BIR Official Receipt.<br>' +
+    (sp.receiptFooter || 'Thank you for your purchase!') +
+    '</div></div>';
+
+  _openPrintWindow('Receipt ' + receiptNo, html,
+    '@media print { @page { size: 80mm auto; margin: 4mm; } body { width:80mm; } }');
+}
+
+// ── Report printing ───────────────────────────────────────────────────────────
+
+function printReport(type, d) {
+  function money(v) { return '&#8369;' + Number(v||0).toLocaleString('en-PH', {minimumFractionDigits:2}); }
+  function pct(v)   { return Number(v||0).toFixed(1) + '%'; }
+
+  var sp    = state.storeProfile || {};
+  var title = type === 'daily'   ? 'Daily Report — '   + d.date
+            : type === 'weekly'  ? 'Weekly Report — '  + d.dateFrom + ' to ' + d.dateTo
+            : type === 'monthly' ? 'Monthly Report — ' + _monthName(d.month) + ' ' + d.year
+            : 'Period Report — ' + d.dateFrom + ' to ' + d.dateTo;
+  var s = d.summary;
+
+  // Header
+  var html = '<h2 style="margin-bottom:4px;">' + (sp.storeName || 'Store') + '</h2>' +
+    '<div style="color:#666;font-size:12px;margin-bottom:16px;">' + title + ' &nbsp;|&nbsp; Printed: ' + new Date().toLocaleDateString('en-PH') + '</div>';
+
+  // Summary table
+  html += '<h3 style="margin-bottom:8px;">Summary</h3>' +
+    '<table><thead><tr><th>Metric</th><th class="right">Amount</th></tr></thead><tbody>' +
+    '<tr><td>Total Revenue</td><td class="right">' + money(s.revenue) + '</td></tr>' +
+    '<tr><td>Cost of Goods Sold</td><td class="right">' + money(s.cogs) + '</td></tr>' +
+    '<tr><td>Gross Profit</td><td class="right bold">' + money(s.grossProfit) + '</td></tr>' +
+    '<tr><td>Total Expenses</td><td class="right">' + money(s.totalExpenses) + '</td></tr>' +
+    '<tr><td>Net Profit / (Loss)</td><td class="right bold" style="color:' + (s.netProfit >= 0 ? 'green' : 'red') + ';">' + money(s.netProfit) + '</td></tr>' +
+    '<tr><td>Transactions</td><td class="right">' + s.txCount + '</td></tr>' +
+    '<tr><td>Items Sold</td><td class="right">' + s.totalQty + ' pcs</td></tr>' +
+    '<tr><td>Avg Sale Value</td><td class="right">' + money(s.avgTx) + '</td></tr>' +
+    '</tbody></table>';
+
+  // Health indicators
+  var gpm = s.revenue > 0 ? (s.grossProfit / s.revenue * 100) : 0;
+  var npm = s.revenue > 0 ? (s.netProfit   / s.revenue * 100) : 0;
+  html += '<h3 style="margin:16px 0 8px;">Health Indicators</h3>' +
+    '<table><tbody>' +
+    '<tr><td>Gross Profit Margin</td><td class="right">' + pct(gpm) + '</td></tr>' +
+    '<tr><td>Net Profit Margin</td><td class="right">' + pct(npm) + '</td></tr>' +
+    '</tbody></table>';
+
+  // Top products
+  if (d.topProducts && d.topProducts.length) {
+    html += '<h3 style="margin:16px 0 8px;">Top Products</h3>' +
+      '<table><thead><tr><th>#</th><th>Product</th><th class="right">Qty</th><th class="right">Revenue</th><th class="right">Profit</th></tr></thead><tbody>' +
+      d.topProducts.map(function(p, i) {
+        return '<tr><td>' + (i+1) + '</td><td>' + p.name + '</td><td class="right">' + p.qty + '</td><td class="right">' + money(p.revenue) + '</td><td class="right">' + money(p.profit) + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+
+  // Expenses
+  if (d.expenseBreakdown && d.expenseBreakdown.length) {
+    html += '<h3 style="margin:16px 0 8px;">Expenses by Category</h3>' +
+      '<table><thead><tr><th>Category</th><th class="right">Amount</th></tr></thead><tbody>' +
+      d.expenseBreakdown.map(function(e) {
+        return '<tr><td>' + e.category + '</td><td class="right">' + money(e.amount) + '</td></tr>';
+      }).join('') +
+      '<tr><td class="bold">Total</td><td class="right bold">' + money(s.totalExpenses) + '</td></tr>' +
+      '</tbody></table>';
+  }
+
+  // Period-specific breakdown
+  if (type === 'weekly' && d.dailyBreakdown) {
+    html += '<h3 style="margin:16px 0 8px;">Daily Breakdown</h3>' +
+      '<table><thead><tr><th>Date</th><th class="right">Revenue</th><th class="right">Transactions</th><th class="right">Gross Profit</th></tr></thead><tbody>' +
+      d.dailyBreakdown.map(function(day) {
+        return '<tr><td>' + _formatDate(day.date) + '</td><td class="right">' + money(day.revenue) + '</td><td class="right">' + day.count + '</td><td class="right">' + money(day.grossProfit) + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+
+  if ((type === 'monthly' || type === 'period') && d.monthlyBreakdown) {
+    html += '<h3 style="margin:16px 0 8px;">Monthly Breakdown</h3>' +
+      '<table><thead><tr><th>Month</th><th class="right">Revenue</th><th class="right">Transactions</th><th class="right">Gross Profit</th></tr></thead><tbody>' +
+      d.monthlyBreakdown.map(function(m) {
+        return '<tr><td>' + m.month + '</td><td class="right">' + money(m.revenue) + '</td><td class="right">' + m.count + '</td><td class="right">' + money(m.grossProfit) + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+
+  _openPrintWindow(title, html);
+}
+
+function printLastReport() {
+  if (!state.lastReport) { _showToast('No report to print', true); return; }
+  printReport(state.lastReport.type, state.lastReport.d);
+}
+
+// ── BIR Data screen ───────────────────────────────────────────────────────────
+
+function renderBIRData() {
+  var year = new Date().getFullYear();
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">🏛️ BIR Filing Data</div>' +
+    '<button class="small-btn" onclick="renderReports()">← Back</button></div>' +
+    '<div class="card">' +
+    '<div class="subtitle" style="margin-bottom:8px;">Annual Summary for Income Tax Filing</div>' +
+    '<div class="muted" style="font-size:12px;margin-bottom:12px;">Generates monthly/quarterly sales and expense summaries required for BIR Form 1701A and related schedules.</div>' +
+    '<div class="field"><label>Select Year</label>' +
+    '<select id="bir-year">' +
+    [year, year-1, year-2].map(function(y) { return '<option value="' + y + '">' + y + '</option>'; }).join('') +
+    '</select></div>' +
+    '<button class="btn btn-primary" onclick="loadBIRData(document.getElementById(\'bir-year\').value)">📊 Generate BIR Data</button>' +
+    '</div></div>';
+}
+
+async function loadBIRData(year) {
+  showLoading('Generating BIR data for ' + year + '…');
+  try {
+    var d = await API.call('getBIRData', { year: Number(year) });
+    state.lastBIRData = d;
+    renderBIRScreen(d);
+  } catch(e) {
+    _showToast('Error: ' + e.message, true);
+    renderBIRData();
+  }
+}
+
+function renderBIRScreen(d) {
+  function money(v) { return '₱' + Number(v||0).toLocaleString('en-PH', {minimumFractionDigits:2}); }
+
+  var monthRows = d.months.map(function(m) {
+    return '<tr>' +
+      '<td>' + m.monthName.substring(0,3) + '</td>' +
+      '<td class="right">' + money(m.revenue) + '</td>' +
+      '<td class="right">' + money(m.cogs) + '</td>' +
+      '<td class="right">' + money(m.grossProfit) + '</td>' +
+      '<td class="right">' + money(m.totalExpenses) + '</td>' +
+      '<td class="right" style="font-weight:bold;color:' + (m.netIncome >= 0 ? '#16a34a' : '#dc2626') + ';">' + money(m.netIncome) + '</td>' +
+      '</tr>';
+  }).join('');
+
+  var qRows = d.quarters.map(function(q) {
+    return '<tr style="background:#eff6ff;">' +
+      '<td class="bold">' + q.label + '</td>' +
+      '<td class="right bold">' + money(q.revenue) + '</td>' +
+      '<td class="right">' + money(q.cogs) + '</td>' +
+      '<td class="right">' + money(q.grossProfit) + '</td>' +
+      '<td class="right">' + money(q.totalExpenses) + '</td>' +
+      '<td class="right bold" style="color:' + (q.netIncome >= 0 ? '#16a34a' : '#dc2626') + ';">' + money(q.netIncome) + '</td>' +
+      '</tr>';
+  }).join('');
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar" style="flex-wrap:wrap;gap:4px;">' +
+    '<div style="font-size:14px;font-weight:bold;">🏛️ BIR Data — ' + d.year + '</div>' +
+    '<button class="small-btn" onclick="renderBIRData()">← Back</button></div>' +
+
+    // Store info
+    '<div class="card">' +
+    '<div style="font-size:14px;font-weight:bold;">' + (d.store.storeName || '') + '</div>' +
+    (d.store.ownerName ? '<div class="muted">Owner: ' + d.store.ownerName + '</div>' : '') +
+    (d.store.address   ? '<div class="muted">' + d.store.address + '</div>' : '') +
+    '</div>' +
+
+    // Monthly table (scrollable)
+    '<div class="card" style="overflow-x:auto;">' +
+    '<div style="font-size:13px;font-weight:bold;margin-bottom:8px;">Monthly & Quarterly Sales Summary</div>' +
+    '<div class="muted" style="font-size:11px;margin-bottom:8px;">For BIR Form 1701A Schedule 1 — Summary of Sales/Revenues</div>' +
+    '<table style="font-size:12px;min-width:420px;">' +
+    '<thead><tr><th>Month</th><th>Gross Sales</th><th>Cost of Sales</th><th>Gross Profit</th><th>Expenses</th><th>Net Income</th></tr></thead>' +
+    '<tbody>' + monthRows + qRows +
+    '<tr style="background:#1e3a5f;color:#fff;">' +
+    '<td class="bold">ANNUAL TOTAL</td>' +
+    '<td class="right bold">' + money(d.annual.revenue) + '</td>' +
+    '<td class="right">' + money(d.annual.cogs) + '</td>' +
+    '<td class="right">' + money(d.annual.grossProfit) + '</td>' +
+    '<td class="right">' + money(d.annual.totalExpenses) + '</td>' +
+    '<td class="right bold">' + money(d.annual.netProfit) + '</td>' +
+    '</tr></tbody></table></div>' +
+
+    // Expense summary
+    '<div class="card">' +
+    '<div style="font-size:13px;font-weight:bold;margin-bottom:8px;">Annual Expense Breakdown</div>' +
+    '<div class="muted" style="font-size:11px;margin-bottom:8px;">For BIR Schedule of Deductible Expenses</div>' +
+    (d.expenseSummary && d.expenseSummary.length
+      ? d.expenseSummary.map(function(e) {
+          return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f3f4f6;font-size:13px;">' +
+            '<span>' + e.category + '</span><strong>' + money(e.amount) + '</strong></div>';
+        }).join('') +
+        '<div style="display:flex;justify-content:space-between;padding:8px 0;font-weight:bold;">' +
+        '<span>Total Expenses</span><span style="color:#dc2626;">' + money(d.annual.totalExpenses) + '</span></div>'
+      : '<div class="muted">No expenses recorded for ' + d.year + '.</div>') +
+    '</div>' +
+
+    '<button class="btn btn-primary" onclick="printBIRData(state.lastBIRData)">📄 Export as PDF / Print</button>' +
+    '</div>';
+}
+
+function printBIRData(d) {
+  function money(v) { return '&#8369;' + Number(v||0).toLocaleString('en-PH', {minimumFractionDigits:2}); }
+
+  var html =
+    '<h2 style="margin-bottom:4px;">' + (d.store.storeName || 'Store') + '</h2>' +
+    '<div style="color:#666;font-size:12px;margin-bottom:4px;">' +
+    (d.store.ownerName ? 'Owner: ' + d.store.ownerName + ' &nbsp;|&nbsp; ' : '') +
+    (d.store.address   ? d.store.address + ' &nbsp;|&nbsp; ' : '') +
+    (d.store.phone     ? d.store.phone : '') + '</div>' +
+    '<div style="color:#666;font-size:12px;margin-bottom:16px;">Printed: ' + new Date().toLocaleDateString('en-PH') + '</div>' +
+
+    '<h3 style="margin-bottom:8px;">Summary of Sales for BIR Form 1701A — Year ' + d.year + '</h3>' +
+    '<div style="font-size:11px;color:#888;margin-bottom:8px;">Schedule 1 — Summary of Gross Sales/Revenues and Cost of Sales</div>' +
+    '<table>' +
+    '<thead><tr><th>Month/Quarter</th><th class="right">Gross Sales</th><th class="right">Cost of Sales</th><th class="right">Gross Profit</th><th class="right">Operating Expenses</th><th class="right">Net Income/(Loss)</th></tr></thead>' +
+    '<tbody>' +
+    d.months.map(function(m) {
+      return '<tr><td>' + m.monthName + '</td>' +
+        '<td class="right">' + money(m.revenue) + '</td>' +
+        '<td class="right">' + money(m.cogs) + '</td>' +
+        '<td class="right">' + money(m.grossProfit) + '</td>' +
+        '<td class="right">' + money(m.totalExpenses) + '</td>' +
+        '<td class="right">' + money(m.netIncome) + '</td></tr>';
+    }).join('') +
+    d.quarters.map(function(q) {
+      return '<tr style="font-weight:bold;background:#e8f0fe;"><td>' + q.label + '</td>' +
+        '<td class="right">' + money(q.revenue) + '</td>' +
+        '<td class="right">' + money(q.cogs) + '</td>' +
+        '<td class="right">' + money(q.grossProfit) + '</td>' +
+        '<td class="right">' + money(q.totalExpenses) + '</td>' +
+        '<td class="right">' + money(q.netIncome) + '</td></tr>';
+    }).join('') +
+    '<tr style="font-weight:bold;background:#1e3a5f;color:white;"><td>ANNUAL TOTAL</td>' +
+    '<td class="right">' + money(d.annual.revenue) + '</td>' +
+    '<td class="right">' + money(d.annual.cogs) + '</td>' +
+    '<td class="right">' + money(d.annual.grossProfit) + '</td>' +
+    '<td class="right">' + money(d.annual.totalExpenses) + '</td>' +
+    '<td class="right">' + money(d.annual.netProfit) + '</td></tr>' +
+    '</tbody></table>' +
+
+    '<h3 style="margin:20px 0 8px;">Schedule of Deductible Expenses — Year ' + d.year + '</h3>' +
+    '<table>' +
+    '<thead><tr><th>Expense Category</th><th class="right">Annual Amount</th></tr></thead><tbody>' +
+    (d.expenseSummary || []).map(function(e) {
+      return '<tr><td>' + e.category + '</td><td class="right">' + money(e.amount) + '</td></tr>';
+    }).join('') +
+    '<tr style="font-weight:bold;"><td>TOTAL DEDUCTIBLE EXPENSES</td><td class="right">' + money(d.annual.totalExpenses) + '</td></tr>' +
+    '</tbody></table>' +
+
+    '<div style="margin-top:24px;font-size:10px;color:#999;border-top:1px solid #ddd;padding-top:8px;">' +
+    'DISCLAIMER: This is a computer-generated summary from Tindahan Hub POS. ' +
+    'This is NOT a BIR-registered document. Please consult a CPA or BIR-accredited tax preparer before filing. ' +
+    'Data accuracy depends on complete recording of all sales and expenses in the system.' +
+    '</div>';
+
+  _openPrintWindow('BIR Filing Data ' + d.year, html);
 }
 
 // ── Subscription / Store Key screens ─────────────────────────────────────────
