@@ -56,7 +56,10 @@ async function boot() {
       state.categories = merged;
       try { await DB.saveCategories(state.categories); } catch(e) {}
 
-      try { state.storeProfile = await API.call('getStoreProfile'); } catch(e2) {}
+      try {
+        state.storeProfile = await API.call('getStoreProfile');
+        localStorage.setItem('store_profile', JSON.stringify(state.storeProfile));
+      } catch(e2) {}
       routeToDashboard();
       _submitHealthSnapshot();  // fire-and-forget after routing
       return;
@@ -74,6 +77,7 @@ async function boot() {
       state.isOffline  = true;
       state.products   = (await DB.getProducts())   || [];
       state.categories = (await DB.getCategories()) || [];
+      try { var sp = localStorage.getItem('store_profile'); if (sp) state.storeProfile = JSON.parse(sp); } catch(e2) {}
       routeToDashboard();
       return;
     } catch(e) {
@@ -265,7 +269,6 @@ function renderOwnerDashboard(msg) {
     '<div class="screen">' +
     _dashboardHeader_(storeName, ownerName, '', state.isOffline) +
     (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
-    (state.isOffline ? '<div class="message message-offline" style="text-align:center;font-size:0.82rem;">Changes will sync when back online</div>' : '') +
     '<div class="grid-buttons">' +
     '<button class="big-btn" onclick="loadProducts()">📦 Products</button>' +
     '<button class="big-btn" onclick="renderQuickSell()">💰 Quick Sell</button>' +
@@ -291,7 +294,6 @@ function renderWatcherDashboard(msg) {
     '<div class="screen">' +
     _dashboardHeader_(storeName, userName, '', state.isOffline) +
     (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
-    (state.isOffline ? '<div class="message message-offline" style="text-align:center;font-size:0.82rem;">Sales will sync when back online</div>' : '') +
     '<div class="grid-buttons">' +
     '<button class="big-btn" onclick="renderQuickSell()">💰 Quick Sell</button>' +
     '<button class="big-btn" onclick="renderExpenses()">💸 Expenses</button>' +
