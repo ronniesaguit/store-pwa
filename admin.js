@@ -1,0 +1,540 @@
+// admin.js — Tindahan Hub Admin Panel
+
+var adminState = {
+  admin: null,
+  stores: [],
+  platformSettings: {}
+};
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+
+window.addEventListener('load', function() { adminBoot(); });
+
+async function adminBoot() {
+  if (ADMIN_API.token) {
+    try {
+      adminState.stores           = await ADMIN_API.call('adminGetStores');
+      adminState.platformSettings = await ADMIN_API.call('adminGetPlatformSettings');
+      renderDashboard();
+      return;
+    } catch(e) {
+      ADMIN_API.clearToken();
+    }
+  }
+  renderAdminLogin();
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function _app(html) { document.getElementById('app').innerHTML = html; }
+
+function _toast(msg, isErr) {
+  var t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:12px 20px;' +
+    'border-radius:20px;font-weight:bold;z-index:9999;white-space:nowrap;font-size:14px;' +
+    'box-shadow:0 4px 12px rgba(0,0,0,.25);' +
+    (isErr ? 'background:#dc2626;color:#fff;' : 'background:#16a34a;color:#fff;');
+  t.textContent = (isErr ? '⚠ ' : '✓ ') + msg;
+  document.body.appendChild(t);
+  setTimeout(function() { if (t.parentNode) t.parentNode.removeChild(t); }, 3000);
+}
+
+function _money(v) {
+  return '₱' + Number(v || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 });
+}
+
+function _storeStatus(store) {
+  var now     = new Date();
+  var trial   = store.Trial_End            ? new Date(String(store.Trial_End))            : null;
+  var expires = store.Subscription_Expires ? new Date(String(store.Subscription_Expires)) : null;
+  if (String(store.Status).toUpperCase() === 'SUSPENDED') return 'SUSPENDED';
+  if (trial   && now <= trial)   return 'TRIAL';
+  if (expires && now <= expires) return 'ACTIVE';
+  return 'EXPIRED';
+}
+
+function _badgeHtml(status) {
+  var map = {
+    TRIAL:     '<span class="badge badge-trial">FREE TRIAL</span>',
+    ACTIVE:    '<span class="badge badge-active">ACTIVE</span>',
+    EXPIRED:   '<span class="badge badge-expired">EXPIRED</span>',
+    SUSPENDED: '<span class="badge badge-suspended">SUSPENDED</span>'
+  };
+  return map[status] || '<span class="badge">' + status + '</span>';
+}
+
+function _topbar(title, backFn) {
+  return '<div class="topbar"><div class="title">' + title + '</div>' +
+    (backFn ? '<button class="small-btn" onclick="' + backFn + '">← Back</button>' : '') +
+    '</div>';
+}
+
+// ── Login ─────────────────────────────────────────────────────────────────────
+
+function renderAdminLogin(msg) {
+  _app('<div class="screen">' +
+    '<div style="text-align:center;padding:32px 0 20px;">' +
+    '<div style="font-size:48px;">🏪</div>' +
+    '<h2 style="color:#1e3a5f;margin-top:8px;">Tindahan Hub</h2>' +
+    '<div class="muted">Admin Panel</div></div>' +
+    '<div class="card">' +
+    (msg ? '<div class="msg-err">' + msg + '</div>' : '') +
+    '<div class="field"><label>Username</label><input id="a-user" placeholder="Admin username"></div>' +
+    '<div class="field"><label>Password</label><input id="a-pass" type="password" placeholder="Password"></div>' +
+    '<button class="btn btn-primary" onclick="submitAdminLogin()">Login</button>' +
+    '</div></div>');
+  document.getElementById('a-pass').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') submitAdminLogin();
+  });
+}
+
+async function submitAdminLogin() {
+  var username = (document.getElementById('a-user').value || '').trim();
+  var password = document.getElementById('a-pass').value;
+  if (!username || !password) { _toast('Enter username and password', true); return; }
+  _app('<div style="text-align:center;padding:80px 20px;color:#6b7280;">Logging in…</div>');
+  try {
+    var result = await ADMIN_API.call('adminLogin', { username: username, password: password });
+    ADMIN_API.setToken(result.token);
+    adminState.admin = result.admin;
+    adminState.stores           = await ADMIN_API.call('adminGetStores');
+    adminState.platformSettings = await ADMIN_API.call('adminGetPlatformSettings');
+    renderDashboard();
+  } catch(e) {
+    renderAdminLogin(e.message);
+  }
+}
+
+function adminLogout() {
+  ADMIN_API.clearToken();
+  adminState.admin = null;
+  renderAdminLogin();
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+
+function renderDashboard() {
+  var stores   = adminState.stores;
+  var statuses = stores.map(_storeStatus);
+  var counts   = {
+    total:     stores.length,
+    trial:     statuses.filter(function(s) { return s === 'TRIAL'; }).length,
+    active:    statuses.filter(function(s) { return s === 'ACTIVE'; }).length,
+    expired:   statuses.filter(function(s) { return s === 'EXPIRED'; }).length,
+    suspended: statuses.filter(function(s) { return s === 'SUSPENDED'; }).length
+  };
+  var mrr = stores.reduce(function(sum, st) {
+    return sum + (Number(st.Monthly_Fee) || 0);
+  }, 0);
+
+  var storeRows = stores.map(function(st, i) {
+    var status = _storeStatus(st);
+    var sub = st.Trial_End && status === 'TRIAL'
+      ? 'Trial ends ' + String(st.Trial_End).substring(0, 10)
+      : st.Subscription_Expires
+        ? 'Expires ' + String(st.Subscription_Expires).substring(0, 10)
+        : 'No subscription set';
+    return '<div class="store-row" onclick="renderStoreDetail(' + i + ')">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+      '<div><div style="font-size:14px;font-weight:bold;">' + st.Store_Name + '</div>' +
+        '<div class="muted" style="font-size:12px;">' + (st.Owner_Name || 'No owner') + ' · ' + sub + '</div></div>' +
+      _badgeHtml(status) + '</div></div>';
+  }).join('');
+
+  _app('<div class="screen">' +
+    _topbar('🏪 Tindahan Hub Admin') +
+    '<div style="display:flex;justify-content:flex-end;margin-bottom:8px;">' +
+    '<button class="btn-sm btn-primary btn" style="width:auto;" onclick="adminLogout()">Logout</button></div>' +
+
+    '<div class="stat-grid">' +
+    '<div class="stat-card"><div class="val">' + counts.total + '</div><div class="lbl">Total Stores</div></div>' +
+    '<div class="stat-card"><div class="val" style="color:#1d4ed8;">' + counts.trial + '</div><div class="lbl">Free Trial</div></div>' +
+    '<div class="stat-card"><div class="val" style="color:#16a34a;">' + counts.active + '</div><div class="lbl">Active</div></div>' +
+    '<div class="stat-card"><div class="val" style="color:#dc2626;">' + counts.expired + '</div><div class="lbl">Expired</div></div>' +
+    '</div>' +
+
+    '<div class="card" style="text-align:center;margin-bottom:12px;">' +
+    '<div class="muted" style="font-size:12px;">Monthly Recurring Revenue</div>' +
+    '<div style="font-size:24px;font-weight:bold;color:#16a34a;">' + _money(mrr) + '</div>' +
+    '</div>' +
+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">' +
+    '<button class="btn btn-primary" style="margin:0;" onclick="renderCreateStore()">+ New Store</button>' +
+    '<button class="btn btn-secondary" style="margin:0;" onclick="renderPlatformSettings()">⚙️ Settings</button>' +
+    '</div>' +
+
+    '<div class="card">' +
+    '<div class="section-title">All Stores</div>' +
+    (storeRows || '<div class="muted">No stores yet. Create one above.</div>') +
+    '</div></div>');
+}
+
+// ── Store Detail ──────────────────────────────────────────────────────────────
+
+function renderStoreDetail(idx) {
+  var st     = adminState.stores[idx];
+  var status = _storeStatus(st);
+  var plan   = String(st.Plan || '').toUpperCase();
+  var pwaDomain = 'https://ronniesaguit.github.io/store-pwa/?k=' + st.API_Key;
+
+  _app('<div class="screen">' +
+    _topbar('Store Detail', 'renderDashboard()') +
+
+    '<div class="card">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
+    '<div><div style="font-size:16px;font-weight:bold;">' + st.Store_Name + '</div>' +
+      '<div class="muted">' + (st.Owner_Name || '') + '</div></div>' +
+    _badgeHtml(status) + '</div>' +
+
+    '<div style="font-size:13px;line-height:2;">' +
+    '<div>📧 ' + (st.Owner_Email || '—') + '</div>' +
+    '<div>📱 ' + (st.Owner_Phone || '—') + '</div>' +
+    '<div>📋 Plan: <strong>' + plan + '</strong> · ' + _money(st.Monthly_Fee) + '/mo</div>' +
+    '<div>🎁 Trial ends: <strong>' + (String(st.Trial_End || '').substring(0, 10) || '—') + '</strong></div>' +
+    '<div>📅 Expires: <strong>' + (String(st.Subscription_Expires || '').substring(0, 10) || '—') + '</strong></div>' +
+    '</div>' +
+
+    '<div style="margin-top:12px;background:#f9fafb;border-radius:8px;padding:10px;">' +
+    '<div style="font-size:11px;font-weight:bold;color:#6b7280;margin-bottom:4px;">PWA Link (share with store owner)</div>' +
+    '<div style="font-size:12px;word-break:break-all;color:#1d4ed8;">' + pwaDomain + '</div>' +
+    '<div style="font-size:11px;font-weight:bold;color:#6b7280;margin-top:6px;margin-bottom:2px;">API Key</div>' +
+    '<div style="font-size:12px;color:#374151;word-break:break-all;">' + st.API_Key + '</div>' +
+    '</div></div>' +
+
+    // ── Extend trial ──
+    '<div class="card">' +
+    '<div class="section-title">🎁 Extend Trial</div>' +
+    '<div class="field"><label>Extra days</label>' +
+    '<input id="ext-days" type="number" min="1" value="30" placeholder="30"></div>' +
+    '<button class="btn btn-secondary" onclick="_extendTrial(\'' + st.Store_ID + '\')">Extend Trial</button>' +
+    '</div>' +
+
+    // ── Record payment ──
+    '<div class="card">' +
+    '<div class="section-title">💳 Record Payment</div>' +
+    '<div class="field"><label>Months paid</label>' +
+    '<input id="pay-months" type="number" min="1" value="1"></div>' +
+    '<div class="field"><label>Amount (₱)</label>' +
+    '<input id="pay-amount" type="number" min="0" value="' + (st.Monthly_Fee || 0) + '"></div>' +
+    '<div class="field"><label>GCash Reference #</label>' +
+    '<input id="pay-ref" placeholder="e.g. 1234567890"></div>' +
+    '<div class="field"><label>Notes</label>' +
+    '<input id="pay-notes" placeholder="Optional notes"></div>' +
+    '<button class="btn btn-success" onclick="_recordPayment(\'' + st.Store_ID + '\')">Confirm Payment</button>' +
+    '</div>' +
+
+    // ── Change plan ──
+    '<div class="card">' +
+    '<div class="section-title">📋 Change Plan</div>' +
+    '<div class="field"><label>Plan</label>' +
+    '<select id="chg-plan" onchange="_onChangePlan()">' +
+    ['TRIAL','BASIC','STANDARD','PRO','CUSTOM'].map(function(p) {
+      return '<option value="' + p + '"' + (p === plan ? ' selected' : '') + '>' + p + '</option>';
+    }).join('') +
+    '</select></div>' +
+    '<div id="custom-plan-fields" style="display:' + (plan === 'CUSTOM' ? 'block' : 'none') + ';">' +
+    '<div class="field"><label>Max Users (-1 = unlimited)</label><input id="chg-users" type="number" value="' + (st.Max_Users || 2) + '"></div>' +
+    '<div class="field"><label>Max Products (-1 = unlimited)</label><input id="chg-products" type="number" value="' + (st.Max_Products || 100) + '"></div>' +
+    '<div class="field"><label>Reports</label><select id="chg-reports">' +
+    '<option value="DAILY"' + (st.Reports_Level === 'DAILY' ? ' selected' : '') + '>Daily only</option>' +
+    '<option value="ALL"'   + (st.Reports_Level === 'ALL'   ? ' selected' : '') + '>All reports</option>' +
+    '</select></div>' +
+    '<div class="field"><label><input type="checkbox" id="chg-health"' + (String(st.Has_Health_Indicators).toUpperCase() === 'TRUE' ? ' checked' : '') + '> Include Health Indicators</label></div>' +
+    '<div class="field"><label>Monthly Fee (₱)</label><input id="chg-fee" type="number" value="' + (st.Monthly_Fee || 0) + '"></div>' +
+    '<div id="chg-suggested" class="hint" style="margin-bottom:8px;"></div>' +
+    '<button class="btn btn-secondary" onclick="_computeSuggestedPrice()">💡 Suggest Price</button>' +
+    '</div>' +
+    '<button class="btn btn-primary" style="margin-top:8px;" onclick="_changePlan(\'' + st.Store_ID + '\')">Save Plan</button>' +
+    '</div>' +
+
+    // ── Suspend / Activate ──
+    '<div class="card">' +
+    '<div class="section-title">⚡ Store Status</div>' +
+    (status === 'SUSPENDED'
+      ? '<button class="btn btn-success" onclick="_toggleStatus(\'' + st.Store_ID + '\',\'ACTIVE\')">✅ Activate Store</button>'
+      : '<button class="btn btn-danger"  onclick="_toggleStatus(\'' + st.Store_ID + '\',\'SUSPENDED\')">🚫 Suspend Store</button>') +
+    '</div></div>');
+}
+
+function _onChangePlan() {
+  var plan = document.getElementById('chg-plan').value;
+  document.getElementById('custom-plan-fields').style.display = plan === 'CUSTOM' ? 'block' : 'none';
+}
+
+async function _computeSuggestedPrice() {
+  var users   = Number(document.getElementById('chg-users').value)    || 2;
+  var products= Number(document.getElementById('chg-products').value) || 100;
+  var reports = document.getElementById('chg-reports').value;
+  var health  = document.getElementById('chg-health').checked;
+  try {
+    var result = await ADMIN_API.call('adminSuggestPrice',
+      { maxUsers: users, maxProducts: products, reportsLevel: reports, hasHealthIndicators: health });
+    document.getElementById('chg-suggested').textContent =
+      'Suggested price: ₱' + result.suggestedPrice + '/mo';
+  } catch(e) { _toast(e.message, true); }
+}
+
+async function _extendTrial(storeId) {
+  var days = Number(document.getElementById('ext-days').value) || 30;
+  try {
+    var r = await ADMIN_API.call('adminExtendTrial', { storeId: storeId, extraDays: days });
+    _toast('Trial extended to ' + r.newTrialEnd);
+    await _refreshStores();
+    renderDashboard();
+  } catch(e) { _toast(e.message, true); }
+}
+
+async function _recordPayment(storeId) {
+  var months = Number(document.getElementById('pay-months').value) || 1;
+  var amount = Number(document.getElementById('pay-amount').value) || 0;
+  var ref    = (document.getElementById('pay-ref').value   || '').trim();
+  var notes  = (document.getElementById('pay-notes').value || '').trim();
+  try {
+    var r = await ADMIN_API.call('adminRecordPayment',
+      { storeId: storeId, amount: amount, gcashRef: ref, monthsPaid: months, notes: notes });
+    _toast('Payment recorded. New expiry: ' + r.newExpiry);
+    await _refreshStores();
+    renderDashboard();
+  } catch(e) { _toast(e.message, true); }
+}
+
+async function _changePlan(storeId) {
+  var plan = document.getElementById('chg-plan').value;
+  var patch = { Plan: plan };
+  if (plan === 'CUSTOM') {
+    patch.Max_Users             = document.getElementById('chg-users').value;
+    patch.Max_Products          = document.getElementById('chg-products').value;
+    patch.Reports_Level         = document.getElementById('chg-reports').value;
+    patch.Has_Health_Indicators = String(document.getElementById('chg-health').checked);
+    patch.Monthly_Fee           = document.getElementById('chg-fee').value;
+  } else {
+    var planDefs = { BASIC:{max_users:2,max_products:100,reports:'DAILY',health:false,fee:99},
+                     STANDARD:{max_users:5,max_products:-1,reports:'ALL',health:false,fee:249},
+                     PRO:{max_users:-1,max_products:-1,reports:'ALL',health:true,fee:499},
+                     TRIAL:{max_users:-1,max_products:-1,reports:'ALL',health:true,fee:0} };
+    var def = planDefs[plan];
+    if (def) {
+      patch.Max_Users             = def.max_users;
+      patch.Max_Products          = def.max_products;
+      patch.Reports_Level         = def.reports;
+      patch.Has_Health_Indicators = String(def.health);
+      patch.Monthly_Fee           = def.fee;
+    }
+  }
+  try {
+    await ADMIN_API.call('adminUpdateStore', { storeId: storeId, patch: patch });
+    _toast('Plan updated to ' + plan);
+    await _refreshStores();
+    renderDashboard();
+  } catch(e) { _toast(e.message, true); }
+}
+
+async function _toggleStatus(storeId, newStatus) {
+  var action = newStatus === 'SUSPENDED' ? 'adminSuspendStore' : 'adminActivateStore';
+  try {
+    await ADMIN_API.call(action, { storeId: storeId });
+    _toast('Store ' + newStatus.toLowerCase());
+    await _refreshStores();
+    renderDashboard();
+  } catch(e) { _toast(e.message, true); }
+}
+
+async function _refreshStores() {
+  try { adminState.stores = await ADMIN_API.call('adminGetStores'); } catch(e) {}
+}
+
+// ── Create Store ──────────────────────────────────────────────────────────────
+
+function renderCreateStore(msg) {
+  _app('<div class="screen">' +
+    _topbar('➕ Create New Store', 'renderDashboard()') +
+
+    (msg ? '<div class="' + (msg.ok ? 'msg-ok' : 'msg-err') + '">' + msg.text + '</div>' : '') +
+
+    '<div class="card">' +
+    '<div class="section-title">Store Info</div>' +
+    '<div class="field"><label>Store Name *</label><input id="cs-name" placeholder="e.g. Aling Nena\'s Store"></div>' +
+    '<div class="field"><label>Owner Name</label><input id="cs-owner" placeholder="Full name"></div>' +
+    '<div class="field"><label>Owner Email</label><input id="cs-email" type="email" placeholder="email@example.com"></div>' +
+    '<div class="field"><label>Owner Phone</label><input id="cs-phone" placeholder="09xxxxxxxxx"></div>' +
+    '</div>' +
+
+    '<div class="card">' +
+    '<div class="section-title">Subscription Plan</div>' +
+    '<div class="field"><label>Plan</label>' +
+    '<select id="cs-plan" onchange="_onCreatePlanChange()">' +
+    '<option value="TRIAL" selected>Free Trial (30 days Pro)</option>' +
+    '<option value="BASIC">Tindahan (Basic) — ₱99/mo</option>' +
+    '<option value="STANDARD">Negosyo (Standard) — ₱249/mo</option>' +
+    '<option value="PRO">Superstore (Pro) — ₱499/mo</option>' +
+    '<option value="CUSTOM">Custom / Flexible</option>' +
+    '</select></div>' +
+    '<div class="field"><label>Trial Days</label>' +
+    '<input id="cs-trial" type="number" min="0" value="30">' +
+    '<div class="hint">Days of free Pro trial (set 0 to skip trial)</div></div>' +
+    '</div>' +
+
+    '<div class="card" id="cs-custom-card" style="display:none;">' +
+    '<div class="section-title">Custom Plan Settings</div>' +
+    '<div class="field"><label>Max Users (-1 = unlimited)</label><input id="cs-users" type="number" value="2"></div>' +
+    '<div class="field"><label>Max Products (-1 = unlimited)</label><input id="cs-products" type="number" value="100"></div>' +
+    '<div class="field"><label>Reports</label><select id="cs-reports">' +
+    '<option value="DAILY">Daily only</option><option value="ALL">All reports</option></select></div>' +
+    '<div class="field"><label><input type="checkbox" id="cs-health"> Health Indicators</label></div>' +
+    '<div class="field"><label>Monthly Fee (₱)</label><input id="cs-fee" type="number" value="0"></div>' +
+    '<div id="cs-suggested" class="hint" style="margin-bottom:8px;"></div>' +
+    '<button class="btn btn-secondary" onclick="_computeCreateSuggest()">💡 Suggest Price</button>' +
+    '</div>' +
+
+    '<div class="card">' +
+    '<div class="field"><label>Notes (internal only)</label>' +
+    '<textarea id="cs-notes" placeholder="Any notes about this store…"></textarea></div>' +
+    '<button class="btn btn-primary" onclick="submitCreateStore()">🚀 Provision Store</button>' +
+    '</div></div>');
+}
+
+function _onCreatePlanChange() {
+  var plan = document.getElementById('cs-plan').value;
+  document.getElementById('cs-custom-card').style.display = plan === 'CUSTOM' ? 'block' : 'none';
+}
+
+async function _computeCreateSuggest() {
+  var users    = Number(document.getElementById('cs-users').value)    || 2;
+  var products = Number(document.getElementById('cs-products').value) || 100;
+  var reports  = document.getElementById('cs-reports').value;
+  var health   = document.getElementById('cs-health').checked;
+  try {
+    var r = await ADMIN_API.call('adminSuggestPrice',
+      { maxUsers: users, maxProducts: products, reportsLevel: reports, hasHealthIndicators: health });
+    document.getElementById('cs-suggested').textContent = 'Suggested: ₱' + r.suggestedPrice + '/mo';
+  } catch(e) { _toast(e.message, true); }
+}
+
+async function submitCreateStore() {
+  var name  = (document.getElementById('cs-name').value  || '').trim();
+  if (!name) { _toast('Store name is required', true); return; }
+  var plan  = document.getElementById('cs-plan').value;
+  var data  = {
+    storeName:  name,
+    ownerName:  (document.getElementById('cs-owner').value  || '').trim(),
+    ownerEmail: (document.getElementById('cs-email').value  || '').trim(),
+    ownerPhone: (document.getElementById('cs-phone').value  || '').trim(),
+    plan:       plan,
+    trialDays:  Number(document.getElementById('cs-trial').value) || 0,
+    notes:      (document.getElementById('cs-notes').value  || '').trim()
+  };
+  if (plan === 'CUSTOM') {
+    data.maxUsers             = Number(document.getElementById('cs-users').value)    || 2;
+    data.maxProducts          = Number(document.getElementById('cs-products').value) || 100;
+    data.reportsLevel         = document.getElementById('cs-reports').value;
+    data.hasHealthIndicators  = document.getElementById('cs-health').checked;
+    data.monthlyFee           = Number(document.getElementById('cs-fee').value) || 0;
+  }
+
+  _app('<div style="text-align:center;padding:80px 20px;color:#6b7280;">Provisioning store…<br><small>This may take 10-30 seconds.</small></div>');
+
+  try {
+    var result = await ADMIN_API.call('adminProvisionStore', data);
+    adminState.stores = await ADMIN_API.call('adminGetStores');
+    renderProvisionSuccess(result);
+  } catch(e) {
+    renderCreateStore({ ok: false, text: 'Error: ' + e.message });
+  }
+}
+
+function renderProvisionSuccess(r) {
+  var pwaUrl = 'https://ronniesaguit.github.io/store-pwa/?k=' + r.apiKey;
+  _app('<div class="screen">' +
+    _topbar('✅ Store Created!', 'renderDashboard()') +
+    '<div class="card" style="text-align:center;">' +
+    '<div style="font-size:48px;margin-bottom:8px;">🎉</div>' +
+    '<h3 style="margin-bottom:4px;">' + r.storeName + '</h3>' +
+    '<div class="muted" style="margin-bottom:16px;">Store provisioned successfully</div>' +
+    '<div style="background:#f0fdf4;border-radius:8px;padding:12px;margin-bottom:12px;text-align:left;">' +
+    '<div style="font-size:12px;font-weight:bold;color:#15803d;margin-bottom:6px;">📱 PWA Link (send to store owner)</div>' +
+    '<div style="font-size:13px;word-break:break-all;color:#1d4ed8;">' + pwaUrl + '</div>' +
+    '</div>' +
+    '<div style="background:#f9fafb;border-radius:8px;padding:12px;text-align:left;">' +
+    '<div style="font-size:12px;line-height:2;color:#374151;">' +
+    '<div>🔑 API Key: <strong style="word-break:break-all;">' + r.apiKey + '</strong></div>' +
+    '<div>🎁 Trial ends: <strong>' + r.trialEnd + '</strong></div>' +
+    '<div>📋 Plan: <strong>' + r.plan + '</strong></div>' +
+    (r.monthlyFee ? '<div>💰 Monthly fee: <strong>' + _money(r.monthlyFee) + '</strong></div>' : '') +
+    '</div></div>' +
+    '</div>' +
+    '<button class="btn btn-primary" onclick="renderDashboard()">Back to Dashboard</button>' +
+    '</div>');
+}
+
+// ── Platform Settings ─────────────────────────────────────────────────────────
+
+function renderPlatformSettings(msg) {
+  var s = adminState.platformSettings || {};
+  _app('<div class="screen">' +
+    _topbar('⚙️ Platform Settings', 'renderDashboard()') +
+    (msg ? '<div class="' + (msg.ok ? 'msg-ok' : 'msg-err') + '">' + msg.text + '</div>' : '') +
+
+    '<div class="card">' +
+    '<div class="section-title">Platform Identity</div>' +
+    '<div class="field"><label>Platform Name</label>' +
+    '<input id="ps-name" value="' + (s.NAME || 'Tindahan Hub') + '"></div>' +
+    '<div class="field"><label>Admin Email</label>' +
+    '<input id="ps-email" type="email" value="' + (s.ADMIN_EMAIL || '') + '"></div>' +
+    '</div>' +
+
+    '<div class="card">' +
+    '<div class="section-title">GCash Billing (shown on payment wall)</div>' +
+    '<div class="field"><label>GCash Number</label>' +
+    '<input id="ps-gcash-num" placeholder="09xxxxxxxxx" value="' + (s.GCASH_NUMBER || '') + '"></div>' +
+    '<div class="field"><label>GCash Account Name</label>' +
+    '<input id="ps-gcash-name" placeholder="Name on GCash" value="' + (s.GCASH_NAME || '') + '"></div>' +
+    '<div class="field"><label>GCash QR Image URL</label>' +
+    '<input id="ps-gcash-qr" placeholder="https://… (upload to Drive/Imgur first)" value="' + (s.GCASH_QR_URL || '') + '">' +
+    '<div class="hint">Upload your GCash QR image to Google Drive (set to public link) or Imgur, then paste the URL here.</div></div>' +
+    '</div>' +
+
+    '<div class="card">' +
+    '<div class="section-title">Trial Settings</div>' +
+    '<div class="field"><label>Default Trial Days for new stores</label>' +
+    '<input id="ps-trial" type="number" min="1" value="' + (s.TRIAL_DAYS || 30) + '"></div>' +
+    '</div>' +
+
+    '<button class="btn btn-primary" onclick="savePlatformSettings()">💾 Save Settings</button>' +
+
+    '<div class="card" style="margin-top:12px;">' +
+    '<div class="section-title">Change Admin Password</div>' +
+    '<div class="field"><label>New Password</label><input id="ps-pw" type="password" placeholder="New password"></div>' +
+    '<div class="field"><label>Confirm Password</label><input id="ps-pw2" type="password" placeholder="Repeat password"></div>' +
+    '<button class="btn btn-secondary" onclick="changeAdminPassword()">🔐 Change Password</button>' +
+    '</div></div>');
+}
+
+async function savePlatformSettings() {
+  var patch = {
+    NAME:         (document.getElementById('ps-name').value      || '').trim(),
+    ADMIN_EMAIL:  (document.getElementById('ps-email').value     || '').trim(),
+    GCASH_NUMBER: (document.getElementById('ps-gcash-num').value || '').trim(),
+    GCASH_NAME:   (document.getElementById('ps-gcash-name').value|| '').trim(),
+    GCASH_QR_URL: (document.getElementById('ps-gcash-qr').value  || '').trim(),
+    TRIAL_DAYS:   Number(document.getElementById('ps-trial').value) || 30
+  };
+  try {
+    adminState.platformSettings = await ADMIN_API.call('adminSavePlatformSettings', patch);
+    _toast('Settings saved!');
+    renderPlatformSettings({ ok: true, text: 'Settings saved successfully.' });
+  } catch(e) {
+    renderPlatformSettings({ ok: false, text: 'Error: ' + e.message });
+  }
+}
+
+async function changeAdminPassword() {
+  var pw  = document.getElementById('ps-pw').value;
+  var pw2 = document.getElementById('ps-pw2').value;
+  if (!pw)       { _toast('Enter a new password', true); return; }
+  if (pw !== pw2){ _toast('Passwords do not match', true); return; }
+  try {
+    await ADMIN_API.call('adminChangePassword', { newPassword: pw });
+    _toast('Password changed! Please log in again.');
+    setTimeout(function() { ADMIN_API.clearToken(); renderAdminLogin(); }, 1500);
+  } catch(e) { _toast(e.message, true); }
+}

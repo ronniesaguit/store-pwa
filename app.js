@@ -17,6 +17,12 @@ async function boot() {
   var ind = document.getElementById('sync-indicator');
   if (ind) { ind.style.left = '10px'; ind.style.right = 'auto'; }
 
+  // If no store key is configured, show setup screen
+  if (!STORE_KEY) {
+    showNoStoreKey();
+    return;
+  }
+
   showLoading('Loading Store App…');
   try { await DB.init(); } catch(e) { console.warn('IndexedDB unavailable:', e); }
 
@@ -1376,6 +1382,56 @@ async function saveFixedCostsSettings() {
   } catch(e) {
     _showToast('Error: ' + e.message, true);
   }
+}
+
+// ── Subscription / Store Key screens ─────────────────────────────────────────
+
+function showNoStoreKey() {
+  document.getElementById('app').innerHTML =
+    '<div class="screen"><div class="card" style="text-align:center;padding:32px 20px;">' +
+    '<div style="font-size:48px;margin-bottom:12px;">🏪</div>' +
+    '<h2 style="margin:0 0 8px;">Tindahan Hub</h2>' +
+    '<div class="muted" style="margin-bottom:24px;">This app is not linked to any store yet.</div>' +
+    '<div class="subtitle" style="margin-bottom:8px;">Enter your Store Key</div>' +
+    '<input id="sk-input" placeholder="sk_xxxxxxxxxxxxxxxxxxxxxxxx" ' +
+      'style="width:100%;padding:12px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;' +
+      'margin-bottom:12px;box-sizing:border-box;">' +
+    '<button class="btn btn-primary" onclick="_applyStoreKey()">Connect Store</button>' +
+    '<div class="muted" style="margin-top:16px;font-size:12px;">Your store key was provided by Tindahan Hub when your store was created.<br>' +
+    'Contact <strong>09163561251</strong> (GCash/Viber) for assistance.</div>' +
+    '</div></div>';
+}
+
+function _applyStoreKey() {
+  var key = (document.getElementById('sk-input').value || '').trim();
+  if (!key.startsWith('sk_')) { _showToast('Invalid store key format', true); return; }
+  localStorage.setItem('store_key', key);
+  window.location.reload();
+}
+
+function showSubscriptionExpired(paymentInfo) {
+  paymentInfo = paymentInfo || {};
+  var gcash    = paymentInfo.gcashNumber  || '09163561251';
+  var gcashName= paymentInfo.gcashName    || 'Tindahan Hub';
+  var qr       = paymentInfo.gcashQrUrl   || '';
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen"><div class="card" style="text-align:center;padding:32px 20px;">' +
+    '<div style="font-size:48px;margin-bottom:8px;">🔒</div>' +
+    '<h2 style="margin:0 0 4px;color:#dc2626;">Subscription Expired</h2>' +
+    '<div class="muted" style="margin-bottom:20px;">Your store subscription has expired.<br>Please renew to continue.</div>' +
+
+    '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px;margin-bottom:16px;">' +
+    '<div style="font-size:13px;font-weight:bold;color:#15803d;margin-bottom:8px;">Pay via GCash to renew</div>' +
+    (qr ? '<img src="' + qr + '" style="width:160px;height:160px;border-radius:8px;margin-bottom:8px;"><br>' : '') +
+    '<div style="font-size:18px;font-weight:bold;color:#15803d;">' + gcash + '</div>' +
+    '<div style="font-size:13px;color:#6b7280;">' + gcashName + '</div>' +
+    '</div>' +
+
+    '<div class="muted" style="font-size:12px;margin-bottom:16px;">After payment, send your GCash reference number to <strong>' + gcash + '</strong> (Viber/SMS) to activate your subscription.</div>' +
+
+    '<button class="btn btn-secondary" onclick="window.location.reload()">I already paid — Refresh</button>' +
+    '</div></div>';
 }
 
 // ── Chat ──────────────────────────────────────────────────────────────────────
