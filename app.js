@@ -263,8 +263,8 @@ function _dashboardHeader_(storeName, subLabel, onlineLabel, isOffline) {
 }
 
 function renderOwnerDashboard(msg) {
-  var storeName = (state.storeProfile && state.storeProfile.Store_Name) || 'My Store';
-  var ownerName = (state.storeProfile && state.storeProfile.Owner_Name) || state.session.user.Full_Name;
+  var storeName = (state.storeProfile && (state.storeProfile.storeName || state.storeProfile.Store_Name)) || state.session.user.Full_Name;
+  var ownerName = (state.storeProfile && (state.storeProfile.ownerName || state.storeProfile.Owner_Name)) || state.session.user.Full_Name;
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
     _dashboardHeader_(storeName, ownerName, '', state.isOffline) +
@@ -288,7 +288,7 @@ function renderOwnerDashboard(msg) {
 }
 
 function renderWatcherDashboard(msg) {
-  var storeName = (state.storeProfile && state.storeProfile.Store_Name) || 'My Store';
+  var storeName = (state.storeProfile && (state.storeProfile.storeName || state.storeProfile.Store_Name)) || state.session.user.Full_Name;
   var userName  = state.session.user.Full_Name;
   document.getElementById('app').innerHTML =
     '<div class="screen">' +

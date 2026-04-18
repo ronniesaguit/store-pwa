@@ -50,9 +50,7 @@
     .category-item button{padding:6px 10px;font-size:12px;border-radius:8px;border:none;cursor:pointer;margin-left:4px;}
     .category-edit{background:#dbeafe;color:#1d4ed8;}
     .category-delete{background:#fee2e2;color:#dc2626;}
-    .sync-indicator{position:fixed;top:10px;left:10px;right:auto;padding:8px 12px;border-radius:20px;font-size:12px;font-weight:bold;z-index:9999;pointer-events:none;}
-    .sync-online{background:#dcfce7;color:#166534;}
-    .sync-offline{background:#fee2e2;color:#dc2626;}
+
     .chat-msg{background:#f9fafb;padding:12px;border-radius:12px;margin-bottom:10px;}
     .chat-meta{font-size:13px;margin-bottom:4px;}
     .chat-text{font-size:15px;margin-bottom:4px;}
@@ -75,8 +73,6 @@
   </style>
 </head>
 <body>
-  <div id="sync-indicator" class="sync-indicator sync-online">🟢 Online</div>
-
   <div id="install-banner">
     <span>📲 Install app for offline use</span>
     <button id="install-btn">Install</button>
@@ -195,20 +191,7 @@
       });
     });
 
-    // Online/offline indicator
-    function updateIndicator() {
-      var el = document.getElementById('sync-indicator');
-      if (navigator.onLine) {
-        el.className = 'sync-indicator sync-online';
-        el.textContent = '🟢 Online';
-      } else {
-        el.className = 'sync-indicator sync-offline';
-        el.textContent = '🔴 Offline';
-      }
-    }
-    window.addEventListener('online',  function() { updateIndicator(); syncWhenOnline(); });
-    window.addEventListener('offline', updateIndicator);
-    updateIndicator();
+    window.addEventListener('online',  syncWhenOnline);
   </script>
 </body>
 </html>
