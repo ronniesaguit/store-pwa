@@ -319,33 +319,66 @@ async function renderManageStaff() {
     users = await API.call('getStoreUsers');
   } catch(err) { _showToast('Error: ' + err.message, true); goHome(); return; }
 
-  var staffRows = users.filter(function(u) { return u.Role !== 'OWNER'; }).map(function(u) {
-    return '<div class="card" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">' +
-      '<div>' +
-      '<div style="font-weight:600;">' + _escAttr(u.Full_Name || u.Username) + '</div>' +
-      '<div style="font-size:0.82rem;opacity:0.7;">@' + _escAttr(u.Username) + ' · ' + _escAttr(u.Role) + '</div>' +
+  var staff = users.filter(function(u) { return u.Role !== 'OWNER'; });
+
+  var staffCards = staff.map(function(u) {
+    var initials = (u.Full_Name || u.Username).split(' ').map(function(w){ return w[0]; }).join('').toUpperCase().substr(0,2);
+    var colors   = ['#3498db','#9b59b6','#e67e22','#27ae60','#e74c3c','#1abc9c'];
+    var color    = colors[(u.Username.charCodeAt(0) || 0) % colors.length];
+    return '<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #f1f3f5;">' +
+      '<div style="width:44px;height:44px;border-radius:50%;background:' + color + ';display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:1rem;flex-shrink:0;">' + initials + '</div>' +
+      '<div style="flex:1;min-width:0;">' +
+      '<div style="font-weight:600;font-size:0.95rem;color:#1a1a2e;">' + _escAttr(u.Full_Name || u.Username) + '</div>' +
+      '<div style="font-size:0.78rem;color:#6b7280;margin-top:1px;">@' + _escAttr(u.Username) + '</div>' +
       '</div>' +
-      '<button class="small-btn" style="background:#e74c3c;" onclick="removeStaffUser(\'' + _escAttr(u.User_ID) + '\',\'' + _escAttr(u.Full_Name || u.Username) + '\')">Remove</button>' +
+      '<div style="display:flex;align-items:center;gap:8px;">' +
+      '<span style="background:#e8f4fd;color:#2980b9;font-size:0.7rem;font-weight:600;padding:3px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.3px;">Staff</span>' +
+      '<button onclick="removeStaffUser(\'' + _escAttr(u.User_ID) + '\',\'' + _escAttr(u.Full_Name || u.Username) + '\')" ' +
+        'style="background:none;border:1px solid #e74c3c;color:#e74c3c;border-radius:8px;padding:5px 10px;font-size:0.75rem;font-weight:600;cursor:pointer;">Remove</button>' +
+      '</div>' +
       '</div>';
   }).join('');
 
+  var staffSection = staff.length
+    ? '<div style="padding:0 4px;">' + staffCards + '</div>'
+    : '<div style="text-align:center;padding:24px 16px;">' +
+        '<div style="font-size:2.5rem;margin-bottom:8px;">👤</div>' +
+        '<div style="font-weight:600;color:#374151;">No staff yet</div>' +
+        '<div style="font-size:0.82rem;color:#9ca3af;margin-top:4px;">Add your first staff member below</div>' +
+      '</div>';
+
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">👥 Staff</div>' +
+    '<div class="topbar"><div class="title" style="margin:0;">👥 Manage Staff</div>' +
     '<button class="small-btn" onclick="goHome()">← Back</button></div>' +
-    '<div class="card">' +
-    '<div class="subtitle">Add Staff Account</div>' +
-    '<label>Full Name</label>' +
-    '<input id="staff-fullname" class="input" placeholder="e.g. Maria Santos">' +
-    '<label style="margin-top:8px;">Username</label>' +
-    '<input id="staff-username" class="input" placeholder="e.g. maria">' +
-    '<label style="margin-top:8px;">Password</label>' +
-    '<input id="staff-password" class="input" type="password" placeholder="Min. 4 characters">' +
-    '<button class="btn" style="margin-top:12px;" onclick="submitAddStaff()">➕ Add Staff</button>' +
+
+    // Staff list card
+    '<div class="card" style="margin-bottom:12px;">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">' +
+    '<div style="font-weight:700;font-size:1rem;color:#1a1a2e;">Team Members</div>' +
+    '<span style="background:#f3f4f6;color:#374151;font-size:0.75rem;font-weight:600;padding:3px 10px;border-radius:20px;">' + staff.length + ' staff</span>' +
     '</div>' +
-    (staffRows
-      ? '<div class="subtitle" style="margin:12px 0 6px;">Current Staff</div>' + staffRows
-      : '<div class="message" style="text-align:center;opacity:0.6;">No staff accounts yet.</div>') +
+    staffSection +
+    '</div>' +
+
+    // Add staff form card
+    '<div class="card">' +
+    '<div style="font-weight:700;font-size:1rem;color:#1a1a2e;margin-bottom:4px;">➕ Add New Staff</div>' +
+    '<div style="font-size:0.8rem;color:#6b7280;margin-bottom:16px;">Staff can record sales and expenses.</div>' +
+    '<div style="position:relative;margin-bottom:10px;">' +
+    '<span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:1rem;">👤</span>' +
+    '<input id="staff-fullname" class="input" style="padding-left:36px;" placeholder="Full Name (e.g. Maria Santos)">' +
+    '</div>' +
+    '<div style="position:relative;margin-bottom:10px;">' +
+    '<span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:1rem;">@</span>' +
+    '<input id="staff-username" class="input" style="padding-left:36px;" placeholder="Username (e.g. maria)" autocomplete="off">' +
+    '</div>' +
+    '<div style="position:relative;margin-bottom:16px;">' +
+    '<span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:1rem;">🔒</span>' +
+    '<input id="staff-password" class="input" style="padding-left:36px;" type="password" placeholder="Password (min. 4 characters)" autocomplete="new-password">' +
+    '</div>' +
+    '<button class="btn" style="width:100%;font-size:1rem;padding:14px;border-radius:12px;font-weight:700;letter-spacing:.3px;" onclick="submitAddStaff()">Create Staff Account</button>' +
+    '</div>' +
     '</div>';
 }
 
