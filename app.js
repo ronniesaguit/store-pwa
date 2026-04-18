@@ -3,15 +3,16 @@
 var SCANNER_URL = 'https://ronniesaguit.github.io/store-pwa/scanner.html';
 
 var state = {
-  session: null,
-  products: [],
-  categories: [],
-  cart: [],
-  isOffline: false,
-  storeProfile: null,
-  lastReceipt: null,  // holds last completed sale data for printing
-  lastReport:  null,  // holds last viewed report data for printing
-  lastBIRData: null   // holds last generated BIR data for printing
+  session:       null,
+  products:      [],
+  categories:    [],
+  cart:          [],
+  isOffline:     false,
+  storeProfile:  null,
+  todayExpenses: null,  // cached null = not loaded yet; [] = loaded but empty
+  lastReceipt:   null,
+  lastReport:    null,
+  lastBIRData:   null
 };
 
 // ── Boot ─────────────────────────────────────────────────────────────────────
@@ -27,70 +28,47 @@ async function boot() {
     return;
   }
 
-  showLoading('Loading Store App…');
   try { await DB.init(); } catch(e) { console.warn('IndexedDB unavailable:', e); }
 
-  // ── Try online session validation first ──────────────────────────────────────
-  if (navigator.onLine && API.token) {
+  // ── Step 1: Render instantly from IndexedDB cache (zero network wait) ────────
+  var cachedSession = localStorage.getItem('store_session');
+  if (cachedSession && API.token) {
     try {
-      var session = await API.call('getSessionInfo');
-      state.session = session;
-      // Store name comes directly from getSessionInfo (Registry is authoritative)
-      state.storeProfile = {
-        storeName: session.storeName || '',
-        ownerName: session.ownerName || ''
-      };
-      localStorage.setItem('store_session', JSON.stringify(session));
-      localStorage.setItem('store_profile', JSON.stringify(state.storeProfile));
-      state.isOffline = false;
-
-      // Load fresh data — products & categories
-      try {
-        state.products = await API.call('getProducts');
-        try { await DB.saveProducts(state.products); } catch(e) {}
-      } catch(e) {
-        try { state.products = (await DB.getProducts()) || []; } catch(e2) { state.products = []; }
-      }
-      var serverCats = [], cachedCats = [];
-      try { serverCats = await API.call('getCategories'); } catch(e) {}
-      try { cachedCats = (await DB.getCategories()) || []; } catch(e) {}
-      var merged = serverCats.slice();
-      cachedCats.forEach(function(local) {
-        if (!merged.find(function(s){ return s.Category_Name === local.Category_Name; }))
-          merged.push(local);
-      });
-      state.categories = merged;
-      try { await DB.saveCategories(state.categories); } catch(e) {}
-
-      routeToDashboard();
-      _submitHealthSnapshot();  // fire-and-forget after routing
-      return;
-    } catch(e) {
-      console.warn('Online session failed, checking cache:', e.message);
-      // Fall through to offline path below
-    }
-  }
-
-  // ── Offline / server unreachable — use cached session ────────────────────────
-  var cached = localStorage.getItem('store_session');
-  if (cached) {
-    try {
-      state.session    = JSON.parse(cached);
-      state.isOffline  = true;
+      state.session    = JSON.parse(cachedSession);
       state.products   = (await DB.getProducts())   || [];
       state.categories = (await DB.getCategories()) || [];
-      // Restore store profile: prefer cached profile, fall back to names in cached session
-      try {
-        var sp = localStorage.getItem('store_profile');
-        state.storeProfile = sp ? JSON.parse(sp) : {
-          storeName: state.session.storeName || '',
-          ownerName: state.session.ownerName || ''
-        };
-      } catch(e2) {}
-      routeToDashboard();
+      var cachedSP = localStorage.getItem('store_profile');
+      state.storeProfile = cachedSP ? JSON.parse(cachedSP) : {
+        storeName: state.session.storeName || '', ownerName: state.session.ownerName || ''
+      };
+      state.isOffline = !navigator.onLine;
+      routeToDashboard();  // show dashboard immediately — no spinner
+    } catch(e) {}
+  } else {
+    showLoading('Loading…');
+  }
+
+  // ── Step 2: Online — fetch fresh data in background (single batch call) ──────
+  if (navigator.onLine && API.token) {
+    try {
+      var boot = await API.call('getBootData');
+      var session = boot.session;
+      state.session = session;
+      state.storeProfile = { storeName: session.storeName || '', ownerName: session.ownerName || '' };
+      state.products   = boot.products   || [];
+      state.categories = boot.categories || [];
+      state.isOffline  = false;
+      localStorage.setItem('store_session', JSON.stringify(session));
+      localStorage.setItem('store_profile', JSON.stringify(state.storeProfile));
+      try { await DB.saveProducts(state.products); }   catch(e) {}
+      try { await DB.saveCategories(state.categories); } catch(e) {}
+      routeToDashboard();  // re-render with fresh data (instant, already on screen)
+      _submitHealthSnapshot();
       return;
     } catch(e) {
-      console.warn('Cache restore failed:', e);
+      console.warn('Boot fetch failed:', e.message);
+      if (!cachedSession) { showLoading('No connection. Please connect and try again.'); return; }
+      // Cached session already rendered above — stay offline
     }
   }
 
@@ -115,9 +93,10 @@ async function syncWhenOnline() {
         await DB.markSynced(item.id);
       } catch(e) { console.warn('Sync item failed:', e); }
     }
-    // Refresh cached data
-    state.products   = await API.call('getProducts');
-    state.categories = await API.call('getCategories');
+    // Refresh in one batch call
+    var syncBoot = await API.call('getBootData');
+    state.products   = syncBoot.products   || [];
+    state.categories = syncBoot.categories || [];
     await DB.saveProducts(state.products);
     await DB.saveCategories(state.categories);
     _showToast('Synced!', false);
@@ -410,10 +389,22 @@ async function removeStaffUser(userId, name) {
 // ── Products ──────────────────────────────────────────────────────────────────
 
 async function loadProducts() {
+  // Render instantly from state, then refresh in background
+  if (state.products && state.products.length) {
+    renderProductsList();
+    if (!state.isOffline) {
+      API.call('getProducts').then(function(p) {
+        state.products = p;
+        renderProductsList();
+      }).catch(function(){});
+    }
+    return;
+  }
   showLoading('Loading products…');
   try {
-    state.products   = await API.call('getProducts');
-    state.categories = await API.call('getCategories');
+    var [prods, cats] = await Promise.all([API.call('getProducts'), API.call('getCategories')]);
+    state.products   = prods;
+    state.categories = cats;
     renderProductsList();
   } catch(err) { _showToast('Error: ' + err.message, true); goHome(); }
 }
@@ -1057,10 +1048,22 @@ var EXPENSE_CATEGORIES = [
 ];
 
 async function renderExpenses() {
+  // Show instantly from state cache, refresh in background
+  if (state.todayExpenses !== null && state.todayExpenses !== undefined) {
+    _renderExpensesUI(state.todayExpenses);
+    if (!state.isOffline) {
+      API.call('getTodayExpenses').then(function(fresh) {
+        state.todayExpenses = fresh;
+        _renderExpensesUI(fresh);
+      }).catch(function(){});
+    }
+    return;
+  }
   showLoading('Loading expenses…');
   var items = [];
   try {
     items = await API.call('getTodayExpenses');
+    state.todayExpenses = items;
   } catch(e) {
     // Offline — show queued expenses from today
     try {
@@ -1072,8 +1075,11 @@ async function renderExpenses() {
     } catch(e2) { items = []; }
   }
 
-  var total = items.reduce(function(s, x) { return s + (Number(x.Amount) || 0); }, 0);
+  _renderExpensesUI(items);
+}
 
+function _renderExpensesUI(items) {
+  var total = items.reduce(function(s, x) { return s + (Number(x.Amount) || 0); }, 0);
   var listHtml = items.length ? items.map(function(x) {
     return '<div style="display:flex;justify-content:space-between;align-items:center;' +
       'padding:10px 0;border-bottom:1px solid #f3f4f6;">' +
@@ -1088,7 +1094,6 @@ async function renderExpenses() {
         Number(x.Amount).toFixed(2) + '</div>' +
       '</div>';
   }).join('') : '<div class="muted" style="padding:16px 0;text-align:center;">No expenses recorded today.</div>';
-
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
     '<div class="topbar"><div class="title" style="margin:0;">💸 Expenses</div>' +
@@ -1197,6 +1202,7 @@ async function submitExpense() {
   if (!navigator.onLine) {
     try {
       await DB.addToSyncQueue({ action: 'createExpense', data: payload });
+      state.todayExpenses = null;
       _showToast('Expense saved offline — will sync when online', false);
       renderExpenses();
     } catch(e) { _showToast('Failed to save offline', true); }
@@ -1207,6 +1213,7 @@ async function submitExpense() {
   showLoading('Saving expense…');
   try {
     await API.call('createExpense', payload);
+    state.todayExpenses = null;  // bust cache so next open re-fetches
     _showToast('Expense recorded!', false);
     renderExpenses();
   } catch(err) { renderAddExpenseForm(err.message || String(err)); }
