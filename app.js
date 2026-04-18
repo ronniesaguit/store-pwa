@@ -239,8 +239,6 @@ async function submitLogin() {
 }
 
 function logout() {
-  // Instant — clear local state and show login immediately, no network wait
-  API.call('logout').catch(function(){});  // fire-and-forget
   API.clearToken();
   state.session      = null;
   state.products     = [];
