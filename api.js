@@ -1,7 +1,6 @@
-// api.js — GAS API client
-// Uses Content-Type: text/plain to avoid CORS preflight on GAS web apps
+// api.js — Cloudflare Workers API client
 
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbzYpC9eeCgdXw7s-JO0V51Ys40sjPwYyb_9AOZUN9Wq7PNsgTq4rj4O7zLC3xVK1oIB/exec';
+const GAS_URL = 'https://businesshub-api.ronniesaguit.workers.dev';
 
 // Store key for this store installation — set from URL ?k= param or localStorage
 const STORE_KEY = (function() {

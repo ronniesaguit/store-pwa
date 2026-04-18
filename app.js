@@ -134,8 +134,6 @@ function goHome() {
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
 function renderLogin(msg) {
-  // Warm up GAS in background — by the time the user types and submits, cold start is gone
-  if (navigator.onLine) { try { fetch(GAS_URL).catch(function(){}); } catch(e) {} }
   document.getElementById('app').innerHTML =
     '<div class="screen"><div class="card">' +
     '<h1 class="title">🏪 Store Login</h1>' +
