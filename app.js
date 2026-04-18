@@ -142,7 +142,7 @@ function renderLogin(msg) {
     '<div class="field"><label>Username</label><input id="login-username" placeholder="Enter username" autocomplete="username"></div>' +
     '<div class="field"><label>Password</label><input id="login-password" type="password" placeholder="Enter password" autocomplete="current-password"></div>' +
     '<button class="btn btn-primary" onclick="submitLogin()">Login</button>' +
-    '<div class="muted" style="text-align:center;">owner / 1234 &nbsp;|&nbsp; watcher / 1234</div>' +
+    '' +
     '</div></div>';
 }
 
@@ -239,6 +239,10 @@ async function submitLogin() {
 }
 
 function logout() {
+  // Clear cached credentials for the current user so the next login
+  // always goes through a full network auth (avoids null-token window)
+  var currentUsername = state.session && state.session.user ? state.session.user.Username : null;
+  if (currentUsername) localStorage.removeItem('offline_cred_' + currentUsername.toLowerCase());
   API.clearToken();
   state.session      = null;
   state.products     = [];
@@ -319,16 +323,20 @@ async function renderManageStaff() {
     var initials = (u.Full_Name || u.Username).split(' ').map(function(w){ return w[0]; }).join('').toUpperCase().substr(0,2);
     var colors   = ['#3498db','#9b59b6','#e67e22','#27ae60','#e74c3c','#1abc9c'];
     var color    = colors[(u.Username.charCodeAt(0) || 0) % colors.length];
-    return '<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #f1f3f5;">' +
+    return '<div style="padding:12px 0;border-bottom:1px solid #f1f3f5;">' +
+      '<div style="display:flex;align-items:center;gap:12px;">' +
       '<div style="width:44px;height:44px;border-radius:50%;background:' + color + ';display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:1rem;flex-shrink:0;">' + initials + '</div>' +
       '<div style="flex:1;min-width:0;">' +
       '<div style="font-weight:600;font-size:0.95rem;color:#1a1a2e;">' + _escAttr(u.Full_Name || u.Username) + '</div>' +
       '<div style="font-size:0.78rem;color:#6b7280;margin-top:1px;">@' + _escAttr(u.Username) + '</div>' +
       '</div>' +
-      '<div style="display:flex;align-items:center;gap:8px;">' +
-      '<span style="background:#e8f4fd;color:#2980b9;font-size:0.7rem;font-weight:600;padding:3px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.3px;">Staff</span>' +
+      '<span style="background:#e8f4fd;color:#2980b9;font-size:0.7rem;font-weight:600;padding:3px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.3px;flex-shrink:0;">Staff</span>' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;margin-top:8px;padding-left:56px;">' +
+      '<button onclick="promptResetPassword(\'' + _escAttr(u.User_ID) + '\',\'' + _escAttr(u.Full_Name || u.Username) + '\')" ' +
+        'style="flex:1;background:#f0fdf4;border:1px solid #86efac;color:#16a34a;border-radius:8px;padding:6px 10px;font-size:0.75rem;font-weight:600;cursor:pointer;">🔑 Set Password</button>' +
       '<button onclick="removeStaffUser(\'' + _escAttr(u.User_ID) + '\',\'' + _escAttr(u.Full_Name || u.Username) + '\')" ' +
-        'style="background:none;border:1px solid #e74c3c;color:#e74c3c;border-radius:8px;padding:5px 10px;font-size:0.75rem;font-weight:600;cursor:pointer;">Remove</button>' +
+        'style="flex:1;background:none;border:1px solid #e74c3c;color:#e74c3c;border-radius:8px;padding:6px 10px;font-size:0.75rem;font-weight:600;cursor:pointer;">✕ Remove</button>' +
       '</div>' +
       '</div>';
   }).join('');
@@ -353,6 +361,15 @@ async function renderManageStaff() {
     '<span style="background:#f3f4f6;color:#374151;font-size:0.75rem;font-weight:600;padding:3px 10px;border-radius:20px;">' + staff.length + ' staff</span>' +
     '</div>' +
     staffSection +
+    '</div>' +
+
+    // Owner password change card
+    '<div class="card" style="margin-bottom:12px;">' +
+    '<div style="font-weight:700;font-size:1rem;color:#1a1a2e;margin-bottom:12px;">🔐 Change Your Password</div>' +
+    '<input id="owner-current-pw" class="input" type="password" placeholder="Current password" style="margin-bottom:8px;" autocomplete="current-password">' +
+    '<input id="owner-new-pw" class="input" type="password" placeholder="New password (min. 4 chars)" style="margin-bottom:8px;" autocomplete="new-password">' +
+    '<input id="owner-confirm-pw" class="input" type="password" placeholder="Confirm new password" style="margin-bottom:12px;" autocomplete="new-password">' +
+    '<button class="btn btn-secondary" style="width:100%;" onclick="submitOwnerPasswordChange()">Update My Password</button>' +
     '</div>' +
 
     // Add staff form card
@@ -398,6 +415,33 @@ async function removeStaffUser(userId, name) {
     await API.call('deleteStoreUser', { userId: userId });
     renderManageStaff();
     _showToast('Staff account removed.');
+  } catch(err) { _showToast('Error: ' + err.message, true); renderManageStaff(); }
+}
+
+async function promptResetPassword(userId, name) {
+  var newPw = prompt('Set new password for ' + name + ':');
+  if (!newPw) return;
+  if (newPw.length < 4) { _showToast('Password must be at least 4 characters.', true); return; }
+  showLoading('Updating password…');
+  try {
+    await API.call('resetStaffPassword', { userId: userId, newPassword: newPw });
+    renderManageStaff();
+    _showToast('Password updated for ' + name + '.');
+  } catch(err) { _showToast('Error: ' + err.message, true); renderManageStaff(); }
+}
+
+async function submitOwnerPasswordChange() {
+  var current = (document.getElementById('owner-current-pw') || {}).value || '';
+  var newPw   = (document.getElementById('owner-new-pw')     || {}).value || '';
+  var confirm = (document.getElementById('owner-confirm-pw') || {}).value || '';
+  if (!current || !newPw) { _showToast('Fill in all password fields.', true); return; }
+  if (newPw !== confirm)  { _showToast('New passwords do not match.', true); return; }
+  if (newPw.length < 4)   { _showToast('Password must be at least 4 characters.', true); return; }
+  showLoading('Updating password…');
+  try {
+    await API.call('changePassword', { currentPassword: current, newPassword: newPw });
+    renderManageStaff();
+    _showToast('Your password has been updated.');
   } catch(err) { _showToast('Error: ' + err.message, true); renderManageStaff(); }
 }
 
