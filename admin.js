@@ -13,8 +13,9 @@ window.addEventListener('load', function() { adminBoot(); });
 async function adminBoot() {
   if (ADMIN_API.token) {
     try {
-      adminState.stores           = await ADMIN_API.call('adminGetStores');
-      adminState.platformSettings = await ADMIN_API.call('adminGetPlatformSettings');
+      var dash = await ADMIN_API.call('adminGetDashboardData');
+      adminState.stores           = dash.stores           || [];
+      adminState.platformSettings = dash.platformSettings || {};
       renderDashboard();
       return;
     } catch(e) {
@@ -96,9 +97,9 @@ async function submitAdminLogin() {
   try {
     var result = await ADMIN_API.call('adminLogin', { username: username, password: password });
     ADMIN_API.setToken(result.token);
-    adminState.admin = result.admin;
-    adminState.stores           = await ADMIN_API.call('adminGetStores');
-    adminState.platformSettings = await ADMIN_API.call('adminGetPlatformSettings');
+    adminState.admin            = result.admin;
+    adminState.stores           = result.stores           || [];
+    adminState.platformSettings = result.platformSettings || {};
     renderDashboard();
   } catch(e) {
     renderAdminLogin(e.message);
