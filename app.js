@@ -157,82 +157,96 @@ async function submitLogin() {
   var password = document.getElementById('login-password').value;
   if (!username || !password) { _showToast('Enter username and password', true); return; }
 
-  showLoading('Logging in…');
-
-  // ── Try online login ──────────────────────────────────────────────────────────
-  try {
-    var result = await Promise.race([
-      API.call('login', { username: username, password: password }),
-      new Promise(function(_, reject){
-        setTimeout(function(){ reject(new Error('__TIMEOUT__')); }, 10000);
-      })
-    ]);
-
-    API.setToken(result.token);
-    state.session  = { loggedIn: true, user: result.user };
-    state.isOffline = false;
-    localStorage.setItem('store_session', JSON.stringify(state.session));
-
-    // Cache hashed credentials so offline login works next time
+  // ── Fast path: cached credentials → instant dashboard, token in background ──
+  var raw = localStorage.getItem('offline_cred_' + username.toLowerCase());
+  if (raw) {
     try {
-      var hash = await sha256(password);
-      localStorage.setItem('offline_cred_' + username.toLowerCase(), JSON.stringify({
-        passwordHash: hash,
-        user: result.user
-      }));
+      var cachedCred = JSON.parse(raw);
+      var enteredHash = await sha256(password);
+      if (enteredHash === cachedCred.passwordHash) {
+        // Credentials match — show dashboard NOW from local cache
+        state.session    = JSON.parse(localStorage.getItem('store_session') || 'null')
+                           || { loggedIn: true, user: cachedCred.user };
+        state.isOffline  = !navigator.onLine;
+        state.products   = (await DB.getProducts())   || [];
+        state.categories = (await DB.getCategories()) || [];
+        var sp = localStorage.getItem('store_profile');
+        state.storeProfile = sp ? JSON.parse(sp) : null;
+        routeToDashboard();  // instant — no network wait
+
+        // Refresh token & data in background
+        if (navigator.onLine) {
+          API.call('login', { username: username, password: password })
+            .then(function(result) {
+              API.setToken(result.token);
+              state.session   = { loggedIn: true, user: result.user,
+                storeName: result.plan ? (state.storeProfile || {}).storeName : undefined };
+              state.storeProfile = { storeName: result.storeName || (state.storeProfile||{}).storeName || '',
+                                     ownerName: result.ownerName || (state.storeProfile||{}).ownerName || '' };
+              state.products   = result.products   || state.products;
+              state.categories = result.categories || state.categories;
+              state.isOffline  = false;
+              localStorage.setItem('store_session', JSON.stringify(state.session));
+              localStorage.setItem('store_profile', JSON.stringify(state.storeProfile));
+              DB.saveProducts(state.products).catch(function(){});
+              DB.saveCategories(state.categories).catch(function(){});
+              routeToDashboard();  // silent re-render with fresh data
+            }).catch(function(e) {
+              // Wrong password on server (e.g. password changed) — force re-login
+              if (e.message && e.message.toLowerCase().includes('password')) {
+                logout();
+                renderLogin('Password changed. Please log in again.');
+              }
+            });
+        }
+        return;
+      }
     } catch(e) {}
-
-    // Cache products & categories
-    try { state.products   = await API.call('getProducts');   } catch(e){ state.products   = []; }
-    try { state.categories = await API.call('getCategories'); } catch(e){ state.categories = []; }
-    try { await DB.saveProducts(state.products);   } catch(e) {}
-    try { await DB.saveCategories(state.categories); } catch(e) {}
-
-    routeToDashboard();
-    return;
-
-  } catch(serverErr) {
-    var msg = serverErr.message || String(serverErr);
-    // Real auth error (wrong password, user not found) — don't try offline
-    if (msg !== '__TIMEOUT__' && msg !== 'No internet connection' && navigator.onLine) {
-      renderLogin(msg);
-      return;
-    }
-    // Timeout or no internet — fall through to offline login
   }
 
-  // ── Offline login — verify against cached credentials ────────────────────────
+  // ── No cache or wrong password — must wait for GAS ───────────────────────────
+  showLoading('Logging in…');
   try {
-    var raw = localStorage.getItem('offline_cred_' + username.toLowerCase());
-    if (!raw) {
-      renderLogin('No offline session for "' + username + '".\nPlease log in while connected at least once first.');
-      return;
-    }
-    var cachedCred = JSON.parse(raw);
-    var enteredHash = await sha256(password);
-    if (enteredHash !== cachedCred.passwordHash) {
-      renderLogin('Incorrect password.');
-      return;
-    }
-    // Offline login success
-    state.session    = { loggedIn: true, user: cachedCred.user };
-    state.isOffline  = true;
+    var result = await API.call('login', { username: username, password: password });
+    API.setToken(result.token);
+    state.session      = { loggedIn: true, user: result.user };
+    state.storeProfile = { storeName: result.storeName || '', ownerName: result.ownerName || '' };
+    state.products     = result.products   || [];
+    state.categories   = result.categories || [];
+    state.isOffline    = false;
     localStorage.setItem('store_session', JSON.stringify(state.session));
-    state.products   = (await DB.getProducts())   || [];
-    state.categories = (await DB.getCategories()) || [];
+    localStorage.setItem('store_profile', JSON.stringify(state.storeProfile));
+    try { await DB.saveProducts(state.products);   } catch(e) {}
+    try { await DB.saveCategories(state.categories); } catch(e) {}
+    // Cache credentials for fast login next time
+    try {
+      var hash = await sha256(password);
+      localStorage.setItem('offline_cred_' + username.toLowerCase(),
+        JSON.stringify({ passwordHash: hash, user: result.user }));
+    } catch(e) {}
     routeToDashboard();
   } catch(err) {
-    renderLogin('Offline login failed: ' + (err.message || err));
+    var msg = err.message || String(err);
+    if (msg === 'No internet connection') {
+      renderLogin('No connection. Please connect and try again.');
+    } else {
+      renderLogin(msg);
+    }
   }
 }
 
-async function logout() {
-  try { await API.call('logout'); } catch(e) {}
+function logout() {
+  // Instant — clear local state and show login immediately, no network wait
+  API.call('logout').catch(function(){});  // fire-and-forget
   API.clearToken();
-  state.session = null;
-  state.products = [];
-  state.categories = [];
-  state.cart = [];
+  state.session      = null;
+  state.products     = [];
+  state.categories   = [];
+  state.cart         = [];
+  state.todayExpenses = null;
+  state.storeProfile = null;
+  localStorage.removeItem('store_session');
+  localStorage.removeItem('store_profile');
   renderLogin();
 }
 

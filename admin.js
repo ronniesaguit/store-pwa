@@ -107,8 +107,10 @@ async function submitAdminLogin() {
 }
 
 function adminLogout() {
+  // Instant — no network wait
   ADMIN_API.clearToken();
-  adminState.admin = null;
+  adminState.admin  = null;
+  adminState.stores = [];
   renderAdminLogin();
 }
 
