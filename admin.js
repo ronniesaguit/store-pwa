@@ -16,6 +16,7 @@ async function adminBoot() {
       var dash = await ADMIN_API.call('adminGetDashboardData');
       adminState.stores           = dash.stores           || [];
       adminState.platformSettings = dash.platformSettings || {};
+      if (adminState.platformSettings.NAME) localStorage.setItem('admin_platform_name', adminState.platformSettings.NAME);
       renderDashboard();
       return;
     } catch(e) {
@@ -76,7 +77,7 @@ function renderAdminLogin(msg) {
   _app('<div class="screen">' +
     '<div style="text-align:center;padding:32px 0 20px;">' +
     '<div style="font-size:48px;">🏪</div>' +
-    '<h2 style="color:#1e3a5f;margin-top:8px;">Tindahan Hub</h2>' +
+    '<h2 style="color:#1e3a5f;margin-top:8px;">' + (localStorage.getItem('admin_platform_name') || 'Admin Panel') + '</h2>' +
     '<div class="muted">Admin Panel</div></div>' +
     '<div class="card">' +
     (msg ? '<div class="msg-err">' + msg + '</div>' : '') +
@@ -100,6 +101,7 @@ async function submitAdminLogin() {
     adminState.admin            = result.admin;
     adminState.stores           = result.stores           || [];
     adminState.platformSettings = result.platformSettings || {};
+    if (adminState.platformSettings.NAME) localStorage.setItem('admin_platform_name', adminState.platformSettings.NAME);
     renderDashboard();
   } catch(e) {
     renderAdminLogin(e.message);
@@ -145,7 +147,7 @@ function renderDashboard() {
   }).join('');
 
   _app('<div class="screen">' +
-    _topbar('🏪 Tindahan Hub Admin') +
+    _topbar('🏪 ' + (adminState.platformSettings.NAME || localStorage.getItem('admin_platform_name') || 'Admin') + ' Admin') +
     '<div style="display:flex;justify-content:flex-end;margin-bottom:8px;">' +
     '<button class="btn-sm btn-primary btn" style="width:auto;" onclick="adminLogout()">Logout</button></div>' +
 
@@ -539,6 +541,7 @@ async function savePlatformSettings() {
   };
   try {
     adminState.platformSettings = await ADMIN_API.call('adminSavePlatformSettings', patch);
+    if (adminState.platformSettings.NAME) localStorage.setItem('admin_platform_name', adminState.platformSettings.NAME);
     _toast('Settings saved!');
     renderPlatformSettings({ ok: true, text: 'Settings saved successfully.' });
   } catch(e) {
