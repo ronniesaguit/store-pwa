@@ -19,37 +19,68 @@ const STORE_KEY = (function() {
 
 const API = {
   token: localStorage.getItem('store_token') || null,
+  _reauthing: false,
 
   async call(action, data) {
+    let result = await this._raw(action, data);
+
+    // Silent re-auth on token expiry — transparent to the user
+    if (!result.success && this._isExpired(result.error) && !this._reauthing) {
+      const ok = await this._silentReAuth();
+      if (ok) result = await this._raw(action, data);
+    }
+
+    if (!result.success && result.errorCode === 'SUBSCRIPTION_EXPIRED') {
+      showSubscriptionExpired(result.paymentInfo || {});
+      throw new Error('SUBSCRIPTION_EXPIRED');
+    }
+    if (!result.success) throw new Error(result.error || 'Server error');
+    return result.data;
+  },
+
+  async _raw(action, data) {
     const body = JSON.stringify({
-      action,
-      token:    this.token,
-      storeKey: STORE_KEY,
-      data:     data || {}
+      action, token: this.token, storeKey: STORE_KEY, data: data || {}
     });
     let response;
     try {
       response = await fetch(GAS_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body,
-        redirect: 'follow'
+        body, redirect: 'follow'
       });
-    } catch (e) {
-      throw new Error('No internet connection');
-    }
-    let result;
-    try { result = await response.json(); }
-    catch (e) { throw new Error('Bad response from server'); }
+    } catch(e) { throw new Error('No internet connection'); }
+    try { return await response.json(); }
+    catch(e) { throw new Error('Bad response from server'); }
+  },
 
-    // Subscription expired — show payment wall instead of a generic error
-    if (!result.success && result.errorCode === 'SUBSCRIPTION_EXPIRED') {
-      showSubscriptionExpired(result.paymentInfo || {});
-      throw new Error('SUBSCRIPTION_EXPIRED');
-    }
+  _isExpired(msg) {
+    if (!msg) return false;
+    const m = msg.toLowerCase();
+    return m.includes('session expired') || m.includes('not logged in') || m.includes('please log in');
+  },
 
-    if (!result.success) throw new Error(result.error || 'Server error');
-    return result.data;
+  async _silentReAuth() {
+    const raw = localStorage.getItem('_ak');
+    if (!raw) return false;
+    try {
+      this._reauthing = true;
+      const decoded = atob(raw);
+      const sep = decoded.indexOf(':');
+      const username = decoded.substring(0, sep);
+      const password = decoded.substring(sep + 1);
+      const result = await this._raw('login', { username, password });
+      if (!result.success) return false;
+      this.setToken(result.data.token);
+      // Update cached session and data silently
+      if (result.data.products)   { try { window.state && (state.products   = result.data.products);   } catch(e){} }
+      if (result.data.categories) { try { window.state && (state.categories = result.data.categories); } catch(e){} }
+      return true;
+    } catch(e) {
+      return false;
+    } finally {
+      this._reauthing = false;
+    }
   },
 
   setToken(token) {
@@ -62,6 +93,7 @@ const API = {
     this.token = null;
     localStorage.removeItem('store_token');
     localStorage.removeItem('store_session');
+    localStorage.removeItem('_ak');
   }
 };
 
@@ -69,27 +101,59 @@ const API = {
 
 const ADMIN_API = {
   token: localStorage.getItem('admin_token') || null,
+  _reauthing: false,
 
   async call(action, data) {
-    const body = JSON.stringify({
-      action,
-      adminToken: this.token,
-      data:       data || {}
-    });
+    let result = await this._raw(action, data);
+
+    // Silent re-auth on token expiry
+    if (!result.success && this._isExpired(result.error) && !this._reauthing) {
+      const ok = await this._silentReAuth();
+      if (ok) result = await this._raw(action, data);
+    }
+
+    if (!result.success) throw new Error(result.error || 'Server error');
+    return result.data;
+  },
+
+  async _raw(action, data) {
+    const body = JSON.stringify({ action, adminToken: this.token, data: data || {} });
     let response;
     try {
       response = await fetch(GAS_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body,
-        redirect: 'follow'
+        body, redirect: 'follow'
       });
     } catch(e) { throw new Error('No internet connection'); }
-    let result;
-    try { result = await response.json(); }
+    try { return await response.json(); }
     catch(e) { throw new Error('Bad response from server'); }
-    if (!result.success) throw new Error(result.error || 'Server error');
-    return result.data;
+  },
+
+  _isExpired(msg) {
+    if (!msg) return false;
+    const m = msg.toLowerCase();
+    return m.includes('session expired') || m.includes('not logged in') || m.includes('admin not logged in');
+  },
+
+  async _silentReAuth() {
+    const raw = localStorage.getItem('_aak');
+    if (!raw) return false;
+    try {
+      this._reauthing = true;
+      const decoded = atob(raw);
+      const sep = decoded.indexOf(':');
+      const username = decoded.substring(0, sep);
+      const password = decoded.substring(sep + 1);
+      const result = await this._raw('adminLogin', { username, password });
+      if (!result.success) return false;
+      this.setToken(result.data.token);
+      return true;
+    } catch(e) {
+      return false;
+    } finally {
+      this._reauthing = false;
+    }
   },
 
   setToken(token) {
@@ -101,5 +165,6 @@ const ADMIN_API = {
   clearToken() {
     this.token = null;
     localStorage.removeItem('admin_token');
+    localStorage.removeItem('_aak');
   }
 };

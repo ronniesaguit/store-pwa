@@ -164,6 +164,8 @@ async function submitLogin() {
       var cachedCred = JSON.parse(raw);
       var enteredHash = await sha256(password);
       if (enteredHash === cachedCred.passwordHash) {
+        // Save for silent token renewal
+        localStorage.setItem('_ak', btoa(username + ':' + password));
         // Credentials match — show dashboard NOW from local cache
         state.session    = JSON.parse(localStorage.getItem('store_session') || 'null')
                            || { loggedIn: true, user: cachedCred.user };
@@ -218,11 +220,12 @@ async function submitLogin() {
     localStorage.setItem('store_profile', JSON.stringify(state.storeProfile));
     try { await DB.saveProducts(state.products);   } catch(e) {}
     try { await DB.saveCategories(state.categories); } catch(e) {}
-    // Cache credentials for fast login next time
+    // Cache credentials for fast login + silent token renewal
     try {
       var hash = await sha256(password);
       localStorage.setItem('offline_cred_' + username.toLowerCase(),
         JSON.stringify({ passwordHash: hash, user: result.user }));
+      localStorage.setItem('_ak', btoa(username + ':' + password));
     } catch(e) {}
     routeToDashboard();
   } catch(err) {
