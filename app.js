@@ -35,7 +35,13 @@ async function boot() {
     try {
       var session = await API.call('getSessionInfo');
       state.session = session;
+      // Store name comes directly from getSessionInfo (Registry is authoritative)
+      state.storeProfile = {
+        storeName: session.storeName || '',
+        ownerName: session.ownerName || ''
+      };
       localStorage.setItem('store_session', JSON.stringify(session));
+      localStorage.setItem('store_profile', JSON.stringify(state.storeProfile));
       state.isOffline = false;
 
       // Load fresh data — products & categories
@@ -56,10 +62,6 @@ async function boot() {
       state.categories = merged;
       try { await DB.saveCategories(state.categories); } catch(e) {}
 
-      try {
-        state.storeProfile = await API.call('getStoreProfile');
-        localStorage.setItem('store_profile', JSON.stringify(state.storeProfile));
-      } catch(e2) {}
       routeToDashboard();
       _submitHealthSnapshot();  // fire-and-forget after routing
       return;
@@ -77,7 +79,14 @@ async function boot() {
       state.isOffline  = true;
       state.products   = (await DB.getProducts())   || [];
       state.categories = (await DB.getCategories()) || [];
-      try { var sp = localStorage.getItem('store_profile'); if (sp) state.storeProfile = JSON.parse(sp); } catch(e2) {}
+      // Restore store profile: prefer cached profile, fall back to names in cached session
+      try {
+        var sp = localStorage.getItem('store_profile');
+        state.storeProfile = sp ? JSON.parse(sp) : {
+          storeName: state.session.storeName || '',
+          ownerName: state.session.ownerName || ''
+        };
+      } catch(e2) {}
       routeToDashboard();
       return;
     } catch(e) {
