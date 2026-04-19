@@ -249,8 +249,6 @@ async function submitLogin() {
 }
 
 function logout() {
-  // Clear cached credentials for the current user so the next login
-  // always goes through a full network auth (avoids null-token window)
   var currentUsername = state.session && state.session.user ? state.session.user.Username : null;
   if (currentUsername) localStorage.removeItem('offline_cred_' + currentUsername.toLowerCase());
   API.clearToken();
@@ -262,6 +260,11 @@ function logout() {
   state.storeProfile = null;
   localStorage.removeItem('store_session');
   localStorage.removeItem('store_profile');
+  // Clear per-role dashboard caches so next user starts fresh
+  localStorage.removeItem('mgr_dash');
+  ['today','last_week','last_month','last_quarter','last_year'].forEach(function(p) {
+    localStorage.removeItem('mon_' + p);
+  });
   renderLogin();
 }
 
