@@ -2624,7 +2624,9 @@ function _renderMonitorPage(data, period, fromCache) {
     _monRow(prLabel, _monCur(prEp.value), prEp.is_estimate ? 'Sales minus expenses (estimate)' : null, prEp.status || 'no_data') +
     _monRow('Profit Margin', prM.value !== null && prM.value !== undefined ? prM.value.toFixed(1) + '%' : '—', null, prM.status || 'no_data') +
     _monRow('Profit Trend', prT.pct !== null && prT.pct !== undefined ? (prT.pct > 0 ? '+' : '') + prT.pct.toFixed(1) + '%' : '—',
-      prT.pct === null || prT.pct === undefined ? 'No prior period data' : null, prT.status || 'no_data');
+      prT.pct === null || prT.pct === undefined ? 'No prior period data' : null, prT.status || 'no_data') +
+    (prEp.status === 'critical' ? _monRow('⚠ Profit Warning', 'Negative', 'Expenses exceed sales this period', 'critical') :
+     prEp.status === 'watch'    ? _monRow('⚠ Profit Warning', 'Near Zero', 'Business is not generating profit', 'watch') : '');
 
   // Inventory section
   var invLS = inv.low_stock    || {};
