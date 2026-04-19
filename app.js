@@ -354,8 +354,249 @@ function renderOwnerDashboard(msg) {
     '</div>';
 }
 
-// MANAGER — full operations access, limited settings, no delete/financial admin
-function renderManagerDashboard(msg) {
+// MANAGER — operational cockpit (v1)
+function renderManagerDashboard() {
+  _loadManagerDashboard();
+}
+
+async function _loadManagerDashboard() {
+  var CACHE_KEY = 'mgr_dash';
+  var storeName = (state.storeProfile && (state.storeProfile.storeName || state.storeProfile.Store_Name)) || '';
+
+  if (!navigator.onLine) {
+    var raw = localStorage.getItem(CACHE_KEY);
+    if (raw) {
+      try { _renderMgrPage(JSON.parse(raw), true); return; } catch(_) {}
+    }
+    _renderMgrSimple();
+    return;
+  }
+
+  showLoading('Loading dashboard\u2026');
+  try {
+    var data = await API.call('getManagerDashboard');
+    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+    _renderMgrPage(data, false);
+  } catch(err) {
+    if (err.code === 'MODULE_DISABLED' || err.code === 'PERMISSION_DENIED' || err.code === 'SUBSCRIPTION_EXPIRED') {
+      _renderMgrSimple(err.message);
+      return;
+    }
+    var raw2 = localStorage.getItem(CACHE_KEY);
+    if (raw2) {
+      try { _renderMgrPage(JSON.parse(raw2), true); return; } catch(_) {}
+    }
+    _renderMgrSimple(err.message);
+  }
+}
+
+function _renderMgrPage(data, fromCache) {
+  var storeName = (state.storeProfile && (state.storeProfile.storeName || state.storeProfile.Store_Name)) || '';
+  var userName  = (data.header && data.header.user_name) || state.session.user.Full_Name || '';
+  var s  = data.summary         || {};
+  var inv = data.inventory_watch || {};
+  var ss  = data.staff_snapshot  || {};
+  var ap  = data.approvals       || {};
+  var ins = data.insights        || {};
+  var sys = data.system_status   || {};
+  var ra  = data.recent_activity || {};
+  var qa  = data.quick_actions   || [];
+  var alerts = data.alerts       || [];
+
+  var cacheBar = fromCache
+    ? '<div style="background:#fffbeb;border-bottom:1px solid #fde68a;padding:6px 12px;font-size:0.75rem;color:#92400e;text-align:center;">Showing last available dashboard data</div>'
+    : '';
+
+  // ── Summary KPIs ─────────────────────────────────────────────────────────────
+  var st  = s.sales_today        || {};
+  var tx  = s.transactions_today || {};
+  var et  = s.expenses_today     || {};
+  var ls  = s.low_stock_count    || {};
+  var summaryHtml =
+    '<div style="padding:10px 12px 4px;">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+    _monMetric('Sales Today',   _monCur(st.value),
+      st.trend_pct !== null && st.trend_pct !== undefined ? _monTB(st.trend_pct, st.trend_dir, true) : '',
+      st.status || 'no_data') +
+    _monMetric('Transactions',  tx.value !== undefined ? String(tx.value) : '0',
+      '', tx.status || 'no_data') +
+    _monMetric('Expenses Today', _monCur(et.value),
+      et.trend_pct !== null && et.trend_pct !== undefined ? _monTB(et.trend_pct, et.trend_dir, false) : '',
+      et.status || 'no_data') +
+    _monMetric('Low Stock',
+      ls.value !== null && ls.value !== undefined ? String(ls.value) + ' items' : '\u2014',
+      '', ls.status || 'no_data') +
+    '</div></div>';
+
+  // ── Operations Status headline ────────────────────────────────────────────────
+  var critCount  = alerts.filter(function(a) { return a.status === 'critical'; }).length;
+  var watchCount = alerts.filter(function(a) { return a.status === 'watch';    }).length;
+  var hBg, hBorder, hIcon, hLine;
+  if (critCount > 0) {
+    hBg = '#fff5f5'; hBorder = '#dc2626'; hIcon = '🔴';
+    hLine = critCount + ' critical issue' + (critCount > 1 ? 's' : '') + ' need' + (critCount === 1 ? 's' : '') + ' your attention now.';
+  } else if (watchCount > 0) {
+    hBg = '#fffbeb'; hBorder = '#d97706'; hIcon = '⚠️';
+    hLine = watchCount + ' thing' + (watchCount > 1 ? 's' : '') + ' to watch \u2014 check below.';
+  } else {
+    var salesV = st.value || 0;
+    var txV    = tx.value || 0;
+    var goodMsg = salesV > 0
+      ? '\u20B1' + Number(salesV).toLocaleString('en-PH', {minimumFractionDigits:0,maximumFractionDigits:0}) +
+        ' in sales' + (txV > 0 ? ' across ' + txV + ' transaction' + (txV !== 1 ? 's' : '') : '') + '.'
+      : 'No issues to flag. Keep monitoring operations.';
+    hBg = '#f0fdf4'; hBorder = '#16a34a'; hIcon = '✅';
+    hLine = goodMsg;
+  }
+  var headlineHtml =
+    '<div style="margin:4px 12px 2px;padding:12px 14px;background:' + hBg + ';border-radius:10px;border-left:4px solid ' + hBorder + ';">' +
+    '<div style="font-weight:700;font-size:0.95rem;color:#111827;">' + hIcon + ' Operations Status</div>' +
+    '<div style="font-size:0.82rem;color:#374151;margin-top:3px;">' + _escAttr(hLine) + '</div>' +
+    '</div>';
+
+  // ── Needs Attention ─────────────────────────────────────────────────────────
+  var alertFnMap = {
+    no_sales:          'renderQuickSell()',
+    out_of_stock:      '_hasModule("inventory") ? renderInventoryMenu() : _showToast("Inventory not enabled", true)',
+    low_stock:         '_hasModule("inventory") ? renderInventoryMenu() : _showToast("Inventory not enabled", true)',
+    high_expenses:     'renderExpenses()',
+    pending_approvals: '_showToast("Approvals coming soon", false)',
+  };
+  var urgIco = { good: '✅', watch: '⚠️', critical: '🔴', info: 'ℹ️' };
+  var alertsHtml = alerts.length === 0
+    ? '<div style="margin:6px 12px 4px;padding:10px 12px;background:#f9fafb;border-radius:10px;font-size:0.8rem;color:#6b7280;text-align:center;">No alerts \u2014 operations look normal.</div>'
+    : '<div style="padding:4px 12px 2px;">' +
+      '<div style="font-weight:700;font-size:0.75rem;color:#374151;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;">Needs Attention</div>' +
+      alerts.map(function(a) {
+        var c   = _monSC(a.status || 'watch');
+        var fn  = alertFnMap[a.code];
+        var btn = fn
+          ? '<div style="margin-top:7px;"><button onclick="' + fn + '" style="background:' + c + ';color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:0.73rem;font-weight:700;cursor:pointer;">' + _escAttr(a.action_label || 'Act Now') + ' \u2192</button></div>'
+          : '';
+        return '<div style="background:#fff;border-left:3px solid ' + c + ';border-radius:10px;padding:10px 12px;margin-bottom:7px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">' +
+          '<div style="font-weight:600;font-size:0.83rem;color:#111827;">' + (urgIco[a.status] || '\u2022') + ' ' + _escAttr(a.title) + '</div>' +
+          '<div style="font-size:0.76rem;color:#6b7280;margin-top:2px;">' + _escAttr(a.message) + '</div>' +
+          btn + '</div>';
+      }).join('') + '</div>';
+
+  // ── Quick Actions ────────────────────────────────────────────────────────────
+  var qaFnMap = {
+    quick_sell: 'renderQuickSell()',
+    inventory:  'renderInventoryMenu()',
+    expenses:   'renderExpenses()',
+    products:   'loadProducts()',
+    staff:      'renderManageStaff()',
+    reports:    'renderReports()',
+    monitors:   'renderMonitors()',
+    approvals:  '_showToast("Approvals coming soon", false)',
+    chat:       'renderChat()',
+    support:    'renderSupport()',
+  };
+  var qaHtml = qa.length > 0
+    ? '<div style="padding:8px 12px 4px;">' +
+      '<div style="font-weight:700;font-size:0.75rem;color:#374151;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;">Quick Actions</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px;">' +
+      qa.map(function(a) {
+        var fn = qaFnMap[a.id] || '';
+        return '<button onclick="' + fn + '" style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:11px 6px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,0.04);">' +
+          '<span style="font-size:1.4rem;">' + a.icon + '</span>' +
+          '<span style="font-size:0.67rem;font-weight:600;color:#374151;">' + _escAttr(a.label) + '</span>' +
+          '</button>';
+      }).join('') +
+      '</div></div>'
+    : '';
+
+  // ── Inventory Watch ─────────────────────────────────────────────────────────
+  var invHtml = '';
+  if (inv.is_available) {
+    var invLs = inv.low_stock    || { value: 0, status: 'no_data' };
+    var invOs = inv.out_of_stock || { value: 0, status: 'no_data' };
+    var invContent =
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">' +
+      _monMetric('Low Stock',    String(invLs.value) + ' items', '', invLs.status) +
+      _monMetric('Out of Stock', String(invOs.value) + ' items', '', invOs.status) +
+      '</div>' +
+      (inv.fast_moving ? _monRow('🚀 Fast Moving', _escAttr(inv.fast_moving.name || '\u2014'), inv.fast_moving.qty + ' sold today', 'good') : '') +
+      (inv.slow_moving ? _monRow('🐢 Slow Moving', _escAttr(inv.slow_moving.name || '\u2014'), inv.slow_moving.stock + ' in stock, ' + inv.slow_moving.qty_sold + ' sold this week', 'watch') : '') +
+      '<div style="margin-top:8px;"><button onclick="renderInventoryMenu()" style="width:100%;background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:8px;padding:8px;font-size:0.75rem;font-weight:600;cursor:pointer;">📋 View Inventory</button></div>';
+    invHtml = _monSection('📋', 'Inventory Watch', invContent);
+  }
+
+  // ── Staff Activity ──────────────────────────────────────────────────────────
+  var staffAc = ss.active_count || { value: 0, status: 'no_data' };
+  var staffContent =
+    _monRow('Active Staff Today', String(staffAc.value) + ' staff', 'recorded a sale, expense, or stock movement', staffAc.status) +
+    (ss.top_staff
+      ? _monRow('🏆 Top by Sales', _escAttr(ss.top_staff.name || '\u2014'), '\u20B1' + Number(ss.top_staff.total || 0).toLocaleString('en-PH', {minimumFractionDigits:0,maximumFractionDigits:0}) + ' today', 'good')
+      : _monRow('Top by Sales', '\u2014', 'No sales recorded yet', 'no_data')) +
+    (_hasModule('staff') ? '<div style="margin-top:8px;"><button onclick="renderManageStaff()" style="background:#f0fdf4;border:1px solid #86efac;color:#16a34a;border-radius:8px;padding:8px 12px;font-size:0.75rem;font-weight:600;cursor:pointer;">👥 Manage Staff</button></div>' : '');
+  var staffHtml = _monSection('👥', 'Staff Activity', staffContent);
+
+  // ── Approvals ────────────────────────────────────────────────────────────────
+  var approvalsHtml = '';
+  if (ap.is_available) {
+    var apContent = ap.pending_count > 0
+      ? _monRow('⏳ Pending', String(ap.pending_count) + ' item' + (ap.pending_count !== 1 ? 's' : ''), 'awaiting your review', 'watch') +
+        '<div style="margin-top:8px;"><button onclick="_showToast(\'Approvals coming soon\', false)" style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:8px;padding:8px 12px;font-size:0.75rem;font-weight:600;cursor:pointer;">✅ Review Approvals</button></div>'
+      : '<div style="text-align:center;padding:12px 0;color:#6b7280;font-size:0.8rem;">No pending approvals.</div>';
+    approvalsHtml = _monSection('✅', 'Approvals', apContent);
+  }
+
+  // ── Insights & Shortcuts ─────────────────────────────────────────────────────
+  var insShortcuts = [];
+  if (ins.reports    && ins.reports.available)     insShortcuts.push({ icon: '📊', label: 'Reports',      fn: 'renderReports()' });
+  if (ins.monitors   && ins.monitors.available)    insShortcuts.push({ icon: '📡', label: 'Monitors',     fn: 'renderMonitors()' });
+  if (ins.activity_log && ins.activity_log.available) insShortcuts.push({ icon: '📜', label: 'Activity Log', fn: '_showToast("Activity Log coming soon", false)' });
+  var insightsHtml = insShortcuts.length > 0
+    ? _monSection('🔍', 'Insights & Reports',
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+        insShortcuts.map(function(sc) {
+          return '<button onclick="' + sc.fn + '" style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px 14px;font-size:0.8rem;font-weight:600;color:#374151;cursor:pointer;">' + sc.icon + ' ' + sc.label + '</button>';
+        }).join('') + '</div>')
+    : '';
+
+  // ── System / Sync Status ─────────────────────────────────────────────────────
+  var sysHtml = _monSection('🔄', 'System / Sync',
+    _monRow('Last Sync',       '\u2014', (sys.last_sync    && sys.last_sync.note)    || 'Not available yet', 'no_data') +
+    _monRow('Pending Records', '\u2014', (sys.pending_count && sys.pending_count.note) || 'Not available yet', 'no_data'));
+
+  // ── Recent Activity ──────────────────────────────────────────────────────────
+  var recentHtml = '';
+  if (ra.is_available) {
+    var actContent = ra.items && ra.items.length > 0
+      ? ra.items.map(function(item) {
+          var timeStr = item.time ? new Date(item.time).toLocaleTimeString('en-PH', {hour:'2-digit',minute:'2-digit'}) : '';
+          return '<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:7px 0;border-bottom:1px solid #f3f4f6;">' +
+            '<div style="flex:1;min-width:0;">' +
+            '<div style="font-size:0.8rem;font-weight:600;color:#111827;">' + _escAttr(item.label) + '</div>' +
+            (item.detail ? '<div style="font-size:0.72rem;color:#6b7280;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + _escAttr(item.detail) + '</div>' : '') +
+            '</div>' +
+            '<div style="font-size:0.68rem;color:#9ca3af;white-space:nowrap;margin-left:8px;">' + _escAttr(timeStr) + '</div>' +
+            '</div>';
+        }).join('')
+      : '<div style="text-align:center;padding:12px 0;color:#6b7280;font-size:0.8rem;">No recent activity yet.</div>';
+    recentHtml = _monSection('📜', 'Recent Activity', actContent);
+  }
+
+  // ── Assemble ─────────────────────────────────────────────────────────────────
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    _dashboardHeader_(storeName, 'Manager \u00B7 ' + userName, '', state.isOffline) +
+    cacheBar +
+    summaryHtml +
+    headlineHtml +
+    alertsHtml +
+    qaHtml +
+    invHtml +
+    staffHtml +
+    approvalsHtml +
+    insightsHtml +
+    sysHtml +
+    recentHtml +
+    '<div style="height:24px;"></div></div>';
+}
+
+function _renderMgrSimple(errMsg) {
   var storeName = (state.storeProfile && (state.storeProfile.storeName || state.storeProfile.Store_Name)) || '';
   var userName  = state.session.user.Full_Name;
   var btns = '';
@@ -365,14 +606,13 @@ function renderManagerDashboard(msg) {
   if (_hasModule('expenses'))      btns += '<button class="big-btn" onclick="renderExpenses()">💸 Expenses</button>';
   if (_hasModule('reports'))       btns += '<button class="big-btn" onclick="renderReports()">📊 Reports</button>';
   if (_hasModule('monitors'))      btns += '<button class="big-btn" onclick="renderMonitors()">📡 Monitors</button>';
-  if (_hasModule('roi'))           btns += '<button class="big-btn" onclick="renderROIMonitor()">📈 ROI</button>';
   if (_hasModule('staff'))         btns += '<button class="big-btn" onclick="renderManageStaff()">👥 Staff</button>';
   if (_hasModule('internal_chat')) btns += '<button class="big-btn" onclick="renderChat()">💬 Chat</button>';
   if (_hasModule('support'))       btns += '<button class="big-btn" onclick="renderSupport()">📞 Help</button>';
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    _dashboardHeader_(storeName, userName + ' · Manager', '', state.isOffline) +
-    (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
+    _dashboardHeader_(storeName, 'Manager \u00B7 ' + userName, '', state.isOffline) +
+    (errMsg ? '<div style="margin:8px 12px;padding:10px 12px;background:#fef2f2;border-radius:8px;font-size:0.78rem;color:#b91c1c;">' + _escAttr(errMsg) + '</div>' : '') +
     '<div class="grid-buttons">' + btns + '</div></div>';
 }
 
