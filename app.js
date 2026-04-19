@@ -2578,19 +2578,57 @@ function _renderMonitorPage(data, period, fromCache) {
     _monMetric('Transactions', (sTx.value || 0) + ' tx', _monTB(sTx.trend_pct, sTx.trend_dir, true), sTx.status) +
     '</div></div>';
 
-  // Alerts
+  // ── Health headline ──────────────────────────────────────────────────────────
   var alerts = data.alerts || [];
+  var critCount  = alerts.filter(function(a) { return a.urgency === 'critical'; }).length;
+  var watchCount = alerts.filter(function(a) { return a.urgency === 'watch';    }).length;
+  var healthBg, healthBorder, healthIcon, healthLine;
+  if (critCount > 0) {
+    healthBg = '#fff5f5'; healthBorder = '#dc2626'; healthIcon = '🔴';
+    healthLine = critCount + ' critical issue' + (critCount > 1 ? 's' : '') + ' need' + (critCount === 1 ? 's' : '') + ' your attention now.';
+  } else if (watchCount > 0) {
+    healthBg = '#fffbeb'; healthBorder = '#d97706'; healthIcon = '⚠️';
+    healthLine = watchCount + ' thing' + (watchCount > 1 ? 's' : '') + ' to watch — check below.';
+  } else {
+    var salesV = (s.sales_total || {}).value || 0;
+    var txV    = (s.transactions || {}).value || 0;
+    var pctV   = (s.sales_total || {}).trend_pct;
+    var goodMsg = salesV > 0
+      ? '₱' + Number(salesV).toLocaleString('en-PH', {minimumFractionDigits:0,maximumFractionDigits:0}) + ' in sales' +
+        (txV > 0 ? ' across ' + txV + ' transaction' + (txV !== 1 ? 's' : '') : '') +
+        (pctV !== null && pctV > 0 ? ' — up ' + pctV.toFixed(0) + '% from ' + (data.comparison_period || 'previous') + '.' : '.')
+      : 'No issues to flag. Keep monitoring.';
+    healthBg = '#f0fdf4'; healthBorder = '#16a34a'; healthIcon = '✅';
+    healthLine = goodMsg;
+  }
+  var headlineHtml =
+    '<div style="margin:6px 12px 4px;padding:12px 14px;background:' + healthBg + ';border-radius:10px;border-left:4px solid ' + healthBorder + ';">' +
+    '<div style="font-weight:700;font-size:0.95rem;color:#111827;">' + healthIcon + ' Business Health</div>' +
+    '<div style="font-size:0.82rem;color:#374151;margin-top:3px;">' + _escAttr(healthLine) + '</div>' +
+    '</div>';
+
+  // ── Alerts with tap-to-act buttons ───────────────────────────────────────────
   var urgIco = { good: '✅', watch: '⚠️', critical: '🔴', info: 'ℹ️' };
+  var alertActionMap = {
+    out_of_stock:     { label: 'Go to Inventory', fn: '_hasModule("inventory") ? renderInventoryMenu() : _showToast("Inventory not enabled", true)' },
+    low_stock:        { label: 'Go to Inventory', fn: '_hasModule("inventory") ? renderInventoryMenu() : _showToast("Inventory not enabled", true)' },
+    no_sales:         { label: 'Go to Quick Sell', fn: 'renderQuickSell()' },
+    expense_pressure: { label: 'Review Expenses',  fn: 'renderExpenses()' },
+    low_profit:       { label: 'View Reports',     fn: 'renderReports()' },
+  };
   var alertsHtml = alerts.length === 0
-    ? '<div style="margin:6px 12px;padding:11px 14px;background:#f0fdf4;border-radius:10px;border-left:3px solid #16a34a;"><div style="font-weight:600;color:#15803d;font-size:0.84rem;">✅ All good — no issues to flag</div></div>'
+    ? ''
     : '<div style="padding:4px 12px 0;">' +
       '<div style="font-weight:700;font-size:0.76rem;text-transform:uppercase;letter-spacing:.5px;color:#374151;margin:6px 0 7px;">⚠ What Needs Attention</div>' +
       alerts.map(function(a) {
-        var c = _monSC(a.urgency || 'watch');
+        var c   = _monSC(a.urgency || 'watch');
+        var act = alertActionMap[a.type];
+        var btn = act ? '<div style="margin-top:8px;"><button onclick="' + act.fn + '" style="background:' + c + ';color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:0.73rem;font-weight:700;cursor:pointer;">' + act.label + ' →</button></div>' : '';
         return '<div style="background:#fff;border-left:3px solid ' + c + ';border-radius:10px;padding:11px 12px;margin-bottom:7px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">' +
           '<div style="font-weight:700;font-size:0.84rem;color:#111827;">' + (urgIco[a.urgency] || '⚠️') + ' ' + _escAttr(a.title) + '</div>' +
           '<div style="font-size:0.78rem;color:#4b5563;margin-top:3px;">' + _escAttr(a.message) + '</div>' +
-          '<div style="font-size:0.72rem;color:#6b7280;margin-top:5px;font-style:italic;">→ ' + _escAttr(a.action) + '</div>' +
+          '<div style="font-size:0.72rem;color:#6b7280;margin-top:4px;font-style:italic;">' + _escAttr(a.action) + '</div>' +
+          btn +
           '</div>';
       }).join('') + '</div>';
 
@@ -2663,6 +2701,7 @@ function _renderMonitorPage(data, period, fromCache) {
     '<div style="padding:8px 12px 2px;overflow-x:auto;"><div style="display:inline-flex;gap:6px;">' + tabs + '</div></div>' +
     '<div style="padding:0 12px 4px;font-size:0.71rem;color:#9ca3af;">vs ' + _escAttr(data.comparison_period || '') + '</div>' +
     summaryHtml +
+    headlineHtml +
     alertsHtml +
     _monSection('📈', 'Sales',          slContent)  +
     _monSection('💸', 'Expenses',       exContent)  +
