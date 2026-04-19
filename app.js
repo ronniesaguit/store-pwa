@@ -2436,6 +2436,241 @@ function _escAttr(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
 }
 
+// ── Business Monitors ─────────────────────────────────────────────────────────
+
+var _monitorPeriod = 'today';
+
+function renderMonitors() { _loadMonitors('today'); }
+
+async function _loadMonitors(period) {
+  _monitorPeriod = period;
+  showLoading('Loading Business Monitors…');
+  var cacheKey = 'mon_' + period;
+  var data = null;
+  var fromCache = false;
+
+  if (navigator.onLine && !state.isOffline) {
+    try {
+      data = await API.call('getBusinessMonitors', { period: period });
+      try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch(e) {}
+    } catch(err) {
+      if (err.code === 'MODULE_DISABLED') { _renderMonitorLocked(); return; }
+      if (err.code === 'PERMISSION_DENIED') { _showToast('Access denied.', true); goHome(); return; }
+      try { data = JSON.parse(localStorage.getItem(cacheKey) || 'null'); fromCache = true; } catch(e) {}
+      if (!data) { _showToast(err.message || 'Failed to load monitors', true); goHome(); return; }
+    }
+  } else {
+    try { data = JSON.parse(localStorage.getItem(cacheKey) || 'null'); fromCache = true; } catch(e) {}
+    if (!data) {
+      document.getElementById('app').innerHTML =
+        '<div class="screen"><div class="topbar"><div class="title" style="margin:0;">📡 Monitors</div>' +
+        '<button class="small-btn" onclick="goHome()">← Back</button></div>' +
+        '<div class="card" style="text-align:center;padding:32px 16px;">' +
+        '<div style="font-size:2rem;margin-bottom:8px;">📵</div>' +
+        '<div style="font-weight:600;color:#374151;">Offline</div>' +
+        '<div style="font-size:0.82rem;color:#6b7280;margin-top:6px;">No cached monitor data.<br>Connect and try again.</div>' +
+        '</div></div>';
+      return;
+    }
+  }
+  _renderMonitorPage(data, period, fromCache);
+}
+
+function _renderMonitorLocked() {
+  document.getElementById('app').innerHTML =
+    '<div class="screen"><div class="topbar"><div class="title" style="margin:0;">📡 Business Monitors</div>' +
+    '<button class="small-btn" onclick="goHome()">← Back</button></div>' +
+    '<div class="card" style="text-align:center;padding:40px 16px;">' +
+    '<div style="font-size:2.5rem;margin-bottom:12px;">🔒</div>' +
+    '<div style="font-weight:700;font-size:1.1rem;color:#111827;margin-bottom:8px;">Business Monitors</div>' +
+    '<div style="font-size:0.85rem;color:#6b7280;max-width:260px;margin:0 auto 20px;">See sales trends, expense alerts, and business insights.<br>Available on Growth plan and above.</div>' +
+    '<button class="btn btn-primary" onclick="_showToast(\'Contact your Business Hub support to upgrade your plan.\', false)">Upgrade to Unlock</button>' +
+    '</div></div>';
+}
+
+// ── Monitor render helpers ────────────────────────────────────────────────────
+
+function _monSC(s) {
+  return ({ good: '#16a34a', watch: '#d97706', critical: '#dc2626', info: '#2563eb', no_data: '#9ca3af' })[s] || '#9ca3af';
+}
+
+function _monTB(pct, dir, higherIsBetter) {
+  if (pct === null || pct === undefined) return '<span style="font-size:0.72rem;color:#9ca3af;">— no prior data</span>';
+  var pos = higherIsBetter ? dir === 'up' : dir === 'down';
+  var col = dir === 'flat' ? '#6b7280' : (pos ? '#16a34a' : '#dc2626');
+  var arrow = dir === 'up' ? '↑' : dir === 'down' ? '↓' : '→';
+  return '<span style="font-size:0.75rem;font-weight:600;color:' + col + ';">' + arrow + ' ' + (pct > 0 ? '+' : '') + pct.toFixed(1) + '%</span>';
+}
+
+function _monCur(v) {
+  if (v === null || v === undefined) return '—';
+  return '₱' + Number(v).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function _monMetric(label, value, trendBadge, status) {
+  var c = _monSC(status);
+  return '<div style="background:#fff;border-radius:10px;padding:11px 12px;border:1px solid #e5e7eb;border-left:3px solid ' + c + ';">' +
+    '<div style="font-size:0.67rem;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px;">' + label + '</div>' +
+    '<div style="font-size:1.15rem;font-weight:700;color:#111827;line-height:1.2;">' + value + '</div>' +
+    (trendBadge ? '<div style="margin-top:3px;">' + trendBadge + '</div>' : '') +
+    '</div>';
+}
+
+function _monRow(label, value, note, status) {
+  var c = _monSC(status);
+  return '<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid #f3f4f6;">' +
+    '<div style="flex:1;min-width:0;">' +
+    '<div style="font-size:0.82rem;color:#374151;font-weight:500;">' + label + '</div>' +
+    (note ? '<div style="font-size:0.71rem;color:#9ca3af;margin-top:1px;">' + _escAttr(String(note)) + '</div>' : '') +
+    '</div>' +
+    '<div style="flex-shrink:0;margin-left:12px;text-align:right;">' +
+    '<span style="font-size:0.85rem;font-weight:600;color:' + c + ';">' + value + '</span>' +
+    '</div></div>';
+}
+
+function _monSection(icon, title, content) {
+  return '<div style="margin:8px 12px;background:#fff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);overflow:hidden;">' +
+    '<div style="padding:9px 14px;background:#f8fafc;border-bottom:1px solid #e5e7eb;">' +
+    '<div style="font-weight:700;font-size:0.83rem;color:#374151;">' + icon + ' ' + title + '</div>' +
+    '</div>' +
+    '<div style="padding:2px 14px 4px;">' + content + '</div>' +
+    '</div>';
+}
+
+// ── Monitor page renderer ─────────────────────────────────────────────────────
+
+function _renderMonitorPage(data, period, fromCache) {
+  var s = data.summary    || {};
+  var meta = data.meta    || {};
+  var sl   = data.sales   || {};
+  var ex   = data.expenses || {};
+  var pr   = data.profitability || {};
+  var inv  = data.inventory || {};
+  var st   = data.staff   || {};
+  var sys  = data.system  || {};
+
+  // Period selector
+  var PTABS = [
+    { k: 'today',        l: 'Today'   },
+    { k: 'last_week',    l: '7 Days'  },
+    { k: 'last_month',   l: '30 Days' },
+    { k: 'last_quarter', l: '90 Days' },
+    { k: 'last_year',    l: '1 Year'  },
+  ];
+  var tabs = PTABS.map(function(p) {
+    var on = p.k === period;
+    return '<button onclick="_loadMonitors(\'' + p.k + '\')" style="padding:6px 11px;border-radius:20px;font-size:0.73rem;font-weight:600;cursor:pointer;border:1px solid ' +
+      (on ? 'var(--primary,#2c3e50);background:var(--primary,#2c3e50);color:#fff;' : '#d1d5db;background:#fff;color:#374151;') +
+      'white-space:nowrap;">' + p.l + '</button>';
+  }).join('');
+
+  // Summary strip (2×2 grid)
+  var sTs = s.sales_total      || {};
+  var sEs = s.expenses_total   || {};
+  var sEp = s.estimated_profit || {};
+  var sTx = s.transactions     || {};
+  var summaryHtml =
+    '<div style="padding:8px 12px;">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+    _monMetric('Sales',      _monCur(sTs.value), _monTB(sTs.trend_pct, sTs.trend_dir, true),  sTs.status) +
+    _monMetric('Expenses',   _monCur(sEs.value), _monTB(sEs.trend_pct, sEs.trend_dir, false), sEs.status) +
+    _monMetric(meta.profit_label || 'Est. Profit', _monCur(sEp.value), _monTB(sEp.trend_pct, sEp.trend_dir, true), sEp.status) +
+    _monMetric('Transactions', (sTx.value || 0) + ' tx', _monTB(sTx.trend_pct, sTx.trend_dir, true), sTx.status) +
+    '</div></div>';
+
+  // Alerts
+  var alerts = data.alerts || [];
+  var urgIco = { good: '✅', watch: '⚠️', critical: '🔴', info: 'ℹ️' };
+  var alertsHtml = alerts.length === 0
+    ? '<div style="margin:6px 12px;padding:11px 14px;background:#f0fdf4;border-radius:10px;border-left:3px solid #16a34a;"><div style="font-weight:600;color:#15803d;font-size:0.84rem;">✅ All good — no issues to flag</div></div>'
+    : '<div style="padding:4px 12px 0;">' +
+      '<div style="font-weight:700;font-size:0.76rem;text-transform:uppercase;letter-spacing:.5px;color:#374151;margin:6px 0 7px;">⚠ What Needs Attention</div>' +
+      alerts.map(function(a) {
+        var c = _monSC(a.urgency || 'watch');
+        return '<div style="background:#fff;border-left:3px solid ' + c + ';border-radius:10px;padding:11px 12px;margin-bottom:7px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">' +
+          '<div style="font-weight:700;font-size:0.84rem;color:#111827;">' + (urgIco[a.urgency] || '⚠️') + ' ' + _escAttr(a.title) + '</div>' +
+          '<div style="font-size:0.78rem;color:#4b5563;margin-top:3px;">' + _escAttr(a.message) + '</div>' +
+          '<div style="font-size:0.72rem;color:#6b7280;margin-top:5px;font-style:italic;">→ ' + _escAttr(a.action) + '</div>' +
+          '</div>';
+      }).join('') + '</div>';
+
+  // Sales section
+  var slT  = sl.trend || {};
+  var slP  = sl.top_product || {};
+  var slContent =
+    _monRow('Average Sale', sl.avg_sale && sl.avg_sale.value !== null ? _monCur(sl.avg_sale.value) : '—', null, (sl.avg_sale || {}).status || 'no_data') +
+    _monRow('Top-Selling Product', slP.name ? _escAttr(slP.name) : '—', slP.name ? slP.qty + ' units sold' : null, slP.status || 'no_data') +
+    _monRow('Sales Trend', slT.pct !== null && slT.pct !== undefined ? (slT.pct > 0 ? '+' : '') + slT.pct.toFixed(1) + '%' : '—',
+      slT.pct === null || slT.pct === undefined ? 'No prior period data' : (slT.dir === 'up' ? 'Up from previous period' : slT.dir === 'down' ? 'Down from previous period' : 'Same as previous period'),
+      slT.status || 'no_data') +
+    (sl.no_sales_today ? _monRow('Today\'s Sales', 'None yet', 'No transactions recorded today', 'watch') : '');
+
+  // Expenses section
+  var exT  = ex.trend        || {};
+  var exC  = ex.top_category || {};
+  var exContent =
+    _monRow('Top Category', exC.name ? _escAttr(exC.name) : '—', exC.name ? _monCur(exC.total) + ' total' : null, exC.status || 'no_data') +
+    _monRow('Expense Trend', exT.pct !== null && exT.pct !== undefined ? (exT.pct > 0 ? '+' : '') + exT.pct.toFixed(1) + '%' : '—',
+      exT.pct === null || exT.pct === undefined ? 'No prior period data' : (exT.dir === 'up' ? 'Higher than previous period' : exT.dir === 'down' ? 'Lower than previous period' : 'Stable'),
+      exT.status || 'no_data') +
+    (ex.pressure_alert ? _monRow('Pressure Alert', 'Watch', 'Expenses rising faster than sales', 'critical') : '');
+
+  // Profitability section
+  var prEp = pr.estimated_profit || {};
+  var prM  = pr.profit_margin    || {};
+  var prT  = pr.trend            || {};
+  var prLabel = meta.profit_label || 'Estimated Profit';
+  var prContent =
+    _monRow(prLabel, _monCur(prEp.value), prEp.is_estimate ? 'Sales minus expenses (estimate)' : null, prEp.status || 'no_data') +
+    _monRow('Profit Margin', prM.value !== null && prM.value !== undefined ? prM.value.toFixed(1) + '%' : '—', null, prM.status || 'no_data') +
+    _monRow('Profit Trend', prT.pct !== null && prT.pct !== undefined ? (prT.pct > 0 ? '+' : '') + prT.pct.toFixed(1) + '%' : '—',
+      prT.pct === null || prT.pct === undefined ? 'No prior period data' : null, prT.status || 'no_data');
+
+  // Inventory section
+  var invLS = inv.low_stock    || {};
+  var invOS = inv.out_of_stock || {};
+  var invFM = inv.fast_moving  || {};
+  var invSM = inv.slow_moving  || {};
+  var invContent =
+    _monRow('Low Stock',    (invLS.value || 0) + ' products', 'At or below reorder level', invLS.status || 'no_data') +
+    _monRow('Out of Stock', (invOS.value || 0) + ' products', 'Cannot be sold',            invOS.status || 'no_data') +
+    _monRow('Fast-Moving',  invFM.name ? _escAttr(invFM.name) : '—', invFM.name ? invFM.qty + ' units this period' : null, invFM.status || 'no_data') +
+    _monRow('Slow-Moving',  invSM.name ? _escAttr(invSM.name) : '—', invSM.name ? invSM.qty_sold + ' sold, ' + invSM.stock + ' in stock' : null, invSM.status || 'no_data');
+
+  // Staff section
+  var stTS = st.top_staff    || {};
+  var stAC = st.active_count || {};
+  var stContent =
+    _monRow('Top Staff',     stTS.name ? _escAttr(stTS.name) : '—', stTS.name ? _monCur(stTS.total) + ' in sales' : 'No sales data', stTS.status || 'no_data') +
+    _monRow('Active Staff',  (stAC.value || 0) + ' staff', 'Had at least one recorded action this period', stAC.status || 'info');
+
+  // System section
+  var sysContent =
+    _monRow('Pending Sync', (sys.pending_sync || {}).note || '—', null, 'no_data') +
+    _monRow('Last Sync',    (sys.last_sync    || {}).note || '—', null, 'no_data');
+
+  var cacheBar = fromCache
+    ? '<div style="background:#fef3c7;border-left:3px solid #f59e0b;padding:7px 12px;font-size:0.76rem;color:#92400e;">⚠ Showing last available monitor data</div>'
+    : '';
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">📡 Business Monitors</div>' +
+    '<button class="small-btn" onclick="goHome()">← Back</button></div>' +
+    cacheBar +
+    '<div style="padding:8px 12px 2px;overflow-x:auto;"><div style="display:inline-flex;gap:6px;">' + tabs + '</div></div>' +
+    '<div style="padding:0 12px 4px;font-size:0.71rem;color:#9ca3af;">vs ' + _escAttr(data.comparison_period || '') + '</div>' +
+    summaryHtml +
+    alertsHtml +
+    _monSection('📈', 'Sales',          slContent)  +
+    _monSection('💸', 'Expenses',       exContent)  +
+    _monSection('💰', 'Profitability',  prContent)  +
+    _monSection('📋', 'Inventory',      invContent) +
+    _monSection('👥', 'Staff Activity', stContent)  +
+    _monSection('🔄', 'System / Sync',  sysContent) +
+    '<div style="height:20px;"></div></div>';
+}
+
 // ── Support chat (store ↔ admin) ──────────────────────────────────────────────
 
 var _supportPollTimer = null;

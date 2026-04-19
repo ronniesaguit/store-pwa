@@ -33,7 +33,11 @@ const API = {
       showSubscriptionExpired(result.paymentInfo || {});
       throw new Error('SUBSCRIPTION_EXPIRED');
     }
-    if (!result.success) throw new Error(result.error || 'Server error');
+    if (!result.success) {
+      const err = new Error(result.error || 'Server error');
+      if (result.errorCode) err.code = result.errorCode;
+      throw err;
+    }
     return result.data;
   },
 
