@@ -53,8 +53,7 @@ async function boot() {
     try {
       var boot = await API.call('getBootData');
       var session = boot.session;
-      if (session && boot.session.plan) session.plan = boot.session.plan;
-      state.session = session;
+      state.session = session; // already contains plan, inTrial, manifest
       state.storeProfile = { storeName: session.storeName || '', ownerName: session.ownerName || '' };
       state.products   = boot.products   || [];
       state.categories = boot.categories || [];
@@ -79,12 +78,21 @@ async function boot() {
 
 function routeToDashboard() {
   if (!state.session || !state.session.user) { renderLogin(); return; }
+  var dashType = state.session.manifest && state.session.manifest.dashboard_type;
+  if (dashType === 'store_owner_dashboard')  { renderOwnerDashboard(); return; }
+  if (dashType === 'executive_dashboard')    { renderExecutiveDashboard(); return; }
+  if (dashType === 'manager_dashboard')      { renderManagerDashboard(); return; }
+  if (dashType === 'cashier_dashboard')      { renderCashierDashboard(); return; }
+  if (dashType === 'inventory_dashboard')    { renderInventoryDashboard(); return; }
+  if (dashType === 'viewer_dashboard')       { renderViewerDashboard(); return; }
+  // fallback to role-based routing (cached session without manifest)
   var role = (state.session.user.Role || '').toUpperCase();
-  if (role === 'OWNER')           renderOwnerDashboard();
-  else if (role === 'MANAGER')    renderManagerDashboard();
-  else if (role === 'CASHIER')    renderCashierDashboard();
+  if (role === 'OWNER')                renderOwnerDashboard();
+  else if (role === 'EXECUTIVE')       renderExecutiveDashboard();
+  else if (role === 'MANAGER')         renderManagerDashboard();
+  else if (role === 'CASHIER')         renderCashierDashboard();
   else if (role === 'INVENTORY_STAFF') renderInventoryDashboard();
-  else                            renderViewerDashboard(); // VIEWER / WATCHER / unknown
+  else                                 renderViewerDashboard();
 }
 
 async function syncWhenOnline() {
@@ -184,7 +192,7 @@ async function submitLogin() {
           API.call('login', { username: username, password: password })
             .then(function(result) {
               API.setToken(result.token);
-              state.session   = { loggedIn: true, user: result.user, plan: result.plan || null, inTrial: result.inTrial || false };
+              state.session   = { loggedIn: true, user: result.user, plan: result.plan || null, inTrial: result.inTrial || false, manifest: result.manifest || null };
               state.storeProfile = { storeName: result.storeName || (state.storeProfile||{}).storeName || '',
                                      ownerName: result.ownerName || (state.storeProfile||{}).ownerName || '' };
               state.products   = result.products   || state.products;
@@ -213,7 +221,7 @@ async function submitLogin() {
   try {
     var result = await API.call('login', { username: username, password: password });
     API.setToken(result.token);
-    state.session      = { loggedIn: true, user: result.user, plan: result.plan || null, inTrial: result.inTrial || false };
+    state.session      = { loggedIn: true, user: result.user, plan: result.plan || null, inTrial: result.inTrial || false, manifest: result.manifest || null };
     state.storeProfile = { storeName: result.storeName || '', ownerName: result.ownerName || '' };
     state.products     = result.products   || [];
     state.categories   = result.categories || [];
@@ -269,6 +277,12 @@ function _hasModule(moduleId) {
   return mods.indexOf(moduleId) !== -1;
 }
 
+function _hasPerm(permCode) {
+  var perms = state.session && state.session.manifest && state.session.manifest.granted_permissions;
+  if (!perms) return true; // graceful degradation if manifest not yet available
+  return perms.indexOf(permCode) !== -1;
+}
+
 // ── Dashboards ────────────────────────────────────────────────────────────────
 
 function _dashboardHeader_(storeName, subLabel, onlineLabel, isOffline) {
@@ -301,6 +315,31 @@ function renderOwnerDashboard(msg) {
   if (_hasModule('staff'))         btns += '<button class="big-btn" onclick="renderManageStaff()">👥 Staff</button>';
   if (_hasModule('support'))       btns += '<button class="big-btn" onclick="renderSupport()">📞 Help</button>';
 
+  // Locked / upsell tiles for modules not in current plan
+  var UPSELL_META = {
+    monitors:     { icon: '📡', label: 'Monitors'  },
+    roi:          { icon: '📈', label: 'ROI'        },
+    inventory:    { icon: '📋', label: 'Inventory'  },
+    staff:        { icon: '👥', label: 'Staff'      },
+    reports:      { icon: '📊', label: 'Reports'    },
+    internal_chat:{ icon: '💬', label: 'Chat'       },
+    tax_reports:  { icon: '🧾', label: 'Tax Reports'},
+    approvals:    { icon: '✅', label: 'Approvals'  },
+    activity_log: { icon: '📜', label: 'Activity Log'},
+  };
+  var lockedBtns = '';
+  var mods = _planModules();
+  if (mods) {
+    Object.keys(UPSELL_META).forEach(function(m) {
+      if (mods.indexOf(m) === -1) {
+        var meta = UPSELL_META[m];
+        lockedBtns += '<button class="big-btn" disabled style="opacity:0.45;cursor:default;position:relative;" title="Upgrade to unlock">' +
+          '<span style="position:absolute;top:4px;right:6px;font-size:0.6rem;background:#f59e0b;color:#fff;padding:1px 5px;border-radius:8px;font-weight:700;">PRO</span>' +
+          meta.icon + ' ' + meta.label + '<br><span style="font-size:0.65rem;opacity:0.7;">🔒 Upgrade</span></button>';
+      }
+    });
+  }
+
   var quickActions = '';
   if (_hasModule('products')) quickActions += '<button class="btn btn-secondary" onclick="renderAddProductForm()">+ Add New Product</button>';
   if (_hasModule('expenses')) quickActions += '<button class="btn btn-secondary" style="margin-top:8px;" onclick="renderAddExpenseForm()">+ Record Expense</button>';
@@ -310,7 +349,7 @@ function renderOwnerDashboard(msg) {
     _dashboardHeader_(storeName, ownerName, '', state.isOffline) +
     planLine +
     (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
-    '<div class="grid-buttons">' + btns + '</div>' +
+    '<div class="grid-buttons">' + btns + lockedBtns + '</div>' +
     (quickActions ? '<div class="card"><div class="subtitle">Quick Actions</div>' + quickActions + '</div>' : '') +
     '</div>';
 }
@@ -382,6 +421,26 @@ function renderViewerDashboard(msg) {
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
     _dashboardHeader_(storeName, userName + ' · Viewer', '', state.isOffline) +
+    (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
+    '<div class="grid-buttons">' + btns + '</div></div>';
+}
+
+// EXECUTIVE — read-only access to reports, ROI, monitors, expenses overview
+function renderExecutiveDashboard(msg) {
+  var storeName = (state.storeProfile && (state.storeProfile.storeName || state.storeProfile.Store_Name)) || '';
+  var userName  = state.session.user.Full_Name;
+  var btns = '';
+  if (_hasModule('reports'))       btns += '<button class="big-btn" onclick="renderReports()">📊 Reports</button>';
+  if (_hasModule('monitors'))      btns += '<button class="big-btn" onclick="renderMonitors()">📡 Monitors</button>';
+  if (_hasModule('roi'))           btns += '<button class="big-btn" onclick="renderROIMonitor()">📈 ROI</button>';
+  if (_hasModule('expenses'))      btns += '<button class="big-btn" onclick="renderExpenses()">💸 Expenses</button>';
+  if (_hasModule('products'))      btns += '<button class="big-btn" onclick="loadProducts()">📦 Products</button>';
+  if (_hasModule('inventory'))     btns += '<button class="big-btn" onclick="renderInventoryMenu()">📋 Inventory</button>';
+  if (_hasModule('internal_chat')) btns += '<button class="big-btn" onclick="renderChat()">💬 Chat</button>';
+  if (_hasModule('support'))       btns += '<button class="big-btn" onclick="renderSupport()">📞 Help</button>';
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    _dashboardHeader_(storeName, userName + ' · Executive', '', state.isOffline) +
     (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
     '<div class="grid-buttons">' + btns + '</div></div>';
 }
