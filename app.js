@@ -79,8 +79,12 @@ async function boot() {
 
 function routeToDashboard() {
   if (!state.session || !state.session.user) { renderLogin(); return; }
-  if (state.session.user.Role === 'OWNER') renderOwnerDashboard();
-  else renderWatcherDashboard();
+  var role = (state.session.user.Role || '').toUpperCase();
+  if (role === 'OWNER')           renderOwnerDashboard();
+  else if (role === 'MANAGER')    renderManagerDashboard();
+  else if (role === 'CASHIER')    renderCashierDashboard();
+  else if (role === 'INVENTORY_STAFF') renderInventoryDashboard();
+  else                            renderViewerDashboard(); // VIEWER / WATCHER / unknown
 }
 
 async function syncWhenOnline() {
@@ -127,9 +131,7 @@ function _showToast(msg, isError) {
 }
 
 function goHome() {
-  if (!state.session || !state.session.user) { renderLogin(); return; }
-  if (state.session.user.Role === 'OWNER') renderOwnerDashboard();
-  else renderWatcherDashboard();
+  routeToDashboard();
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
@@ -313,11 +315,10 @@ function renderOwnerDashboard(msg) {
     '</div>';
 }
 
-function renderWatcherDashboard(msg) {
+// MANAGER — full operations access, limited settings, no delete/financial admin
+function renderManagerDashboard(msg) {
   var storeName = (state.storeProfile && (state.storeProfile.storeName || state.storeProfile.Store_Name)) || '';
   var userName  = state.session.user.Full_Name;
-  var role      = (state.session.user.Role || '').toUpperCase();
-
   var btns = '';
   if (_hasModule('quick_sell'))    btns += '<button class="big-btn" onclick="renderQuickSell()">💰 Quick Sell</button>';
   if (_hasModule('products'))      btns += '<button class="big-btn" onclick="loadProducts()">📦 Products</button>';
@@ -326,17 +327,67 @@ function renderWatcherDashboard(msg) {
   if (_hasModule('reports'))       btns += '<button class="big-btn" onclick="renderReports()">📊 Reports</button>';
   if (_hasModule('monitors'))      btns += '<button class="big-btn" onclick="renderMonitors()">📡 Monitors</button>';
   if (_hasModule('roi'))           btns += '<button class="big-btn" onclick="renderROIMonitor()">📈 ROI</button>';
-  if (_hasModule('staff') && (role === 'MANAGER'))
-                                   btns += '<button class="big-btn" onclick="renderManageStaff()">👥 Staff</button>';
+  if (_hasModule('staff'))         btns += '<button class="big-btn" onclick="renderManageStaff()">👥 Staff</button>';
   if (_hasModule('internal_chat')) btns += '<button class="big-btn" onclick="renderChat()">💬 Chat</button>';
   if (_hasModule('support'))       btns += '<button class="big-btn" onclick="renderSupport()">📞 Help</button>';
-
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    _dashboardHeader_(storeName, userName, '', state.isOffline) +
+    _dashboardHeader_(storeName, userName + ' · Manager', '', state.isOffline) +
     (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
     '<div class="grid-buttons">' + btns + '</div></div>';
 }
+
+// CASHIER — sell and record expenses only
+function renderCashierDashboard(msg) {
+  var storeName = (state.storeProfile && (state.storeProfile.storeName || state.storeProfile.Store_Name)) || '';
+  var userName  = state.session.user.Full_Name;
+  var btns = '';
+  if (_hasModule('quick_sell'))    btns += '<button class="big-btn" onclick="renderQuickSell()">💰 Quick Sell</button>';
+  if (_hasModule('products'))      btns += '<button class="big-btn" onclick="loadProducts()">📦 Products</button>';
+  if (_hasModule('expenses'))      btns += '<button class="big-btn" onclick="renderExpenses()">💸 Expenses</button>';
+  if (_hasModule('internal_chat')) btns += '<button class="big-btn" onclick="renderChat()">💬 Chat</button>';
+  if (_hasModule('support'))       btns += '<button class="big-btn" onclick="renderSupport()">📞 Help</button>';
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    _dashboardHeader_(storeName, userName + ' · Cashier', '', state.isOffline) +
+    (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
+    '<div class="grid-buttons">' + btns + '</div></div>';
+}
+
+// INVENTORY_STAFF — products and stock management only
+function renderInventoryDashboard(msg) {
+  var storeName = (state.storeProfile && (state.storeProfile.storeName || state.storeProfile.Store_Name)) || '';
+  var userName  = state.session.user.Full_Name;
+  var btns = '';
+  if (_hasModule('products'))      btns += '<button class="big-btn" onclick="loadProducts()">📦 Products</button>';
+  if (_hasModule('inventory'))     btns += '<button class="big-btn" onclick="renderInventoryMenu()">📋 Inventory</button>';
+  if (_hasModule('internal_chat')) btns += '<button class="big-btn" onclick="renderChat()">💬 Chat</button>';
+  if (_hasModule('support'))       btns += '<button class="big-btn" onclick="renderSupport()">📞 Help</button>';
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    _dashboardHeader_(storeName, userName + ' · Inventory Staff', '', state.isOffline) +
+    (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
+    '<div class="grid-buttons">' + btns + '</div></div>';
+}
+
+// VIEWER / WATCHER — read-only reports and monitors
+function renderViewerDashboard(msg) {
+  var storeName = (state.storeProfile && (state.storeProfile.storeName || state.storeProfile.Store_Name)) || '';
+  var userName  = state.session.user.Full_Name;
+  var btns = '';
+  if (_hasModule('reports'))       btns += '<button class="big-btn" onclick="renderReports()">📊 Reports</button>';
+  if (_hasModule('monitors'))      btns += '<button class="big-btn" onclick="renderMonitors()">📡 Monitors</button>';
+  if (_hasModule('internal_chat')) btns += '<button class="big-btn" onclick="renderChat()">💬 Chat</button>';
+  if (_hasModule('support'))       btns += '<button class="big-btn" onclick="renderSupport()">📞 Help</button>';
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    _dashboardHeader_(storeName, userName + ' · Viewer', '', state.isOffline) +
+    (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
+    '<div class="grid-buttons">' + btns + '</div></div>';
+}
+
+// Legacy alias (kept for any residual direct calls during transition)
+function renderWatcherDashboard(msg) { renderViewerDashboard(msg); }
 
 // ── Staff Management ─────────────────────────────────────────────────────────
 
@@ -738,7 +789,7 @@ async function submitProduct() {
       });
       state.products.push(tempProduct);
       try { await DB.saveProducts(state.products); } catch(e) {}
-      renderOwnerDashboard('✓ Product saved offline — will sync when online.');
+      _showToast('Product saved offline — will sync when online.', false); routeToDashboard();
     } catch(e) {
       renderAddProductForm('Failed to save offline: ' + (e.message || String(e)));
     }
@@ -759,7 +810,7 @@ async function submitProduct() {
       if (match) match.Image = payload.Image;
     }
     try { await DB.saveProducts(state.products); } catch(e) {}
-    renderOwnerDashboard('Product saved successfully!');
+    _showToast('Product saved successfully!', false); routeToDashboard();
   } catch(err) { renderAddProductForm(err.message || String(err)); }
 }
 
