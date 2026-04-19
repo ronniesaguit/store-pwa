@@ -53,6 +53,7 @@ async function boot() {
     try {
       var boot = await API.call('getBootData');
       var session = boot.session;
+      if (session && boot.session.plan) session.plan = boot.session.plan;
       state.session = session;
       state.storeProfile = { storeName: session.storeName || '', ownerName: session.ownerName || '' };
       state.products   = boot.products   || [];
@@ -181,8 +182,7 @@ async function submitLogin() {
           API.call('login', { username: username, password: password })
             .then(function(result) {
               API.setToken(result.token);
-              state.session   = { loggedIn: true, user: result.user,
-                storeName: result.plan ? (state.storeProfile || {}).storeName : undefined };
+              state.session   = { loggedIn: true, user: result.user, plan: result.plan || null, inTrial: result.inTrial || false };
               state.storeProfile = { storeName: result.storeName || (state.storeProfile||{}).storeName || '',
                                      ownerName: result.ownerName || (state.storeProfile||{}).ownerName || '' };
               state.products   = result.products   || state.products;
@@ -211,7 +211,7 @@ async function submitLogin() {
   try {
     var result = await API.call('login', { username: username, password: password });
     API.setToken(result.token);
-    state.session      = { loggedIn: true, user: result.user };
+    state.session      = { loggedIn: true, user: result.user, plan: result.plan || null, inTrial: result.inTrial || false };
     state.storeProfile = { storeName: result.storeName || '', ownerName: result.ownerName || '' };
     state.products     = result.products   || [];
     state.categories   = result.categories || [];
@@ -255,6 +255,18 @@ function logout() {
   renderLogin();
 }
 
+// ── Module helpers ────────────────────────────────────────────────────────────
+
+function _planModules() {
+  return (state.session && state.session.plan && state.session.plan.modules) || null;
+}
+
+function _hasModule(moduleId) {
+  var mods = _planModules();
+  if (!mods) return true; // CUSTOM plan or no plan info — allow all
+  return mods.indexOf(moduleId) !== -1;
+}
+
 // ── Dashboards ────────────────────────────────────────────────────────────────
 
 function _dashboardHeader_(storeName, subLabel, onlineLabel, isOffline) {
@@ -272,40 +284,58 @@ function _dashboardHeader_(storeName, subLabel, onlineLabel, isOffline) {
 function renderOwnerDashboard(msg) {
   var storeName = (state.storeProfile && (state.storeProfile.storeName || state.storeProfile.Store_Name)) || '';
   var ownerName = (state.storeProfile && (state.storeProfile.ownerName || state.storeProfile.Owner_Name)) || state.session.user.Full_Name;
+  var plan = state.session && state.session.plan;
+  var planLine = plan ? '<div style="font-size:0.7rem;color:rgba(255,255,255,0.55);margin-top:1px;">' + _escAttr(plan.name || plan.id || '') + (state.session.inTrial ? ' · Trial' : '') + '</div>' : '';
+
+  var btns = '';
+  if (_hasModule('products'))      btns += '<button class="big-btn" onclick="loadProducts()">📦 Products</button>';
+  if (_hasModule('quick_sell'))    btns += '<button class="big-btn" onclick="renderQuickSell()">💰 Quick Sell</button>';
+  if (_hasModule('inventory'))     btns += '<button class="big-btn" onclick="renderInventoryMenu()">📋 Inventory</button>';
+  if (_hasModule('expenses'))      btns += '<button class="big-btn" onclick="renderExpenses()">💸 Expenses</button>';
+  if (_hasModule('reports'))       btns += '<button class="big-btn" onclick="renderReports()">📊 Reports</button>';
+  if (_hasModule('internal_chat')) btns += '<button class="big-btn" onclick="renderChat()">💬 Chat</button>';
+  if (_hasModule('settings'))      btns += '<button class="big-btn" onclick="renderSettings()">⚙️ Settings</button>';
+  if (_hasModule('roi'))           btns += '<button class="big-btn" onclick="renderROIMonitor()">📈 ROI</button>';
+  if (_hasModule('staff'))         btns += '<button class="big-btn" onclick="renderManageStaff()">👥 Staff</button>';
+  if (_hasModule('support'))       btns += '<button class="big-btn" onclick="renderSupport()">📞 Help</button>';
+
+  var quickActions = '';
+  if (_hasModule('products')) quickActions += '<button class="btn btn-secondary" onclick="renderAddProductForm()">+ Add New Product</button>';
+  if (_hasModule('expenses')) quickActions += '<button class="btn btn-secondary" style="margin-top:8px;" onclick="renderAddExpenseForm()">+ Record Expense</button>';
+
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
     _dashboardHeader_(storeName, ownerName, '', state.isOffline) +
+    planLine +
     (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
-    '<div class="grid-buttons">' +
-    '<button class="big-btn" onclick="loadProducts()">📦 Products</button>' +
-    '<button class="big-btn" onclick="renderQuickSell()">💰 Quick Sell</button>' +
-    '<button class="big-btn" onclick="renderInventoryMenu()">📋 Inventory</button>' +
-    '<button class="big-btn" onclick="renderExpenses()">💸 Expenses</button>' +
-    '<button class="big-btn" onclick="renderReports()">📊 Reports</button>' +
-    '<button class="big-btn" onclick="renderChat()">💬 Chat</button>' +
-    '<button class="big-btn" onclick="renderSettings()">⚙️ Settings</button>' +
-    '<button class="big-btn" onclick="renderROIMonitor()">📈 ROI</button>' +
-    '<button class="big-btn" onclick="renderManageStaff()">👥 Staff</button>' +
-    '<button class="big-btn" onclick="renderSupport()">📞 Help</button>' +
-    '</div>' +
-    '<div class="card"><div class="subtitle">Quick Actions</div>' +
-    '<button class="btn btn-secondary" onclick="renderAddProductForm()">+ Add New Product</button>' +
-    '<button class="btn btn-secondary" style="margin-top:8px;" onclick="renderAddExpenseForm()">+ Record Expense</button>' +
-    '</div></div>';
+    '<div class="grid-buttons">' + btns + '</div>' +
+    (quickActions ? '<div class="card"><div class="subtitle">Quick Actions</div>' + quickActions + '</div>' : '') +
+    '</div>';
 }
 
 function renderWatcherDashboard(msg) {
   var storeName = (state.storeProfile && (state.storeProfile.storeName || state.storeProfile.Store_Name)) || '';
   var userName  = state.session.user.Full_Name;
+  var role      = (state.session.user.Role || '').toUpperCase();
+
+  var btns = '';
+  if (_hasModule('quick_sell'))    btns += '<button class="big-btn" onclick="renderQuickSell()">💰 Quick Sell</button>';
+  if (_hasModule('products'))      btns += '<button class="big-btn" onclick="loadProducts()">📦 Products</button>';
+  if (_hasModule('inventory'))     btns += '<button class="big-btn" onclick="renderInventoryMenu()">📋 Inventory</button>';
+  if (_hasModule('expenses'))      btns += '<button class="big-btn" onclick="renderExpenses()">💸 Expenses</button>';
+  if (_hasModule('reports'))       btns += '<button class="big-btn" onclick="renderReports()">📊 Reports</button>';
+  if (_hasModule('monitors'))      btns += '<button class="big-btn" onclick="renderMonitors()">📡 Monitors</button>';
+  if (_hasModule('roi'))           btns += '<button class="big-btn" onclick="renderROIMonitor()">📈 ROI</button>';
+  if (_hasModule('staff') && (role === 'MANAGER'))
+                                   btns += '<button class="big-btn" onclick="renderManageStaff()">👥 Staff</button>';
+  if (_hasModule('internal_chat')) btns += '<button class="big-btn" onclick="renderChat()">💬 Chat</button>';
+  if (_hasModule('support'))       btns += '<button class="big-btn" onclick="renderSupport()">📞 Help</button>';
+
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
     _dashboardHeader_(storeName, userName, '', state.isOffline) +
     (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
-    '<div class="grid-buttons">' +
-    '<button class="big-btn" onclick="renderQuickSell()">💰 Quick Sell</button>' +
-    '<button class="big-btn" onclick="renderExpenses()">💸 Expenses</button>' +
-    '<button class="big-btn" onclick="renderSupport()">📞 Help</button>' +
-    '</div></div>';
+    '<div class="grid-buttons">' + btns + '</div></div>';
 }
 
 // ── Staff Management ─────────────────────────────────────────────────────────
