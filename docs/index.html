@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Store App</title>
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#111827">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="StoreApp">
+  <style>
+    *{box-sizing:border-box;}
+    body{margin:0;background:#f7f7f8;font-family:Arial,sans-serif;color:#111827;}
+    .screen{max-width:480px;margin:0 auto;min-height:100dvh;padding:16px;}
+    .card{background:#fff;border-radius:16px;padding:16px;margin-bottom:12px;}
+    .title{font-size:24px;font-weight:bold;margin-bottom:16px;}
+    .subtitle{color:#6b7280;margin-bottom:12px;}
+    .field{margin-bottom:12px;}
+    .field label{display:block;font-weight:bold;margin-bottom:4px;}
+    .field input,.field select{width:100%;padding:12px;border:1px solid #e5e7eb;border-radius:8px;font-size:16px;}
+    .btn{width:100%;padding:14px;background:#111827;color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:bold;cursor:pointer;margin-bottom:10px;}
+    .btn-primary{background:#111827;}
+    .btn-secondary{background:#e5e7eb;color:#111827;}
+    .big-btn{width:100%;padding:20px;background:#fff;border:2px solid #e5e7eb;border-radius:16px;font-size:18px;font-weight:bold;cursor:pointer;margin-bottom:10px;}
+    .grid-buttons{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+    .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+    .small-btn{border:none;background:#fff;padding:10px 12px;border-radius:12px;font-weight:700;cursor:pointer;}
+    .muted{color:#6b7280;font-size:14px;}
+    .message{padding:12px;border-radius:8px;margin-bottom:12px;}
+    .message-error{background:#fee2e2;color:#dc2626;}
+    .message-ok{background:#dcfce7;color:#166534;}
+    .message-offline{background:#fef3c7;color:#92400e;}
+    .products-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .product-btn{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px;text-align:left;cursor:pointer;width:100%;}
+    .product-name{font-weight:bold;margin-bottom:4px;}
+    .product-price{color:#16a34a;font-weight:bold;}
+    .product-row{display:flex;justify-content:space-between;align-items:center;padding:10px;border-bottom:1px solid #f3f4f6;}
+    .cart-row{display:flex;justify-content:space-between;padding:10px;border-bottom:1px solid #e5e7eb;}
+    .cart-total{font-size:24px;font-weight:bold;text-align:right;margin:12px 0;}
+    .modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px;}
+    .modal.active{display:flex;}
+    .modal-content{background:#fff;border-radius:16px;padding:20px;max-width:400px;width:100%;max-height:80vh;overflow-y:auto;}
+    .modal-title{font-size:20px;font-weight:bold;margin-bottom:16px;}
+    .modal-close{float:right;font-size:24px;cursor:pointer;background:none;border:none;}
+    .category-list{margin:10px 0;border:1px solid #e5e7eb;border-radius:8px;}
+    .category-item{display:flex;justify-content:space-between;align-items:center;padding:10px;border-bottom:1px solid #e5e7eb;}
+    .category-item:last-child{border-bottom:none;}
+    .category-item button{padding:6px 10px;font-size:12px;border-radius:8px;border:none;cursor:pointer;margin-left:4px;}
+    .category-edit{background:#dbeafe;color:#1d4ed8;}
+    .category-delete{background:#fee2e2;color:#dc2626;}
+
+    .chat-msg{background:#f9fafb;padding:12px;border-radius:12px;margin-bottom:10px;}
+    .chat-meta{font-size:13px;margin-bottom:4px;}
+    .chat-text{font-size:15px;margin-bottom:4px;}
+    .chat-time{font-size:12px;color:#6b7280;}
+    /* Scanner overlay */
+    #scanner-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.88);
+      z-index:9999;display:none;flex-direction:column;align-items:center;
+      justify-content:center;padding:28px;}
+    #scanner-overlay h2{color:#fff;font-size:20px;margin-bottom:8px;}
+    #scanner-overlay p{color:#9ca3af;font-size:14px;text-align:center;margin-bottom:24px;line-height:1.6;}
+    #scan-manual-row{display:flex;gap:8px;width:100%;max-width:360px;}
+    #scan-manual-input{flex:1;padding:13px;border-radius:10px;border:none;font-size:16px;}
+    #scan-go-btn{padding:13px 18px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;}
+    #scanner-overlay .cancel-btn{margin-top:16px;background:none;border:1px solid rgba(255,255,255,.3);color:#9ca3af;padding:12px 28px;border-radius:10px;font-size:15px;cursor:pointer;}
+    /* Install banner */
+    #install-banner{display:none;align-items:center;justify-content:space-between;
+      padding:10px 16px;background:#1d4ed8;color:#fff;font-size:13px;
+      position:fixed;bottom:0;left:0;right:0;z-index:8000;}
+    #install-banner button{background:#fff;color:#1d4ed8;border:none;padding:7px 16px;border-radius:8px;font-weight:700;cursor:pointer;}
+  </style>
+</head>
+<body>
+  <div id="install-banner">
+    <span>📲 Install app for offline use</span>
+    <button id="install-btn">Install</button>
+  </div>
+
+  <div id="app">
+    <div style="text-align:center;padding:80px 20px;">
+      <div style="font-size:56px;">🏪</div>
+      <div style="margin-top:16px;color:#6b7280;font-size:16px;">Loading…</div>
+    </div>
+  </div>
+
+  <!-- Hidden file input for product photo capture -->
+  <input type="file" id="product-photo-input" accept="image/*" capture="environment"
+    style="display:none;" onchange="handleProductPhoto(this)">
+
+  <!-- Image lightbox -->
+  <div id="img-lightbox" onclick="closeImageLightbox()"
+    style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:11000;
+           align-items:center;justify-content:center;padding:20px;">
+    <img id="img-lightbox-img" src="" style="max-width:100%;max-height:90dvh;border-radius:12px;object-fit:contain;">
+  </div>
+
+  <!-- Inline Barcode Scanner overlay -->
+  <div id="barcode-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#111827;z-index:10000;flex-direction:column;overflow:hidden;">
+    <!-- Top bar -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:rgba(0,0,0,.8);flex-shrink:0;">
+      <h2 style="color:#fff;font-size:17px;font-weight:700;margin:0;">📷 Scan Barcode</h2>
+      <button onclick="closeScannerModal()" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:38px;height:38px;border-radius:50%;font-size:20px;cursor:pointer;">✕</button>
+    </div>
+
+    <!-- Camera area with viewfinder -->
+    <div style="flex:1;min-height:0;position:relative;background:#000;overflow:hidden;">
+      <video id="barcode-video" autoplay playsinline muted
+        style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;"></video>
+
+      <!-- Viewfinder: wide crop box for barcodes -->
+      <div id="barcode-viewfinder"
+        style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+               width:88%;max-width:340px;aspect-ratio:3.5/1;
+               box-shadow:0 0 0 9999px rgba(0,0,0,.55);
+               border:2px solid rgba(34,197,94,.85);border-radius:8px;pointer-events:none;">
+        <!-- Animated scan line -->
+        <div style="position:absolute;left:0;top:50%;width:100%;height:2px;
+                    background:linear-gradient(to right,transparent,#22c55e,transparent);
+                    animation:barcode-sweep 1.5s ease-in-out infinite;"></div>
+      </div>
+
+      <!-- Fallback div for html5-qrcode -->
+      <div id="barcode-reader-div" style="position:absolute;inset:0;"></div>
+    </div>
+
+    <!-- Bottom controls -->
+    <div style="flex-shrink:0;padding:14px 18px 24px;background:rgba(0,0,0,.88);text-align:center;">
+      <p id="barcode-status" style="color:#d1fae5;font-size:13px;font-weight:600;margin:0 0 12px 0;">
+        Point camera at barcode…
+      </p>
+      <div style="display:flex;gap:8px;max-width:340px;margin:0 auto 10px;">
+        <input id="scan-manual-input" placeholder="Type barcode manually…" inputmode="numeric" autocomplete="off"
+          style="flex:1;padding:12px;border-radius:10px;border:none;font-size:16px;background:#1f2937;color:#fff;">
+        <button onclick="submitManualScan()"
+          style="padding:12px 18px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;">Go</button>
+      </div>
+      <button onclick="closeScannerModal()"
+        style="display:block;width:100%;max-width:340px;margin:0 auto;padding:12px;
+               background:#374151;color:#9ca3af;border:none;border-radius:12px;font-size:14px;cursor:pointer;">
+        Cancel
+      </button>
+    </div>
+  </div>
+  <style>
+    @keyframes barcode-sweep { 0%,100%{opacity:.3} 50%{opacity:1} }
+  </style>
+
+  <!-- Scanner overlay (fallback manual input, kept for compatibility) -->
+  <div id="scanner-overlay">
+    <h2>📷 Scanner Opening…</h2>
+    <p>A scanner window should open.<br>After scanning, the barcode fills in automatically.<br>If the window was blocked, type barcode below.</p>
+    <div id="scan-manual-row">
+      <input id="scan-manual-input-fallback" placeholder="Type barcode manually…" inputmode="numeric" autocomplete="off">
+      <button id="scan-go-btn-fallback" onclick="submitManualScan()">Go</button>
+    </div>
+    <button class="cancel-btn" onclick="closeScannerModal()">Cancel</button>
+  </div>
+
+  <script src="./api.js"></script>
+  <script src="./db.js"></script>
+  <script src="./app.js"></script>
+  <script>
+    // Service worker registration — auto-reload when a new version activates
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').then(function(reg) {
+        console.log('SW registered');
+      }).catch(function(e) { console.warn('SW failed:', e); });
+
+      // When a new SW takes control, reload once to get the latest files
+      var _reloading = false;
+      navigator.serviceWorker.addEventListener('controllerchange', function() {
+        if (!_reloading) { _reloading = true; window.location.reload(); }
+      });
+    }
+
+    // PWA install prompt
+    var _installPrompt = null;
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      _installPrompt = e;
+      document.getElementById('install-banner').style.display = 'flex';
+    });
+    document.getElementById('install-btn').addEventListener('click', function() {
+      if (!_installPrompt) return;
+      _installPrompt.prompt();
+      _installPrompt.userChoice.then(function() {
+        _installPrompt = null;
+        document.getElementById('install-banner').style.display = 'none';
+      });
+    });
+
+    window.addEventListener('online',  syncWhenOnline);
+  </script>
+</body>
+</html>
