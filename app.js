@@ -318,6 +318,7 @@ function renderOwnerDashboard(msg) {
   if (_hasModule('expenses'))      btns += '<button class="big-btn" onclick="renderExpenses()">💸 Expenses</button>';
   if (_hasModule('reports'))       btns += '<button class="big-btn" onclick="renderReports()">📊 Reports</button>';
   if (_hasModule('internal_chat')) btns += '<button class="big-btn" onclick="renderChat()">💬 Chat</button>';
+  if (_hasModule('approvals'))     btns += '<button class="big-btn" onclick="renderApprovalsQueue()">✅ Approvals</button>';
   if (_hasModule('settings'))      btns += '<button class="big-btn" onclick="renderSettings()">⚙️ Settings</button>';
   if (_hasModule('roi'))           btns += '<button class="big-btn" onclick="renderROIMonitor()">📈 ROI</button>';
   if (_hasModule('staff'))         btns += '<button class="big-btn" onclick="renderManageStaff()">👥 Staff</button>';
@@ -468,7 +469,7 @@ function _renderMgrPage(data, fromCache) {
     out_of_stock:      '_hasModule("inventory") ? renderInventoryMenu() : _showToast("Inventory not enabled", true)',
     low_stock:         '_hasModule("inventory") ? renderInventoryMenu() : _showToast("Inventory not enabled", true)',
     high_expenses:     'renderExpenses()',
-    pending_approvals: '_showToast("Approvals coming soon", false)',
+    pending_approvals: '_hasModule("approvals") ? renderApprovalsQueue() : _showToast("Approvals not enabled", true)',
   };
   var urgIco = { good: '✅', watch: '⚠️', critical: '🔴', info: 'ℹ️' };
   var alertsHtml = alerts.length === 0
@@ -2041,6 +2042,119 @@ async function submitExpense() {
     _showToast('Expense recorded!', false);
     renderExpenses();
   } catch(err) { renderAddExpenseForm(err.message || String(err)); }
+}
+
+// ── Approvals ──────────────────────────────────────────────────────────────────
+
+async function renderApprovalsQueue() {
+  showLoading('Loading approvals…');
+  try {
+    var approvals = await API.getApprovals({ status: 'pending' });
+    _renderApprovalsUI(approvals);
+  } catch(err) {
+    _renderApprovalsUI([], err.message);
+  }
+}
+
+function _renderApprovalsUI(approvals, error) {
+  var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
+  var header = _dashboardHeader_(storeName, '', 'Approvals', state.isOffline);
+  var content = '';
+
+  if (error) {
+    content = '<div class="message message-error">' + error + '</div>';
+  } else if (!approvals.length) {
+    content = '<div class="card"><div class="title">✅ No Pending Approvals</div><div class="subtitle">All requests have been reviewed.</div></div>';
+  } else {
+    content = approvals.map(function(a) {
+      var typeLabel = a.approval_type === 'expense' ? 'Expense Approval' : 'Stock Adjustment Approval';
+      var statusColor = a.status === 'pending' ? '#f59e0b' : a.status === 'approved' ? '#10b981' : '#ef4444';
+      var statusText = a.status.charAt(0).toUpperCase() + a.status.slice(1);
+      return '<div class="card" onclick="renderApprovalDetail(' + a.id + ')">' +
+        '<div class="title">' + typeLabel + '</div>' +
+        '<div class="subtitle">Requested by ' + _escAttr(a.requested_by_role_code) + ' on ' + new Date(a.requested_at).toLocaleDateString() + '</div>' +
+        '<div style="margin-top:8px;"><span style="background:' + statusColor + ';color:#fff;padding:4px 8px;border-radius:12px;font-size:0.8rem;font-weight:600;">' + statusText + '</span></div>' +
+        '</div>';
+    }).join('');
+  }
+
+  document.getElementById('app').innerHTML = '<div class="screen">' + header + content + '</div>';
+}
+
+async function renderApprovalDetail(approvalId) {
+  showLoading('Loading approval details…');
+  try {
+    var data = await API.getApproval(approvalId);
+    _renderApprovalDetailUI(data.approval, data.sourceRecord);
+  } catch(err) {
+    _renderApprovalDetailUI(null, null, err.message);
+  }
+}
+
+function _renderApprovalDetailUI(approval, sourceRecord, error) {
+  var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
+  var header = _dashboardHeader_(storeName, '', 'Approval Detail', state.isOffline);
+  var content = '';
+
+  if (error) {
+    content = '<div class="message message-error">' + error + '</div>';
+  } else {
+    var typeLabel = approval.approval_type === 'expense' ? 'Expense' : 'Stock Adjustment';
+    var payload = approval.request_payload ? JSON.parse(approval.request_payload) : {};
+
+    content = '<div class="card">' +
+      '<div class="title">' + typeLabel + ' Approval Request</div>' +
+      '<div class="subtitle">ID: ' + approval.id + ' | Requested: ' + new Date(approval.requested_at).toLocaleString() + '</div>' +
+      '<div class="field"><label>Requested By:</label> ' + _escAttr(approval.requested_by_role_code) + '</div>' +
+      '<div class="field"><label>Status:</label> <span style="background:#f59e0b;color:#fff;padding:4px 8px;border-radius:12px;">' + approval.status + '</span></div>';
+
+    if (approval.approval_type === 'expense') {
+      content += '<div class="field"><label>Amount:</label> ₱' + Number(payload.amount || payload.Amount).toFixed(2) + '</div>' +
+        '<div class="field"><label>Category:</label> ' + _escAttr(payload.expenseCategory || payload.Expense_Category) + '</div>' +
+        '<div class="field"><label>Description:</label> ' + _escAttr(payload.description || payload.Description) + '</div>';
+    } else {
+      content += '<div class="field"><label>Product:</label> ' + _escAttr(payload.productName) + '</div>' +
+        '<div class="field"><label>Adjustment:</label> ' + (payload.quantity > 0 ? '+' : '') + payload.quantity + '</div>' +
+        '<div class="field"><label>Reason:</label> ' + _escAttr(payload.reason) + '</div>';
+    }
+
+    if (approval.status === 'pending') {
+      content += '<div class="field"><label>Decision Note:</label><textarea id="decision-note" placeholder="Optional note…"></textarea></div>' +
+        '<button class="btn btn-primary" onclick="approveRequest(' + approval.id + ')">✅ Approve</button>' +
+        '<button class="btn btn-secondary" onclick="rejectRequest(' + approval.id + ')">❌ Reject</button>';
+    } else {
+      if (approval.decision_note) {
+        content += '<div class="field"><label>Decision Note:</label> ' + _escAttr(approval.decision_note) + '</div>';
+      }
+      content += '<div class="field"><label>Decided By:</label> ' + _escAttr(approval.decision_by_role_code) + ' on ' + new Date(approval.decision_at).toLocaleString() + '</div>';
+    }
+
+    content += '</div>';
+  }
+
+  document.getElementById('app').innerHTML = '<div class="screen">' + header + content + '</div>';
+}
+
+async function approveRequest(id) {
+  var note = document.getElementById('decision-note').value.trim();
+  try {
+    await API.approveApproval(id, note);
+    _showToast('Approval granted!', false);
+    renderApprovalsQueue();
+  } catch(err) {
+    _showToast(err.message || 'Failed to approve', true);
+  }
+}
+
+async function rejectRequest(id) {
+  var note = document.getElementById('decision-note').value.trim();
+  try {
+    await API.rejectApproval(id, note);
+    _showToast('Approval rejected!', false);
+    renderApprovalsQueue();
+  } catch(err) {
+    _showToast(err.message || 'Failed to reject', true);
+  }
 }
 
 // ── Reports ───────────────────────────────────────────────────────────────────

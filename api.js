@@ -97,6 +97,25 @@ const API = {
     localStorage.removeItem('store_token');
     localStorage.removeItem('store_session');
     localStorage.removeItem('_ak');
+  },
+
+  // Approvals
+  async getApprovals(filters) {
+    return this.call('getApprovals', filters || {});
+  },
+  async getApproval(id) {
+    return this.call('getApprovalById', { id });
+  },
+  async approveApproval(id, note) {
+    return this.call('approveApproval', { id, decisionNote: note });
+  },
+  async rejectApproval(id, note) {
+    return this.call('rejectApproval', { id, decisionNote: note });
+  },
+
+  // Stock adjustment
+  async createStockAdjustment(data) {
+    return this.call('createStockAdjustment', data);
   }
 };
 
