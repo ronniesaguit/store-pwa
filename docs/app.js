@@ -2091,7 +2091,7 @@ async function renderApprovalsQueue() {
 
 function _renderApprovalsUI(approvals, error) {
   var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
-  var header = _dashboardHeader_(storeName, '', 'Approvals', state.isOffline);
+  var header = '<div class="topbar"><div class="title" style="margin:0;">✅ Approvals</div><button class="small-btn" onclick="goHome()">← Back</button></div>';
   var content = '';
 
   if (error) {
@@ -2126,7 +2126,7 @@ async function renderApprovalDetail(approvalId) {
 
 function _renderApprovalDetailUI(approval, sourceRecord, error) {
   var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
-  var header = _dashboardHeader_(storeName, '', 'Approval Detail', state.isOffline);
+  var header = '<div class="topbar"><div class="title" style="margin:0;">✅ Approval Detail</div><button class="small-btn" onclick="renderApprovalsQueue()">← Back</button></div>';
   var content = '';
 
   if (error) {
@@ -2204,7 +2204,7 @@ async function renderStaffList() {
 
 function _renderStaffListUI(staff, error) {
   var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
-  var header = _dashboardHeader_(storeName, '', 'Staff Management', state.isOffline);
+  var header = '<div class="topbar"><div class="title" style="margin:0;">👥 Staff</div><button class="small-btn" onclick="goHome()">← Back</button></div>';
   var content = '';
 
   if (error) {
@@ -2248,7 +2248,7 @@ async function renderStaffDetail(staffId) {
 
 function _renderStaffDetailUI(staff, error) {
   var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
-  var header = _dashboardHeader_(storeName, '', 'Staff Detail', state.isOffline);
+  var header = '<div class="topbar"><div class="title" style="margin:0;">👤 Staff Detail</div><button class="small-btn" onclick="renderStaffList()">← Back</button></div>';
   var content = '';
 
   if (error) {
@@ -2297,7 +2297,7 @@ function _renderStaffDetailUI(staff, error) {
 
 function renderAddStaffForm() {
   var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
-  var header = _dashboardHeader_(storeName, '', 'Add Staff', state.isOffline);
+  var header = '<div class="topbar"><div class="title" style="margin:0;">➕ Add Staff</div><button class="small-btn" onclick="renderStaffList()">← Back</button></div>';
 
   var content = '<div class="card">' +
     '<div class="field"><label>Full Name *</label><input id="staff-fullname" placeholder="Enter full name"></div>' +
@@ -2358,7 +2358,7 @@ async function renderEditStaffForm(staffId) {
 
 function _renderEditStaffFormUI(staffId, s) {
   var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
-  var header = _dashboardHeader_(storeName, '', 'Edit Staff', state.isOffline);
+  var header = '<div class="topbar"><div class="title" style="margin:0;">Edit Staff</div><button class="small-btn" onclick="goHome()">← Back</button></div>';
   var status = s.status || s.Status || 'ACTIVE';
 
   document.getElementById('app').innerHTML =
@@ -2400,7 +2400,7 @@ async function submitEditStaff(staffId) {
 
 function renderAssignRoleForm(staffId, currentRole) {
   var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
-  var header = _dashboardHeader_(storeName, '', 'Change Role', state.isOffline);
+  var header = '<div class="topbar"><div class="title" style="margin:0;">Change Role</div><button class="small-btn" onclick="goHome()">← Back</button></div>';
 
   var content = '<div class="card">' +
     '<div class="field"><label>New Role</label><select id="new-role">' +
@@ -2429,7 +2429,7 @@ async function submitAssignRole(staffId) {
 
 function renderSetPasswordForm(staffId) {
   var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
-  var header = _dashboardHeader_(storeName, '', 'Set Password', state.isOffline);
+  var header = '<div class="topbar"><div class="title" style="margin:0;">Set Password</div><button class="small-btn" onclick="goHome()">← Back</button></div>';
 
   var content = '<div class="card">' +
     '<div class="field"><label>New Password</label><input id="new-password" type="password" placeholder="Enter new password"></div>' +
@@ -2474,7 +2474,7 @@ async function toggleStaffStatus(staffId, currentStatus) {
 
 async function renderAdvancedReportsHome() {
   var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
-  var header = _dashboardHeader_(storeName, '', 'Advanced Reports', state.isOffline);
+  var header = '<div class="topbar"><div class="title" style="margin:0;">Advanced Reports</div><button class="small-btn" onclick="goHome()">← Back</button></div>';
 
   var reportTypes = [
     { id: 'sales_analysis', title: 'Sales Analysis', desc: 'Deep sales performance insights' },
@@ -2494,7 +2494,7 @@ async function renderAdvancedReportsHome() {
 
 function selectAdvancedReportPeriod(reportType, reportTitle) {
   var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
-  var header = _dashboardHeader_(storeName, '', reportTitle, state.isOffline);
+  var header = '<div class="topbar"><div class="title" style="margin:0;">' + reportTitle + '</div><button class="small-btn" onclick="renderAdvancedReportsHome()">← Back</button></div>';
 
   var periods = [
     { id: 'today', label: 'Today' },
@@ -2518,7 +2518,7 @@ async function loadAdvancedReport(reportType, period, reportTitle) {
     _renderAdvancedReport(report, reportTitle);
   } catch(err) {
     var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
-    var header = _dashboardHeader_(storeName, '', reportTitle, state.isOffline);
+    var header = '<div class="topbar"><div class="title" style="margin:0;">' + reportTitle + '</div><button class="small-btn" onclick="renderAdvancedReportsHome()">← Back</button></div>';
     var content = '<div class="card"><div class="message message-error">' + (err.message || 'Failed to load report') + '</div></div>';
     document.getElementById('app').innerHTML = '<div class="screen">' + header + content + '</div>';
   }
@@ -2526,7 +2526,7 @@ async function loadAdvancedReport(reportType, period, reportTitle) {
 
 function _renderAdvancedReport(report, reportTitle) {
   var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
-  var header = _dashboardHeader_(storeName, '', reportTitle, state.isOffline);
+  var header = '<div class="topbar"><div class="title" style="margin:0;">' + reportTitle + '</div><button class="small-btn" onclick="renderAdvancedReportsHome()">← Back</button></div>';
 
   var summaryHtml = '';
   if (report.summary) {
@@ -2567,8 +2567,7 @@ async function renderInventoryAdvancedSummary() {
 }
 
 function _renderInventorySummaryUI(summary, error) {
-  var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
-  var header = _dashboardHeader_(storeName, '', 'Inventory Advanced', state.isOffline);
+  var header = '<div class="topbar"><div class="title" style="margin:0;">📦 Inventory</div><button class="small-btn" onclick="goHome()">← Back</button></div>';
 
   var content = '';
   if (error) {
@@ -2613,8 +2612,7 @@ async function renderInventoryMovements() {
 }
 
 function _renderMovementsUI(movements, error) {
-  var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
-  var header = _dashboardHeader_(storeName, '', 'Stock Movements', state.isOffline);
+  var header = '<div class="topbar"><div class="title" style="margin:0;">📋 Stock Movements</div><button class="small-btn" onclick="renderInventoryAdvancedSummary()">← Back</button></div>';
 
   var content = '';
   if (error) {
@@ -2646,8 +2644,7 @@ async function renderMovementDetail(movementId) {
 }
 
 async function renderRestockForm() {
-  var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
-  var header = _dashboardHeader_(storeName, '', 'Restock Product', state.isOffline);
+  var header = '<div class="topbar"><div class="title" style="margin:0;">➕ Restock Product</div><button class="small-btn" onclick="renderInventoryAdvancedSummary()">← Back</button></div>';
 
   // Get products for dropdown
   if (!state.products || !state.products.length) {
@@ -2697,8 +2694,7 @@ async function submitRestock() {
 }
 
 async function renderStockAdjustmentForm() {
-  var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
-  var header = _dashboardHeader_(storeName, '', 'Adjust Stock', state.isOffline);
+  var header = '<div class="topbar"><div class="title" style="margin:0;">⚖️ Adjust Stock</div><button class="small-btn" onclick="renderInventoryAdvancedSummary()">← Back</button></div>';
 
   if (!state.products || !state.products.length) {
     await boot();
@@ -2878,17 +2874,64 @@ function renderReports() {
 async function loadReport(type, a, b) {
   showLoading('Generating report…');
   try {
-    var data, fixedCosts;
-    if      (type === 'daily')   data = await API.call('getDailyReport',   { date: a });
-    else if (type === 'weekly')  data = await API.call('getWeeklyReport',  {});
-    else if (type === 'monthly') data = await API.call('getMonthlyReport', { year: a, month: b });
-    else                         data = await API.call('getPeriodReport',  { dateFrom: a, dateTo: b });
+    var raw, fixedCosts;
+    if      (type === 'daily')   raw = await API.call('getDailyReport',   { date: a });
+    else if (type === 'weekly')  raw = await API.call('getWeeklyReport',  {});
+    else if (type === 'monthly') raw = await API.call('getMonthlyReport', { year: a, month: b });
+    else                         raw = await API.call('getPeriodReport',  { dateFrom: a, dateTo: b });
     try { fixedCosts = await API.call('getFixedCosts'); } catch(e2) { fixedCosts = { rent: 0, salaries: [], otherFixed: 0 }; }
+
+    // Normalise to a consistent shape regardless of backend version
+    var data = _normaliseReportData(raw);
     renderReportScreen(type, data, fixedCosts);
   } catch(e) {
     _showToast('Error: ' + e.message, true);
     renderReports();
   }
+}
+
+function _normaliseReportData(d) {
+  if (!d) d = {};
+  var sales    = d.sales    || [];
+  var expenses = d.expenses || [];
+  var txCount  = sales.length;
+  var totalQty = sales.reduce(function(sum, r) { return sum + Number(r.total_qty || r.item_count || 0); }, 0);
+  var revenue  = Number(d.revenue  || (d.summary && d.summary.revenue)  || 0);
+  var cogs     = Number(d.cogs     || (d.summary && d.summary.cogs)     || 0);
+  var grossP   = Number(d.grossProfit  || (d.summary && d.summary.grossProfit)  || revenue - cogs);
+  var expTotal = Number(d.expenseTotal || (d.summary && d.summary.totalExpenses) || 0);
+  var netP     = Number(d.netProfit   || (d.summary && d.summary.netProfit)   || grossP - expTotal);
+  var avgTx    = txCount > 0 ? revenue / txCount : 0;
+
+  var summary = {
+    revenue:       revenue,
+    txCount:       txCount,
+    totalQty:      totalQty,
+    avgTx:         avgTx,
+    cogs:          cogs,
+    grossProfit:   grossP,
+    totalExpenses: expTotal,
+    netProfit:     netP,
+  };
+
+  // Expense breakdown by category
+  if (!d.expenseBreakdown) {
+    var expMap = {};
+    expenses.forEach(function(e) {
+      var cat = e.category || e.expense_category || 'Other';
+      expMap[cat] = (expMap[cat] || 0) + Number(e.amount || 0);
+    });
+    d.expenseBreakdown = Object.keys(expMap).map(function(k) { return { category: k, amount: expMap[k] }; });
+  }
+
+  // Daily breakdown for weekly reports
+  if (!d.dailyBreakdown && d.byDate) {
+    d.dailyBreakdown = (d.byDate || []).map(function(r) {
+      return { date: r.date, revenue: r.revenue || 0, count: r.count || 0, grossProfit: 0 };
+    }).sort(function(a, b) { return a.date < b.date ? -1 : 1; });
+  }
+
+  return Object.assign({}, d, { summary: summary });
 }
 
 function renderReportScreen(type, d, fixedCosts) {
