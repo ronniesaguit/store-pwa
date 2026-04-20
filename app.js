@@ -254,6 +254,7 @@ async function submitLogin() {
 function logout() {
   var currentUsername = state.session && state.session.user ? state.session.user.Username : null;
   if (currentUsername) localStorage.removeItem('offline_cred_' + currentUsername.toLowerCase());
+  if (API.token) API.call('logout').catch(function() {});
   API.clearToken();
   state.session      = null;
   state.products     = [];

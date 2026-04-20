@@ -158,9 +158,6 @@ const API = {
   },
   async createRestock(data) {
     return this.call('createRestock', data);
-  },
-  async createStockAdjustment(data) {
-    return this.call('createStockAdjustment', data);
   }
 };
 
