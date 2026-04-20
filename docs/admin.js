@@ -267,6 +267,13 @@ function renderStoreDetail(idx) {
     (status === 'SUSPENDED'
       ? '<button class="btn btn-success" onclick="_toggleStatus(\'' + st.Store_ID + '\',\'ACTIVE\')">✅ Activate Store</button>'
       : '<button class="btn btn-danger"  onclick="_toggleStatus(\'' + st.Store_ID + '\',\'SUSPENDED\')">🚫 Suspend Store</button>') +
+    '</div>' +
+
+    // ── DB Migration ──
+    '<div class="card">' +
+    '<div class="section-title">🔧 Database Migration</div>' +
+    '<p style="font-size:12px;color:#6b7280;margin-bottom:8px;">Run this once to create missing tables (branch_transfers, purchase_orders, stock_receiving, branches) and add missing supplier columns.</p>' +
+    '<button class="btn btn-secondary" onclick="_migrateStore(\'' + st.Store_ID + '\')">Run Migration</button>' +
     '</div></div>');
 }
 
@@ -351,6 +358,16 @@ async function _toggleStatus(storeId, newStatus) {
     await _refreshStores();
     renderDashboard();
   } catch(e) { _toast(e.message, true); }
+}
+
+async function _migrateStore(storeId) {
+  if (!confirm('Run DB migration for this store? Safe to run multiple times.')) return;
+  try {
+    var res = await ADMIN_API.call('adminMigrateStore', { storeId: storeId });
+    var ok  = (res.results || []).filter(function(r) { return r.ok; }).length;
+    var fail = (res.results || []).filter(function(r) { return !r.ok; }).length;
+    _toast('Migration done: ' + ok + ' ok, ' + fail + ' skipped/already existed');
+  } catch(e) { _toast('Migration failed: ' + e.message, true); }
 }
 
 async function _refreshStores() {
