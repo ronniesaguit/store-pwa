@@ -47,9 +47,16 @@ function _money(v) {
 
 function _storeStatus(store) {
   var now     = new Date();
+  var plan    = String(store.Plan || '').toUpperCase();
   var trial   = store.Trial_End            ? new Date(String(store.Trial_End))            : null;
   var expires = store.Subscription_Expires ? new Date(String(store.Subscription_Expires)) : null;
   if (String(store.Status).toUpperCase() === 'SUSPENDED') return 'SUSPENDED';
+  // A store with an explicit paid plan is never shown as FREE TRIAL
+  if (plan && plan !== 'TRIAL') {
+    if (expires && now <= expires) return 'ACTIVE';
+    // Plan upgraded but no expiry set yet (e.g. just changed) — show as ACTIVE
+    return 'ACTIVE';
+  }
   if (trial   && now <= trial)   return 'TRIAL';
   if (expires && now <= expires) return 'ACTIVE';
   return 'EXPIRED';
@@ -197,7 +204,7 @@ function renderStoreDetail(idx) {
     '<div>📧 ' + (st.Owner_Email || '—') + '</div>' +
     '<div>📱 ' + (st.Owner_Phone || '—') + '</div>' +
     '<div>📋 Plan: <strong>' + plan + '</strong> · ' + _money(st.Monthly_Fee) + '/mo</div>' +
-    '<div>🎁 Trial ends: <strong>' + (String(st.Trial_End || '').substring(0, 10) || '—') + '</strong></div>' +
+    (status === 'TRIAL' ? '<div>🎁 Trial ends: <strong>' + (String(st.Trial_End || '').substring(0, 10) || '—') + '</strong></div>' : '') +
     '<div>📅 Expires: <strong>' + (String(st.Subscription_Expires || '').substring(0, 10) || '—') + '</strong></div>' +
     '</div>' +
 
