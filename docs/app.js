@@ -2892,7 +2892,40 @@ async function loadReport(type, a, b) {
 }
 
 function renderReportScreen(type, d, fixedCosts) {
-  var s      = d.summary;
+  // Normalize: backend returns flat fields; older shape wraps them in d.summary
+  var s = d.summary || (function() {
+    var sales = d.sales || [];
+    var txCount  = sales.length;
+    var totalQty = sales.reduce(function(sum, r) { return sum + Number(r.total_qty || r.item_count || 0); }, 0);
+    var revenue  = Number(d.revenue || 0);
+    var avgTx    = txCount > 0 ? revenue / txCount : 0;
+    return {
+      revenue:       revenue,
+      txCount:       txCount,
+      totalQty:      totalQty,
+      avgTx:         avgTx,
+      cogs:          Number(d.cogs         || 0),
+      grossProfit:   Number(d.grossProfit  || 0),
+      totalExpenses: Number(d.expenseTotal || d.totalExpenses || 0),
+      netProfit:     Number(d.netProfit    || 0),
+    };
+  })();
+
+  // Derive breakdown data if backend didn't supply it
+  if (!d.expenseBreakdown && d.expenses) {
+    var expMap = {};
+    (d.expenses || []).forEach(function(e) {
+      var cat = e.category || e.expense_category || 'Other';
+      expMap[cat] = (expMap[cat] || 0) + Number(e.amount || 0);
+    });
+    d.expenseBreakdown = Object.keys(expMap).map(function(k) { return { category: k, amount: expMap[k] }; });
+  }
+  if (!d.dailyBreakdown && d.byDate) {
+    d.dailyBreakdown = (d.byDate || []).map(function(r) {
+      return { date: r.date, revenue: r.revenue || 0, count: r.count || 0, grossProfit: 0 };
+    }).sort(function(a, b) { return a.date < b.date ? -1 : 1; });
+  }
+
   var title  = type === 'daily'   ? '📅 ' + d.date
              : type === 'weekly'  ? '📆 ' + d.dateFrom + ' → ' + d.dateTo
              : type === 'monthly' ? '🗓 ' + _monthName(d.month) + ' ' + d.year
