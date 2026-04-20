@@ -332,8 +332,7 @@ function renderOwnerDashboard(msg) {
   if (_hasModule('branch_transfers'))btns += '<button class="big-btn" onclick="renderBranchTransfers()">🔄 Branch Transfers</button>';
   if (_hasModule('multi_branch'))    btns += '<button class="big-btn" onclick="renderHQControlCenter()">🏢 HQ Control</button>';
   if (_hasModule('internal_chat'))   btns += '<button class="big-btn" onclick="renderChat()">💬 Chat</button>';
-  if (_hasModule('staff_management')) btns += '<button class="big-btn" onclick="renderStaffList()">👥 Staff</button>';
-  else if (_hasModule('staff'))       btns += '<button class="big-btn" onclick="renderManageStaff()">👥 Staff</button>';
+  if (_hasModule('staff_management') || _hasModule('staff')) btns += '<button class="big-btn" onclick="renderStaffList()">👥 Staff</button>';
   if (_hasModule('custom_roles'))    btns += '<button class="big-btn" onclick="renderCustomRoles()">🎭 Custom Roles</button>';
   if (_hasModule('approvals'))       btns += '<button class="big-btn" onclick="renderApprovalsQueue()">✅ Approvals</button>';
   if (_hasModule('roi'))             btns += '<button class="big-btn" onclick="renderROIMonitor()">📈 ROI</button>';
