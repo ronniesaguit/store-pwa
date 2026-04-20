@@ -2212,14 +2212,15 @@ function _renderStaffListUI(staff, error) {
     content = '<div class="card"><div class="title">👥 No Staff Yet</div><div class="subtitle">Add your first staff member to get started.</div></div>';
   } else {
     content = staff.map(function(s) {
-      var statusColor = s.employment_status === 'active' ? '#10b981' : '#ef4444';
-      var statusText = s.employment_status.charAt(0).toUpperCase() + s.employment_status.slice(1);
+      var isActive = s.is_active !== false && s.is_active !== 0 && s.employment_status !== 'inactive';
+      var statusColor = isActive ? '#10b981' : '#ef4444';
+      var statusText  = isActive ? 'Active' : 'Inactive';
       var lastLogin = s.last_login ? new Date(s.last_login).toLocaleDateString() : 'Never';
-      var activity = s.activity_summary || {};
-      var activityText = `Sales: ${activity.recent_sales || 0}, Expenses: ${activity.recent_expenses || 0}, Stock: ${activity.recent_stock_movements || 0}`;
+      var activity = s.activity_summary || s.activity || {};
+      var activityText = 'Sales: ' + (activity.recent_sales || 0) + ', Expenses: ' + (activity.recent_expenses || 0) + ', Stock: ' + (activity.recent_stock_movements || 0);
 
       return '<div class="card" onclick="renderStaffDetail(\'' + s.id + '\')">' +
-        '<div class="title">' + _escAttr(s.full_name) + ' (' + s.role_code + ')</div>' +
+        '<div class="title">' + _esc(s.full_name) + ' (' + (s.role_code || s.role || '') + ')</div>' +
         '<div class="subtitle">Last login: ' + lastLogin + '</div>' +
         '<div class="subtitle" style="font-size:0.8rem;">' + activityText + '</div>' +
         '<div style="margin-top:8px;"><span style="background:' + statusColor + ';color:#fff;padding:4px 8px;border-radius:12px;font-size:0.8rem;font-weight:600;">' + statusText + '</span></div>' +
@@ -2253,8 +2254,9 @@ function _renderStaffDetailUI(staff, error) {
   if (error) {
     content = '<div class="message message-error">' + error + '</div>';
   } else {
-    var statusColor = staff.employment_status === 'active' ? '#10b981' : '#ef4444';
-    var statusText = staff.employment_status.charAt(0).toUpperCase() + staff.employment_status.slice(1);
+    var isActive    = staff.is_active !== false && staff.is_active !== 0 && staff.employment_status !== 'inactive';
+    var statusColor = isActive ? '#10b981' : '#ef4444';
+    var statusText  = isActive ? 'Active' : 'Inactive';
     var lastLogin = staff.last_login ? new Date(staff.last_login).toLocaleString() : 'Never';
     var created = new Date(staff.created_at).toLocaleDateString();
     var activity = staff.activity_summary || {};
