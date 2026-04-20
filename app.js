@@ -708,7 +708,7 @@ async function renderExecutiveDashboard(msg) {
   }
 }
 
-function _renderExecutivePage(data, fromCache) {
+async function _renderExecutivePage(data, fromCache) {
   var storeName = (state.storeProfile && (state.storeProfile.storeName || state.storeProfile.Store_Name)) || '';
   var userName  = state.session.user.Full_Name;
 
@@ -719,8 +719,8 @@ function _renderExecutivePage(data, fromCache) {
   var alertsHtml = '';
   if (data.alerts && data.alerts.length) {
     alertsHtml = '<div style="padding:4px 12px 2px;">' + data.alerts.map(function(a){
-      var bg = a.level === 'critical' ? '#fee2e2' : a.level === 'warning' ? '#fef3c7' : '#dbeafe';
-      var border = a.level === 'critical' ? '#dc2626' : a.level === 'warning' ? '#d97706' : '#1d4ed8';
+      var bg = a.status === 'critical' ? '#fee2e2' : a.status === 'watch' ? '#fef3c7' : '#dbeafe';
+      var border = a.status === 'critical' ? '#dc2626' : a.status === 'watch' ? '#d97706' : '#1d4ed8';
       var actionBtn = a.action_label
         ? '<button onclick="_execAction(\''+a.action_target+'\')" style="margin-top:6px;background:#fff;border:1px solid '+border+';color:'+border+';padding:4px 10px;border-radius:6px;font-size:0.7rem;font-weight:700;cursor:pointer;">'+a.action_label+' →</button>'
         : '';
