@@ -314,7 +314,7 @@ function renderOwnerDashboard(msg) {
   var btns = '';
   if (_hasModule('products'))      btns += '<button class="big-btn" onclick="loadProducts()">📦 Products</button>';
   if (_hasModule('quick_sell'))    btns += '<button class="big-btn" onclick="renderQuickSell()">💰 Quick Sell</button>';
-  if (_hasModule('inventory'))     btns += '<button class="big-btn" onclick="renderInventoryMenu()">📋 Inventory</button>';
+  if (_hasModule('inventory'))     btns += '<button class="big-btn" onclick="renderInventoryAdvancedSummary()">📦 Inventory Advanced</button>';
   if (_hasModule('expenses'))      btns += '<button class="big-btn" onclick="renderExpenses()">💸 Expenses</button>';
   if (_hasModule('reports'))       btns += '<button class="big-btn" onclick="renderReports()">📊 Reports</button>';
   if (_hasModule('internal_chat')) btns += '<button class="big-btn" onclick="renderChat()">💬 Chat</button>';
@@ -2473,6 +2473,209 @@ function _renderAdvancedReport(report, reportTitle) {
   var content = summaryHtml + sectionsHtml + alertsHtml;
 
   document.getElementById('app').innerHTML = '<div class="screen">' + header + content + '</div>';
+}
+
+// ── Inventory Advanced ──────────────────────────────────────────────────────────
+
+async function renderInventoryAdvancedSummary() {
+  showLoading('Loading inventory summary…');
+  try {
+    var summary = await API.getInventoryAdvancedSummary();
+    _renderInventorySummaryUI(summary);
+  } catch(err) {
+    _renderInventorySummaryUI(null, err.message);
+  }
+}
+
+function _renderInventorySummaryUI(summary, error) {
+  var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
+  var header = _dashboardHeader_(storeName, '', 'Inventory Advanced', state.isOffline);
+
+  var content = '';
+  if (error) {
+    content = '<div class="message message-error">' + error + '</div>';
+  } else {
+    content = '<div class="card">' +
+      '<div class="title">Inventory Summary</div>' +
+      '<div class="field"><label>Low Stock Items:</label> ' + summary.low_stock_count + '</div>' +
+      '<div class="field"><label>Out of Stock Items:</label> ' + summary.out_of_stock_count + '</div>' +
+      '<div class="field"><label>Pending Adjustments:</label> ' + summary.pending_approvals_count + '</div>' +
+      '<div class="field"><label>Frequent Adjustments:</label> ' + summary.frequent_adjustments_count + '</div>' +
+      '<div class="field"><label>Slow-Moving Items:</label> ' + summary.slow_moving_count + '</div>' +
+      '</div>';
+
+    if (summary.alerts && summary.alerts.length) {
+      content += '<div class="card"><div class="title">Alerts</div>';
+      summary.alerts.forEach(alert => {
+        var alertClass = alert.type === 'critical' ? 'message-error' : alert.type === 'warning' ? 'message-error' : 'message-ok';
+        content += '<div class="message ' + alertClass + '">' + _escAttr(alert.message) + '</div>';
+      });
+      content += '</div>';
+    }
+
+    content += '<div class="card">' +
+      '<button class="btn btn-primary" onclick="renderInventoryMovements()">📋 View Movements</button>' +
+      '<button class="btn btn-secondary" onclick="renderRestockForm()">➕ Restock</button>' +
+      '<button class="btn btn-secondary" onclick="renderStockAdjustmentForm()">⚖️ Adjust Stock</button>' +
+      '</div>';
+  }
+
+  document.getElementById('app').innerHTML = '<div class="screen">' + header + content + '</div>';
+}
+
+async function renderInventoryMovements() {
+  showLoading('Loading movements…');
+  try {
+    var movements = await API.getInventoryMovements({ limit: 50 });
+    _renderMovementsUI(movements);
+  } catch(err) {
+    _renderMovementsUI([], err.message);
+  }
+}
+
+function _renderMovementsUI(movements, error) {
+  var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
+  var header = _dashboardHeader_(storeName, '', 'Stock Movements', state.isOffline);
+
+  var content = '';
+  if (error) {
+    content = '<div class="message message-error">' + error + '</div>';
+  } else if (!movements.length) {
+    content = '<div class="card"><div class="title">📋 No Movements Yet</div><div class="subtitle">Stock movements will appear here.</div></div>';
+  } else {
+    content = movements.map(m => {
+      var statusColor = m.status === 'effective' ? '#10b981' : m.status === 'pending_approval' ? '#f59e0b' : '#ef4444';
+      var statusText = m.status.replace('_', ' ').toUpperCase();
+      return '<div class="card" onclick="renderMovementDetail(\'' + m.id + '\')">' +
+        '<div class="title">' + _escAttr(m.product_name) + ' - ' + m.movement_type + '</div>' +
+        '<div class="subtitle">' + m.direction.toUpperCase() + ' ' + m.quantity + ' | ' + (m.reason_code || 'No reason') + '</div>' +
+        '<div class="subtitle">By ' + (m.created_by_role_code || 'Unknown') + ' on ' + new Date(m.created_at).toLocaleDateString() + '</div>' +
+        '<div style="margin-top:8px;"><span style="background:' + statusColor + ';color:#fff;padding:4px 8px;border-radius:12px;font-size:0.8rem;font-weight:600;">' + statusText + '</span></div>' +
+        '</div>';
+    }).join('');
+  }
+
+  content += '<div class="card"><button class="btn btn-secondary" onclick="renderInventoryAdvancedSummary()">← Back to Summary</button></div>';
+
+  document.getElementById('app').innerHTML = '<div class="screen">' + header + content + '</div>';
+}
+
+async function renderMovementDetail(movementId) {
+  // Simplified: show basic info
+  _showToast('Movement detail coming soon', false);
+  renderInventoryMovements();
+}
+
+async function renderRestockForm() {
+  var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
+  var header = _dashboardHeader_(storeName, '', 'Restock Product', state.isOffline);
+
+  // Get products for dropdown
+  if (!state.products || !state.products.length) {
+    await boot(); // Ensure products loaded
+  }
+
+  var productOptions = (state.products || []).map(p =>
+    '<option value="' + p.Product_ID + '">' + _escAttr(p.Product_Name) + ' (Stock: ' + p.Current_Stock + ')</option>'
+  ).join('');
+
+  var content = '<div class="card">' +
+    '<div class="field"><label>Product *</label><select id="restock-product">' + productOptions + '</select></div>' +
+    '<div class="field"><label>Quantity *</label><input id="restock-qty" type="number" min="1" placeholder="Enter quantity"></div>' +
+    '<div class="field"><label>Reason</label><select id="restock-reason">' +
+      '<option value="supplier_restock">Supplier Restock</option>' +
+      '<option value="owner_added_stock">Owner Added</option>' +
+      '<option value="emergency_restock">Emergency Restock</option>' +
+    '</select></div>' +
+    '<div class="field"><label>Note</label><input id="restock-note" placeholder="Optional note"></div>' +
+    '<button class="btn btn-primary" onclick="submitRestock()">Restock</button>' +
+    '<button class="btn btn-secondary" onclick="renderInventoryAdvancedSummary()">Cancel</button>' +
+    '</div>';
+
+  document.getElementById('app').innerHTML = '<div class="screen">' + header + content + '</div>';
+}
+
+async function submitRestock() {
+  var data = {
+    productId: document.getElementById('restock-product').value,
+    quantity: parseInt(document.getElementById('restock-qty').value),
+    reasonCode: document.getElementById('restock-reason').value,
+    note: document.getElementById('restock-note').value.trim()
+  };
+
+  if (!data.productId || !data.quantity || data.quantity <= 0) {
+    _showToast('Please select product and enter positive quantity', true);
+    return;
+  }
+
+  try {
+    await API.createRestock(data);
+    _showToast('Restock completed successfully!', false);
+    renderInventoryAdvancedSummary();
+  } catch(err) {
+    _showToast(err.message || 'Restock failed', true);
+  }
+}
+
+async function renderStockAdjustmentForm() {
+  var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
+  var header = _dashboardHeader_(storeName, '', 'Adjust Stock', state.isOffline);
+
+  if (!state.products || !state.products.length) {
+    await boot();
+  }
+
+  var productOptions = (state.products || []).map(p =>
+    '<option value="' + p.Product_ID + '">' + _escAttr(p.Product_Name) + ' (Stock: ' + p.Current_Stock + ')</option>'
+  ).join('');
+
+  var content = '<div class="card">' +
+    '<div class="field"><label>Product *</label><select id="adjust-product">' + productOptions + '</select></div>' +
+    '<div class="field"><label>Direction *</label><select id="adjust-direction">' +
+      '<option value="in">Increase Stock (+)</option>' +
+      '<option value="out">Decrease Stock (-)</option>' +
+    '</select></div>' +
+    '<div class="field"><label>Quantity *</label><input id="adjust-qty" type="number" min="1" placeholder="Enter quantity"></div>' +
+    '<div class="field"><label>Reason *</label><select id="adjust-reason">' +
+      '<option value="count_correction">Count Correction</option>' +
+      '<option value="damaged_items">Damaged Items</option>' +
+      '<option value="expired_items">Expired Items</option>' +
+      '<option value="internal_use">Internal Use</option>' +
+      '<option value="missing_items">Missing Items</option>' +
+    '</select></div>' +
+    '<div class="field"><label>Note</label><input id="adjust-note" placeholder="Optional note"></div>' +
+    '<div class="message message-ok">Note: This may require approval depending on settings.</div>' +
+    '<button class="btn btn-primary" onclick="submitStockAdjustment()">Adjust Stock</button>' +
+    '<button class="btn btn-secondary" onclick="renderInventoryAdvancedSummary()">Cancel</button>' +
+    '</div>';
+
+  document.getElementById('app').innerHTML = '<div class="screen">' + header + content + '</div>';
+}
+
+async function submitStockAdjustment() {
+  var data = {
+    productId: document.getElementById('adjust-product').value,
+    direction: document.getElementById('adjust-direction').value,
+    quantity: parseInt(document.getElementById('adjust-qty').value),
+    reasonCode: document.getElementById('adjust-reason').value,
+    note: document.getElementById('adjust-note').value.trim()
+  };
+
+  if (!data.productId || !data.quantity || data.quantity <= 0 || !data.direction) {
+    _showToast('Please fill all required fields', true);
+    return;
+  }
+
+  try {
+    var result = await API.createStockAdjustment(data);
+    var msg = result.status === 'pending_approval' ?
+      'Adjustment submitted for approval!' :
+      'Stock adjusted successfully!';
+    _showToast(msg, false);
+    renderInventoryAdvancedSummary();
+  } catch(err) {
+    _showToast(err.message || 'Adjustment failed', true);
+  }
 }
 
 // ── Reports ───────────────────────────────────────────────────────────────────

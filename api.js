@@ -144,6 +144,23 @@ const API = {
   // Advanced Reports
   async getAdvancedReport(type, period) {
     return this.call('getAdvancedReport', { type, period });
+  },
+
+  // Inventory Advanced
+  async getInventoryAdvancedSummary() {
+    return this.call('getInventoryAdvancedSummary');
+  },
+  async getInventoryMovements(filters) {
+    return this.call('getInventoryMovements', filters || {});
+  },
+  async getProductInventoryDetail(productId) {
+    return this.call('getProductInventoryDetail', { productId });
+  },
+  async createRestock(data) {
+    return this.call('createRestock', data);
+  },
+  async createStockAdjustment(data) {
+    return this.call('createStockAdjustment', data);
   }
 };
 
