@@ -313,31 +313,52 @@ function renderOwnerDashboard(msg) {
   var planLine = plan ? '<div style="font-size:0.7rem;color:rgba(255,255,255,0.55);margin-top:1px;">' + _escAttr(plan.name || plan.id || '') + (state.session.inTrial ? ' · Trial' : '') + '</div>' : '';
 
   var btns = '';
-  if (_hasModule('products'))      btns += '<button class="big-btn" onclick="loadProducts()">📦 Products</button>';
-  if (_hasModule('quick_sell'))    btns += '<button class="big-btn" onclick="renderQuickSell()">💰 Quick Sell</button>';
-  if (_hasModule('inventory'))     btns += '<button class="big-btn" onclick="renderInventoryAdvancedSummary()">📦 Inventory Advanced</button>';
-  if (_hasModule('expenses'))      btns += '<button class="big-btn" onclick="renderExpenses()">💸 Expenses</button>';
-  if (_hasModule('reports'))       btns += '<button class="big-btn" onclick="renderReports()">📊 Reports</button>';
-  if (_hasModule('internal_chat')) btns += '<button class="big-btn" onclick="renderChat()">💬 Chat</button>';
-  if (_hasModule('staff_management')) btns += '<button class="big-btn" onclick="renderStaffList()">👥 Staff</button>';
-  if (_hasModule('reports') && _hasPermission('reports.view_advanced')) btns += '<button class="big-btn" onclick="renderAdvancedReportsHome()">📊 Advanced Reports</button>';
-  if (_hasModule('approvals'))     btns += '<button class="big-btn" onclick="renderApprovalsQueue()">✅ Approvals</button>';
-  if (_hasModule('settings'))      btns += '<button class="big-btn" onclick="renderSettings()">⚙️ Settings</button>';
-  if (_hasModule('roi'))           btns += '<button class="big-btn" onclick="renderROIMonitor()">📈 ROI</button>';
-  if (_hasModule('staff'))         btns += '<button class="big-btn" onclick="renderManageStaff()">👥 Staff</button>';
-  if (_hasModule('support'))       btns += '<button class="big-btn" onclick="renderSupport()">📞 Help</button>';
+  if (_hasModule('products'))        btns += '<button class="big-btn" onclick="loadProducts()">📦 Products</button>';
+  if (_hasModule('quick_sell'))      btns += '<button class="big-btn" onclick="renderQuickSell()">💰 Quick Sell</button>';
+  if (_hasModule('quick_sell'))      btns += '<button class="big-btn" onclick="renderSalesHistory()">🧾 Sales History</button>';
+  if (_hasModule('inventory'))       btns += '<button class="big-btn" onclick="renderInventoryAdvancedSummary()">📦 Inventory</button>';
+  if (_hasModule('expenses'))        btns += '<button class="big-btn" onclick="renderExpenses()">💸 Expenses</button>';
+  if (_hasModule('reports'))         btns += '<button class="big-btn" onclick="renderReports()">📊 Reports</button>';
+  if (_hasModule('reports'))         btns += '<button class="big-btn" onclick="renderAdvancedReportsHome()">📊 Advanced Reports</button>';
+  if (_hasModule('suppliers'))       btns += '<button class="big-btn" onclick="renderSuppliers()">🏭 Suppliers</button>';
+  if (_hasModule('purchase_orders')) btns += '<button class="big-btn" onclick="renderPurchaseOrders()">📋 Purchase Orders</button>';
+  if (_hasModule('branch_transfers'))btns += '<button class="big-btn" onclick="renderBranchTransfers()">🔄 Branch Transfers</button>';
+  if (_hasModule('multi_branch'))    btns += '<button class="big-btn" onclick="renderHQControlCenter()">🏢 HQ Control</button>';
+  if (_hasModule('internal_chat'))   btns += '<button class="big-btn" onclick="renderChat()">💬 Chat</button>';
+  if (_hasModule('staff_management'))btns += '<button class="big-btn" onclick="renderStaffList()">👥 Staff</button>';
+  if (_hasModule('staff'))           btns += '<button class="big-btn" onclick="renderManageStaff()">👥 Staff</button>';
+  if (_hasModule('custom_roles'))    btns += '<button class="big-btn" onclick="renderCustomRoles()">🎭 Custom Roles</button>';
+  if (_hasModule('approvals'))       btns += '<button class="big-btn" onclick="renderApprovalsQueue()">✅ Approvals</button>';
+  if (_hasModule('roi'))             btns += '<button class="big-btn" onclick="renderROIMonitor()">📈 ROI</button>';
+  if (_hasModule('monitors'))        btns += '<button class="big-btn" onclick="renderMonitors()">📡 Monitors</button>';
+  if (_hasModule('automation_rules'))btns += '<button class="big-btn" onclick="renderAutomationRules()">⚡ Automation</button>';
+  if (_hasModule('data_import'))     btns += '<button class="big-btn" onclick="renderDataImport()">📥 Import Data</button>';
+  if (_hasModule('settings'))        btns += '<button class="big-btn" onclick="renderFullSettings()">⚙️ Settings</button>';
+  btns += '<button class="big-btn" onclick="renderNotificationsCenter()">🔔 Notifications</button>';
+  btns += '<button class="big-btn" onclick="renderAlertsCenter()">🚨 Alerts</button>';
+  btns += '<button class="big-btn" onclick="renderFeatureMarketplace()">🛒 Feature Store</button>';
+  btns += '<button class="big-btn" onclick="renderHardwareSetup()">🖨️ Hardware</button>';
+  btns += '<button class="big-btn" onclick="renderSandboxMode()">🧪 Sandbox</button>';
+  if (_hasModule('support'))         btns += '<button class="big-btn" onclick="renderSupport()">📞 Help</button>';
 
   // Locked / upsell tiles for modules not in current plan
   var UPSELL_META = {
-    monitors:     { icon: '📡', label: 'Monitors'  },
-    roi:          { icon: '📈', label: 'ROI'        },
-    inventory:    { icon: '📋', label: 'Inventory'  },
-    staff:        { icon: '👥', label: 'Staff'      },
-    reports:      { icon: '📊', label: 'Reports'    },
-    internal_chat:{ icon: '💬', label: 'Chat'       },
-    tax_reports:  { icon: '🧾', label: 'Tax Reports'},
-    approvals:    { icon: '✅', label: 'Approvals'  },
-    activity_log: { icon: '📜', label: 'Activity Log'},
+    monitors:        { icon: '📡', label: 'Monitors'         },
+    roi:             { icon: '📈', label: 'ROI'               },
+    inventory:       { icon: '📋', label: 'Inventory'         },
+    staff:           { icon: '👥', label: 'Staff'             },
+    reports:         { icon: '📊', label: 'Reports'           },
+    internal_chat:   { icon: '💬', label: 'Chat'              },
+    tax_reports:     { icon: '🧾', label: 'Tax Reports'       },
+    approvals:       { icon: '✅', label: 'Approvals'         },
+    activity_log:    { icon: '📜', label: 'Activity Log'      },
+    suppliers:       { icon: '🏭', label: 'Suppliers'         },
+    purchase_orders: { icon: '📋', label: 'Purchase Orders'   },
+    branch_transfers:{ icon: '🔄', label: 'Branch Transfers'  },
+    multi_branch:    { icon: '🏢', label: 'HQ Control'        },
+    custom_roles:    { icon: '🎭', label: 'Custom Roles'      },
+    automation_rules:{ icon: '⚡', label: 'Automation'        },
+    data_import:     { icon: '📥', label: 'Data Import'       },
   };
   var lockedBtns = '';
   var mods = _planModules();
@@ -493,16 +514,18 @@ function _renderMgrPage(data, fromCache) {
 
   // ── Quick Actions ────────────────────────────────────────────────────────────
   var qaFnMap = {
-    quick_sell: 'renderQuickSell()',
-    inventory:  'renderInventoryMenu()',
-    expenses:   'renderExpenses()',
-    products:   'loadProducts()',
-    staff:      'renderManageStaff()',
-    reports:    'renderReports()',
-    monitors:   'renderMonitors()',
-    approvals:  '_showToast("Approvals coming soon", false)',
-    chat:       'renderChat()',
-    support:    'renderSupport()',
+    quick_sell:    'renderQuickSell()',
+    sales_history: 'renderSalesHistory()',
+    inventory:     'renderInventoryMenu()',
+    expenses:      'renderExpenses()',
+    products:      'loadProducts()',
+    staff:         'renderManageStaff()',
+    reports:       'renderReports()',
+    monitors:      'renderMonitors()',
+    approvals:     'renderApprovalsQueue()',
+    notifications: 'renderNotificationsCenter()',
+    chat:          'renderChat()',
+    support:       'renderSupport()',
   };
   var qaHtml = qa.length > 0
     ? '<div style="padding:8px 12px 4px;">' +
@@ -549,7 +572,7 @@ function _renderMgrPage(data, fromCache) {
   if (ap.is_available) {
     var apContent = ap.pending_count > 0
       ? _monRow('⏳ Pending', String(ap.pending_count) + ' item' + (ap.pending_count !== 1 ? 's' : ''), 'awaiting your review', 'watch') +
-        '<div style="margin-top:8px;"><button onclick="_showToast(\'Approvals coming soon\', false)" style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:8px;padding:8px 12px;font-size:0.75rem;font-weight:600;cursor:pointer;">✅ Review Approvals</button></div>'
+        '<div style="margin-top:8px;"><button onclick="renderApprovalsQueue()" style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:8px;padding:8px 12px;font-size:0.75rem;font-weight:600;cursor:pointer;">✅ Review Approvals</button></div>'
       : '<div style="text-align:center;padding:12px 0;color:#6b7280;font-size:0.8rem;">No pending approvals.</div>';
     approvalsHtml = _monSection('✅', 'Approvals', apContent);
   }
@@ -558,7 +581,7 @@ function _renderMgrPage(data, fromCache) {
   var insShortcuts = [];
   if (ins.reports    && ins.reports.available)     insShortcuts.push({ icon: '📊', label: 'Reports',      fn: 'renderReports()' });
   if (ins.monitors   && ins.monitors.available)    insShortcuts.push({ icon: '📡', label: 'Monitors',     fn: 'renderMonitors()' });
-  if (ins.activity_log && ins.activity_log.available) insShortcuts.push({ icon: '📜', label: 'Activity Log', fn: '_showToast("Activity Log coming soon", false)' });
+  if (ins.activity_log && ins.activity_log.available) insShortcuts.push({ icon: '📜', label: 'Activity Log', fn: 'renderAdvancedReportsHome()' });
   var insightsHtml = insShortcuts.length > 0
     ? _monSection('🔍', 'Insights & Reports',
         '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
@@ -1047,7 +1070,7 @@ function _execShortcut(id) {
     monitors:     'renderMonitors',
     roi:          'renderROIMonitor',
     expenses:     'renderExpenses',
-    activity_log: '_showToast("Activity Log coming soon", false)'
+    activity_log: 'renderAdvancedReportsHome'
   };
   var fn = routes[id];
   if (fn) {
@@ -2314,10 +2337,58 @@ async function submitAddStaff() {
   }
 }
 
-function renderEditStaffForm(staffId) {
-  // Simplified: redirect to detail for now
-  renderStaffDetail(staffId);
-  // TODO: Implement full edit form
+async function renderEditStaffForm(staffId) {
+  showLoading('Loading staff…');
+  try {
+    var r = await API.call('getStaffById', { id: staffId });
+    var s = r.staff || r;
+    _renderEditStaffFormUI(staffId, s);
+  } catch(e) {
+    _showToast(e.message, true);
+    renderStaffList();
+  }
+}
+
+function _renderEditStaffFormUI(staffId, s) {
+  var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
+  var header = _dashboardHeader_(storeName, '', 'Edit Staff', state.isOffline);
+  var status = s.status || s.Status || 'ACTIVE';
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' + header +
+    '<div class="topbar"><div class="title" style="margin:0;">✏️ Edit Staff</div>' +
+    '<button class="small-btn" onclick="renderStaffDetail(\'' + staffId + '\')">← Back</button></div>' +
+    '<div class="card">' +
+    '<div class="field"><label>Full Name</label>' +
+    '<input id="edit-sf-name" value="' + _escAttr(s.full_name || s.Full_Name || '') + '" placeholder="Full name"></div>' +
+    '<div class="field"><label>Username</label>' +
+    '<input id="edit-sf-username" value="' + _escAttr(s.username || s.Username || '') + '" placeholder="Login username"></div>' +
+    '<div class="field"><label>Phone</label>' +
+    '<input id="edit-sf-phone" type="tel" value="' + _escAttr(s.phone || s.Phone || '') + '" placeholder="Phone number"></div>' +
+    '<div class="field"><label>Status</label>' +
+    '<select id="edit-sf-status">' +
+      '<option value="ACTIVE"' + (status === 'ACTIVE' ? ' selected' : '') + '>Active</option>' +
+      '<option value="INACTIVE"' + (status === 'INACTIVE' ? ' selected' : '') + '>Inactive</option>' +
+    '</select></div>' +
+    '<button class="btn btn-primary" onclick="submitEditStaff(\'' + staffId + '\')">💾 Save Changes</button>' +
+    '<button class="btn btn-secondary" style="margin-top:8px;" onclick="renderStaffDetail(\'' + staffId + '\')">Cancel</button>' +
+    '</div></div>';
+}
+
+async function submitEditStaff(staffId) {
+  var name     = document.getElementById('edit-sf-name').value.trim();
+  var username = document.getElementById('edit-sf-username').value.trim();
+  var phone    = document.getElementById('edit-sf-phone').value.trim();
+  var status   = document.getElementById('edit-sf-status').value;
+  if (!name) { _showToast('Full name is required', true); return; }
+  showLoading('Saving…');
+  try {
+    await API.call('updateStaff', { id: staffId, full_name: name, username: username, phone: phone, status: status });
+    _showToast('Staff updated!');
+    renderStaffDetail(staffId);
+  } catch(e) {
+    _showToast(e.message, true);
+  }
 }
 
 function renderAssignRoleForm(staffId, currentRole) {
@@ -2680,6 +2751,82 @@ async function submitStockAdjustment() {
 }
 
 // ── Reports ───────────────────────────────────────────────────────────────────
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SALES HISTORY
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function renderSalesHistory(msg) {
+  showLoading('Loading sales…');
+  try {
+    var r = await API.call('getRecentSales', { limit: 50 });
+    var sales = r.sales || r || [];
+    _renderSalesHistoryUI(sales, msg);
+  } catch(e) {
+    _showToast(e.message, true);
+    goHome();
+  }
+}
+
+function _renderSalesHistoryUI(sales, msg) {
+  function money(v) { return '₱' + Number(v||0).toLocaleString('en-PH', {minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+  var rows = sales.length === 0
+    ? '<div class="muted" style="text-align:center;padding:24px;">No sales recorded yet.</div>'
+    : sales.map(function(s) {
+        var dt = s.created_at || s.timestamp || s.Sale_Date || '';
+        var timeStr = dt ? new Date(dt).toLocaleString('en-PH', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+        var total   = s.total || s.Total_Amount || s.amount || 0;
+        var method  = s.payment_method || s.Payment_Method || '';
+        var itemCount = s.item_count || (s.items && s.items.length) || '';
+        var saleId  = s.id || s.sale_id || s.Sale_ID || '';
+        var cashier = s.cashier_name || s.staff_name || '';
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #f3f4f6;cursor:pointer;" onclick="viewSaleReceipt(\'' + saleId + '\')">' +
+          '<div>' +
+          '<div style="font-weight:600;font-size:14px;">' + money(total) + '</div>' +
+          '<div class="muted" style="font-size:12px;">' +
+            (itemCount ? itemCount + ' item' + (itemCount !== 1 ? 's' : '') : '') +
+            (method ? ' · ' + _escAttr(method) : '') +
+            (cashier ? ' · ' + _escAttr(cashier) : '') +
+          '</div>' +
+          '</div>' +
+          '<div style="text-align:right;">' +
+          '<div class="muted" style="font-size:12px;">' + _escAttr(timeStr) + '</div>' +
+          '<div style="font-size:11px;color:#2563eb;">View ›</div>' +
+          '</div>' +
+          '</div>';
+      }).join('');
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">🧾 Sales History</div>' +
+    '<button class="small-btn" onclick="goHome()">← Home</button></div>' +
+    (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
+    '<div class="muted" style="font-size:12px;margin-bottom:8px;">Last 50 sales · tap to view receipt</div>' +
+    '<div class="card">' + rows + '</div>' +
+    '</div>';
+}
+
+async function viewSaleReceipt(saleId) {
+  if (!saleId) { _showToast('Invalid sale', true); return; }
+  showLoading('Loading receipt…');
+  try {
+    var r = await API.call('getSaleReceipt', { saleId: saleId });
+    var sale  = r.sale || r;
+    var items = sale.items || [];
+    var total = sale.total || sale.Total_Amount || 0;
+    var paid  = sale.amount_paid || total;
+    var method = sale.payment_method || sale.Payment_Method || 'Cash';
+    renderReceiptModal(items, total, paid, method, sale);
+  } catch(e) {
+    _showToast(e.message, true);
+    renderSalesHistory();
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// REPORTS
+// ══════════════════════════════════════════════════════════════════════════════
 
 function renderReports() {
   var today   = new Date();
