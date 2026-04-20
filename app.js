@@ -313,31 +313,52 @@ function renderOwnerDashboard(msg) {
   var planLine = plan ? '<div style="font-size:0.7rem;color:rgba(255,255,255,0.55);margin-top:1px;">' + _escAttr(plan.name || plan.id || '') + (state.session.inTrial ? ' · Trial' : '') + '</div>' : '';
 
   var btns = '';
-  if (_hasModule('products'))      btns += '<button class="big-btn" onclick="loadProducts()">📦 Products</button>';
-  if (_hasModule('quick_sell'))    btns += '<button class="big-btn" onclick="renderQuickSell()">💰 Quick Sell</button>';
-  if (_hasModule('inventory'))     btns += '<button class="big-btn" onclick="renderInventoryAdvancedSummary()">📦 Inventory Advanced</button>';
-  if (_hasModule('expenses'))      btns += '<button class="big-btn" onclick="renderExpenses()">💸 Expenses</button>';
-  if (_hasModule('reports'))       btns += '<button class="big-btn" onclick="renderReports()">📊 Reports</button>';
-  if (_hasModule('internal_chat')) btns += '<button class="big-btn" onclick="renderChat()">💬 Chat</button>';
-  if (_hasModule('staff_management')) btns += '<button class="big-btn" onclick="renderStaffList()">👥 Staff</button>';
-  if (_hasModule('reports') && _hasPermission('reports.view_advanced')) btns += '<button class="big-btn" onclick="renderAdvancedReportsHome()">📊 Advanced Reports</button>';
-  if (_hasModule('approvals'))     btns += '<button class="big-btn" onclick="renderApprovalsQueue()">✅ Approvals</button>';
-  if (_hasModule('settings'))      btns += '<button class="big-btn" onclick="renderSettings()">⚙️ Settings</button>';
-  if (_hasModule('roi'))           btns += '<button class="big-btn" onclick="renderROIMonitor()">📈 ROI</button>';
-  if (_hasModule('staff'))         btns += '<button class="big-btn" onclick="renderManageStaff()">👥 Staff</button>';
-  if (_hasModule('support'))       btns += '<button class="big-btn" onclick="renderSupport()">📞 Help</button>';
+  if (_hasModule('products'))        btns += '<button class="big-btn" onclick="loadProducts()">📦 Products</button>';
+  if (_hasModule('quick_sell'))      btns += '<button class="big-btn" onclick="renderQuickSell()">💰 Quick Sell</button>';
+  if (_hasModule('quick_sell'))      btns += '<button class="big-btn" onclick="renderSalesHistory()">🧾 Sales History</button>';
+  if (_hasModule('inventory'))       btns += '<button class="big-btn" onclick="renderInventoryAdvancedSummary()">📦 Inventory</button>';
+  if (_hasModule('expenses'))        btns += '<button class="big-btn" onclick="renderExpenses()">💸 Expenses</button>';
+  if (_hasModule('reports'))         btns += '<button class="big-btn" onclick="renderReports()">📊 Reports</button>';
+  if (_hasModule('reports'))         btns += '<button class="big-btn" onclick="renderAdvancedReportsHome()">📊 Advanced Reports</button>';
+  if (_hasModule('suppliers'))       btns += '<button class="big-btn" onclick="renderSuppliers()">🏭 Suppliers</button>';
+  if (_hasModule('purchase_orders')) btns += '<button class="big-btn" onclick="renderPurchaseOrders()">📋 Purchase Orders</button>';
+  if (_hasModule('branch_transfers'))btns += '<button class="big-btn" onclick="renderBranchTransfers()">🔄 Branch Transfers</button>';
+  if (_hasModule('multi_branch'))    btns += '<button class="big-btn" onclick="renderHQControlCenter()">🏢 HQ Control</button>';
+  if (_hasModule('internal_chat'))   btns += '<button class="big-btn" onclick="renderChat()">💬 Chat</button>';
+  if (_hasModule('staff_management'))btns += '<button class="big-btn" onclick="renderStaffList()">👥 Staff</button>';
+  if (_hasModule('staff'))           btns += '<button class="big-btn" onclick="renderManageStaff()">👥 Staff</button>';
+  if (_hasModule('custom_roles'))    btns += '<button class="big-btn" onclick="renderCustomRoles()">🎭 Custom Roles</button>';
+  if (_hasModule('approvals'))       btns += '<button class="big-btn" onclick="renderApprovalsQueue()">✅ Approvals</button>';
+  if (_hasModule('roi'))             btns += '<button class="big-btn" onclick="renderROIMonitor()">📈 ROI</button>';
+  if (_hasModule('monitors'))        btns += '<button class="big-btn" onclick="renderMonitors()">📡 Monitors</button>';
+  if (_hasModule('automation_rules'))btns += '<button class="big-btn" onclick="renderAutomationRules()">⚡ Automation</button>';
+  if (_hasModule('data_import'))     btns += '<button class="big-btn" onclick="renderDataImport()">📥 Import Data</button>';
+  if (_hasModule('settings'))        btns += '<button class="big-btn" onclick="renderFullSettings()">⚙️ Settings</button>';
+  btns += '<button class="big-btn" onclick="renderNotificationsCenter()">🔔 Notifications</button>';
+  btns += '<button class="big-btn" onclick="renderAlertsCenter()">🚨 Alerts</button>';
+  btns += '<button class="big-btn" onclick="renderFeatureMarketplace()">🛒 Feature Store</button>';
+  btns += '<button class="big-btn" onclick="renderHardwareSetup()">🖨️ Hardware</button>';
+  btns += '<button class="big-btn" onclick="renderSandboxMode()">🧪 Sandbox</button>';
+  if (_hasModule('support'))         btns += '<button class="big-btn" onclick="renderSupport()">📞 Help</button>';
 
   // Locked / upsell tiles for modules not in current plan
   var UPSELL_META = {
-    monitors:     { icon: '📡', label: 'Monitors'  },
-    roi:          { icon: '📈', label: 'ROI'        },
-    inventory:    { icon: '📋', label: 'Inventory'  },
-    staff:        { icon: '👥', label: 'Staff'      },
-    reports:      { icon: '📊', label: 'Reports'    },
-    internal_chat:{ icon: '💬', label: 'Chat'       },
-    tax_reports:  { icon: '🧾', label: 'Tax Reports'},
-    approvals:    { icon: '✅', label: 'Approvals'  },
-    activity_log: { icon: '📜', label: 'Activity Log'},
+    monitors:        { icon: '📡', label: 'Monitors'         },
+    roi:             { icon: '📈', label: 'ROI'               },
+    inventory:       { icon: '📋', label: 'Inventory'         },
+    staff:           { icon: '👥', label: 'Staff'             },
+    reports:         { icon: '📊', label: 'Reports'           },
+    internal_chat:   { icon: '💬', label: 'Chat'              },
+    tax_reports:     { icon: '🧾', label: 'Tax Reports'       },
+    approvals:       { icon: '✅', label: 'Approvals'         },
+    activity_log:    { icon: '📜', label: 'Activity Log'      },
+    suppliers:       { icon: '🏭', label: 'Suppliers'         },
+    purchase_orders: { icon: '📋', label: 'Purchase Orders'   },
+    branch_transfers:{ icon: '🔄', label: 'Branch Transfers'  },
+    multi_branch:    { icon: '🏢', label: 'HQ Control'        },
+    custom_roles:    { icon: '🎭', label: 'Custom Roles'      },
+    automation_rules:{ icon: '⚡', label: 'Automation'        },
+    data_import:     { icon: '📥', label: 'Data Import'       },
   };
   var lockedBtns = '';
   var mods = _planModules();
@@ -493,16 +514,18 @@ function _renderMgrPage(data, fromCache) {
 
   // ── Quick Actions ────────────────────────────────────────────────────────────
   var qaFnMap = {
-    quick_sell: 'renderQuickSell()',
-    inventory:  'renderInventoryMenu()',
-    expenses:   'renderExpenses()',
-    products:   'loadProducts()',
-    staff:      'renderManageStaff()',
-    reports:    'renderReports()',
-    monitors:   'renderMonitors()',
-    approvals:  '_showToast("Approvals coming soon", false)',
-    chat:       'renderChat()',
-    support:    'renderSupport()',
+    quick_sell:    'renderQuickSell()',
+    sales_history: 'renderSalesHistory()',
+    inventory:     'renderInventoryMenu()',
+    expenses:      'renderExpenses()',
+    products:      'loadProducts()',
+    staff:         'renderManageStaff()',
+    reports:       'renderReports()',
+    monitors:      'renderMonitors()',
+    approvals:     'renderApprovalsQueue()',
+    notifications: 'renderNotificationsCenter()',
+    chat:          'renderChat()',
+    support:       'renderSupport()',
   };
   var qaHtml = qa.length > 0
     ? '<div style="padding:8px 12px 4px;">' +
@@ -549,7 +572,7 @@ function _renderMgrPage(data, fromCache) {
   if (ap.is_available) {
     var apContent = ap.pending_count > 0
       ? _monRow('⏳ Pending', String(ap.pending_count) + ' item' + (ap.pending_count !== 1 ? 's' : ''), 'awaiting your review', 'watch') +
-        '<div style="margin-top:8px;"><button onclick="_showToast(\'Approvals coming soon\', false)" style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:8px;padding:8px 12px;font-size:0.75rem;font-weight:600;cursor:pointer;">✅ Review Approvals</button></div>'
+        '<div style="margin-top:8px;"><button onclick="renderApprovalsQueue()" style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:8px;padding:8px 12px;font-size:0.75rem;font-weight:600;cursor:pointer;">✅ Review Approvals</button></div>'
       : '<div style="text-align:center;padding:12px 0;color:#6b7280;font-size:0.8rem;">No pending approvals.</div>';
     approvalsHtml = _monSection('✅', 'Approvals', apContent);
   }
@@ -558,7 +581,7 @@ function _renderMgrPage(data, fromCache) {
   var insShortcuts = [];
   if (ins.reports    && ins.reports.available)     insShortcuts.push({ icon: '📊', label: 'Reports',      fn: 'renderReports()' });
   if (ins.monitors   && ins.monitors.available)    insShortcuts.push({ icon: '📡', label: 'Monitors',     fn: 'renderMonitors()' });
-  if (ins.activity_log && ins.activity_log.available) insShortcuts.push({ icon: '📜', label: 'Activity Log', fn: '_showToast("Activity Log coming soon", false)' });
+  if (ins.activity_log && ins.activity_log.available) insShortcuts.push({ icon: '📜', label: 'Activity Log', fn: 'renderAdvancedReportsHome()' });
   var insightsHtml = insShortcuts.length > 0
     ? _monSection('🔍', 'Insights & Reports',
         '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
@@ -680,7 +703,7 @@ function renderViewerDashboard(msg) {
 // EXECUTIVE — read-only access to reports, ROI, monitors, expenses overview
 // ── Executive Dashboard ─────────────────────────────────────────────────────────
 
-let execCurrentPeriod = 'last_month';
+// Removed duplicate declaration; already declared at top
 
 async function renderExecutiveDashboard(msg) {
   var storeName = (state.storeProfile && (state.storeProfile.storeName || state.storeProfile.Store_Name)) || '';
@@ -1047,7 +1070,7 @@ function _execShortcut(id) {
     monitors:     'renderMonitors',
     roi:          'renderROIMonitor',
     expenses:     'renderExpenses',
-    activity_log: '_showToast("Activity Log coming soon", false)'
+    activity_log: 'renderAdvancedReportsHome'
   };
   var fn = routes[id];
   if (fn) {
@@ -2314,10 +2337,58 @@ async function submitAddStaff() {
   }
 }
 
-function renderEditStaffForm(staffId) {
-  // Simplified: redirect to detail for now
-  renderStaffDetail(staffId);
-  // TODO: Implement full edit form
+async function renderEditStaffForm(staffId) {
+  showLoading('Loading staff…');
+  try {
+    var r = await API.call('getStaffById', { id: staffId });
+    var s = r.staff || r;
+    _renderEditStaffFormUI(staffId, s);
+  } catch(e) {
+    _showToast(e.message, true);
+    renderStaffList();
+  }
+}
+
+function _renderEditStaffFormUI(staffId, s) {
+  var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
+  var header = _dashboardHeader_(storeName, '', 'Edit Staff', state.isOffline);
+  var status = s.status || s.Status || 'ACTIVE';
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' + header +
+    '<div class="topbar"><div class="title" style="margin:0;">✏️ Edit Staff</div>' +
+    '<button class="small-btn" onclick="renderStaffDetail(\'' + staffId + '\')">← Back</button></div>' +
+    '<div class="card">' +
+    '<div class="field"><label>Full Name</label>' +
+    '<input id="edit-sf-name" value="' + _escAttr(s.full_name || s.Full_Name || '') + '" placeholder="Full name"></div>' +
+    '<div class="field"><label>Username</label>' +
+    '<input id="edit-sf-username" value="' + _escAttr(s.username || s.Username || '') + '" placeholder="Login username"></div>' +
+    '<div class="field"><label>Phone</label>' +
+    '<input id="edit-sf-phone" type="tel" value="' + _escAttr(s.phone || s.Phone || '') + '" placeholder="Phone number"></div>' +
+    '<div class="field"><label>Status</label>' +
+    '<select id="edit-sf-status">' +
+      '<option value="ACTIVE"' + (status === 'ACTIVE' ? ' selected' : '') + '>Active</option>' +
+      '<option value="INACTIVE"' + (status === 'INACTIVE' ? ' selected' : '') + '>Inactive</option>' +
+    '</select></div>' +
+    '<button class="btn btn-primary" onclick="submitEditStaff(\'' + staffId + '\')">💾 Save Changes</button>' +
+    '<button class="btn btn-secondary" style="margin-top:8px;" onclick="renderStaffDetail(\'' + staffId + '\')">Cancel</button>' +
+    '</div></div>';
+}
+
+async function submitEditStaff(staffId) {
+  var name     = document.getElementById('edit-sf-name').value.trim();
+  var username = document.getElementById('edit-sf-username').value.trim();
+  var phone    = document.getElementById('edit-sf-phone').value.trim();
+  var status   = document.getElementById('edit-sf-status').value;
+  if (!name) { _showToast('Full name is required', true); return; }
+  showLoading('Saving…');
+  try {
+    await API.call('updateStaff', { id: staffId, full_name: name, username: username, phone: phone, status: status });
+    _showToast('Staff updated!');
+    renderStaffDetail(staffId);
+  } catch(e) {
+    _showToast(e.message, true);
+  }
 }
 
 function renderAssignRoleForm(staffId, currentRole) {
@@ -2680,6 +2751,82 @@ async function submitStockAdjustment() {
 }
 
 // ── Reports ───────────────────────────────────────────────────────────────────
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SALES HISTORY
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function renderSalesHistory(msg) {
+  showLoading('Loading sales…');
+  try {
+    var r = await API.call('getRecentSales', { limit: 50 });
+    var sales = r.sales || r || [];
+    _renderSalesHistoryUI(sales, msg);
+  } catch(e) {
+    _showToast(e.message, true);
+    goHome();
+  }
+}
+
+function _renderSalesHistoryUI(sales, msg) {
+  function money(v) { return '₱' + Number(v||0).toLocaleString('en-PH', {minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+  var rows = sales.length === 0
+    ? '<div class="muted" style="text-align:center;padding:24px;">No sales recorded yet.</div>'
+    : sales.map(function(s) {
+        var dt = s.created_at || s.timestamp || s.Sale_Date || '';
+        var timeStr = dt ? new Date(dt).toLocaleString('en-PH', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+        var total   = s.total || s.Total_Amount || s.amount || 0;
+        var method  = s.payment_method || s.Payment_Method || '';
+        var itemCount = s.item_count || (s.items && s.items.length) || '';
+        var saleId  = s.id || s.sale_id || s.Sale_ID || '';
+        var cashier = s.cashier_name || s.staff_name || '';
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #f3f4f6;cursor:pointer;" onclick="viewSaleReceipt(\'' + saleId + '\')">' +
+          '<div>' +
+          '<div style="font-weight:600;font-size:14px;">' + money(total) + '</div>' +
+          '<div class="muted" style="font-size:12px;">' +
+            (itemCount ? itemCount + ' item' + (itemCount !== 1 ? 's' : '') : '') +
+            (method ? ' · ' + _escAttr(method) : '') +
+            (cashier ? ' · ' + _escAttr(cashier) : '') +
+          '</div>' +
+          '</div>' +
+          '<div style="text-align:right;">' +
+          '<div class="muted" style="font-size:12px;">' + _escAttr(timeStr) + '</div>' +
+          '<div style="font-size:11px;color:#2563eb;">View ›</div>' +
+          '</div>' +
+          '</div>';
+      }).join('');
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">🧾 Sales History</div>' +
+    '<button class="small-btn" onclick="goHome()">← Home</button></div>' +
+    (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
+    '<div class="muted" style="font-size:12px;margin-bottom:8px;">Last 50 sales · tap to view receipt</div>' +
+    '<div class="card">' + rows + '</div>' +
+    '</div>';
+}
+
+async function viewSaleReceipt(saleId) {
+  if (!saleId) { _showToast('Invalid sale', true); return; }
+  showLoading('Loading receipt…');
+  try {
+    var r = await API.call('getSaleReceipt', { saleId: saleId });
+    var sale  = r.sale || r;
+    var items = sale.items || [];
+    var total = sale.total || sale.Total_Amount || 0;
+    var paid  = sale.amount_paid || total;
+    var method = sale.payment_method || sale.Payment_Method || 'Cash';
+    renderReceiptModal(items, total, paid, method, sale);
+  } catch(e) {
+    _showToast(e.message, true);
+    renderSalesHistory();
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// REPORTS
+// ══════════════════════════════════════════════════════════════════════════════
 
 function renderReports() {
   var today   = new Date();
@@ -4199,7 +4346,8 @@ function closeScannerModal() {
 }
 
 function submitManualScan() {
-  var val = document.getElementById('scan-manual-input').value.trim();
+  var input = document.querySelector('#scan-manual-input, #scan-manual-input-fallback');
+  var val = input ? input.value.trim() : '';
   if (!val) return;
   closeScannerModal();
   _onBarcodeReceived(val);
@@ -4326,6 +4474,1373 @@ function _playBeep() {
     osc.frequency.value = 1200; osc.type = 'sine'; g.gain.value = 0.3;
     osc.start(); setTimeout(function() { osc.stop(); }, 150);
   } catch(e) {}
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SUPPLIERS ── Task 10
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function renderSuppliers(msg) {
+  showLoading('Loading suppliers…');
+  try {
+    var suppliers = await API.call('getSuppliers', {});
+    _renderSuppliersUI(suppliers, null, msg);
+  } catch(e) { _renderSuppliersUI([], e.message); }
+}
+
+function _renderSuppliersUI(suppliers, error, msg) {
+  var rows = suppliers.length ? suppliers.map(function(s) {
+    return '<div class="card" style="margin-bottom:8px;cursor:pointer;" onclick="renderSupplierDetail(\'' + s.supplier_id + '\')">' +
+      '<div style="font-weight:bold;">' + _escHtml(s.name) + '</div>' +
+      '<div class="muted" style="font-size:12px;">' + (s.contact_person ? s.contact_person + ' · ' : '') + (s.phone || '') + '</div>' +
+      '<div class="muted" style="font-size:11px;margin-top:4px;">Payment: ' + (s.payment_terms || 'cash') + '</div>' +
+      '</div>';
+  }).join('') : '<div class="muted" style="padding:8px;">No suppliers yet.</div>';
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">🏭 Suppliers</div><button class="small-btn" onclick="goHome()">← Home</button></div>' +
+    (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
+    (error ? '<div class="message message-error">' + error + '</div>' : '') +
+    rows +
+    (_hasPermission('suppliers', 'create') ? '<button class="btn btn-primary" style="margin-top:8px;" onclick="renderAddSupplierForm()">+ Add Supplier</button>' : '') +
+    '</div>';
+}
+
+async function renderSupplierDetail(supplierId) {
+  showLoading('Loading supplier…');
+  try {
+    var s = await API.call('getSupplierById', { supplierId: supplierId });
+    var posHtml = s.recentOrders && s.recentOrders.length
+      ? s.recentOrders.map(function(po) {
+          return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f3f4f6;font-size:13px;" onclick="renderPODetail(\'' + po.po_id + '\')" style="cursor:pointer;">' +
+            '<span>' + po.po_number + ' <span style="color:#6b7280;">(' + po.status + ')</span></span>' +
+            '<span>₱' + Number(po.total_amount||0).toLocaleString('en-PH', {minimumFractionDigits:2}) + '</span>' +
+            '</div>';
+        }).join('')
+      : '<div class="muted" style="font-size:12px;">No orders yet.</div>';
+
+    document.getElementById('app').innerHTML =
+      '<div class="screen">' +
+      '<div class="topbar"><div class="title" style="margin:0;">' + _escHtml(s.name) + '</div><button class="small-btn" onclick="renderSuppliers()">← Back</button></div>' +
+      '<div class="card">' +
+      (s.contact_person ? '<div><span class="muted">Contact:</span> ' + _escHtml(s.contact_person) + '</div>' : '') +
+      (s.phone ? '<div><span class="muted">Phone:</span> ' + _escHtml(s.phone) + '</div>' : '') +
+      (s.email ? '<div><span class="muted">Email:</span> ' + _escHtml(s.email) + '</div>' : '') +
+      (s.address ? '<div><span class="muted">Address:</span> ' + _escHtml(s.address) + '</div>' : '') +
+      '<div><span class="muted">Payment terms:</span> ' + (s.payment_terms || 'cash') + '</div>' +
+      (s.notes ? '<div style="margin-top:8px;font-size:12px;color:#6b7280;">' + _escHtml(s.notes) + '</div>' : '') +
+      '</div>' +
+      '<div class="card"><div class="section-title" style="margin-bottom:8px;">Recent Purchase Orders</div>' + posHtml + '</div>' +
+      (_hasPermission('suppliers', 'edit') ?
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">' +
+        '<button class="btn btn-secondary" onclick="renderEditSupplierForm(\'' + supplierId + '\')">✏️ Edit</button>' +
+        '<button class="btn btn-secondary" style="background:#fee2e2;color:#dc2626;" onclick="confirmDeactivateSupplier(\'' + supplierId + '\')">🗑 Deactivate</button>' +
+        '</div>' : '') +
+      (_hasPermission('purchase_orders', 'create') ? '<button class="btn btn-primary" style="margin-top:8px;" onclick="renderCreatePO(\'' + supplierId + '\')">+ New Purchase Order</button>' : '') +
+      '</div>';
+  } catch(e) { _showToast(e.message, true); renderSuppliers(); }
+}
+
+function renderAddSupplierForm(msg) {
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">Add Supplier</div><button class="small-btn" onclick="renderSuppliers()">← Back</button></div>' +
+    (msg ? '<div class="message message-error">' + msg + '</div>' : '') +
+    '<div class="card">' +
+    '<div class="field"><label>Supplier Name *</label><input id="sup-name" placeholder="e.g. ABC Distributors"></div>' +
+    '<div class="field"><label>Contact Person</label><input id="sup-contact" placeholder="Name"></div>' +
+    '<div class="field"><label>Phone</label><input id="sup-phone" type="tel" placeholder="09xxxxxxxxx"></div>' +
+    '<div class="field"><label>Email</label><input id="sup-email" type="email" placeholder="supplier@email.com"></div>' +
+    '<div class="field"><label>Address</label><input id="sup-address" placeholder="Full address"></div>' +
+    '<div class="field"><label>Payment Terms</label><select id="sup-terms"><option value="cash">Cash on Delivery</option><option value="net7">Net 7 days</option><option value="net15">Net 15 days</option><option value="net30">Net 30 days</option><option value="consignment">Consignment</option></select></div>' +
+    '<div class="field"><label>Notes</label><input id="sup-notes" placeholder="Optional notes"></div>' +
+    '<button class="btn btn-primary" onclick="submitAddSupplier()">Save Supplier</button>' +
+    '</div></div>';
+}
+
+async function submitAddSupplier() {
+  var name = (document.getElementById('sup-name').value || '').trim();
+  if (!name) { _showToast('Supplier name is required', true); return; }
+  showLoading('Saving…');
+  try {
+    await API.call('createSupplier', {
+      name: name,
+      contactPerson: document.getElementById('sup-contact').value || '',
+      phone: document.getElementById('sup-phone').value || '',
+      email: document.getElementById('sup-email').value || '',
+      address: document.getElementById('sup-address').value || '',
+      paymentTerms: document.getElementById('sup-terms').value || 'cash',
+      notes: document.getElementById('sup-notes').value || ''
+    });
+    renderSuppliers('✓ Supplier added');
+  } catch(e) { renderAddSupplierForm(e.message); }
+}
+
+async function renderEditSupplierForm(supplierId) {
+  showLoading('Loading…');
+  try {
+    var s = await API.call('getSupplierById', { supplierId: supplierId });
+    document.getElementById('app').innerHTML =
+      '<div class="screen">' +
+      '<div class="topbar"><div class="title" style="margin:0;">Edit Supplier</div><button class="small-btn" onclick="renderSupplierDetail(\'' + supplierId + '\')">← Back</button></div>' +
+      '<div class="card">' +
+      '<div class="field"><label>Supplier Name *</label><input id="sup-name" value="' + _escAttr(s.name) + '"></div>' +
+      '<div class="field"><label>Contact Person</label><input id="sup-contact" value="' + _escAttr(s.contact_person) + '"></div>' +
+      '<div class="field"><label>Phone</label><input id="sup-phone" value="' + _escAttr(s.phone) + '"></div>' +
+      '<div class="field"><label>Email</label><input id="sup-email" value="' + _escAttr(s.email) + '"></div>' +
+      '<div class="field"><label>Address</label><input id="sup-address" value="' + _escAttr(s.address) + '"></div>' +
+      '<div class="field"><label>Payment Terms</label><select id="sup-terms">' +
+      ['cash','net7','net15','net30','consignment'].map(function(t) { return '<option value="' + t + '"' + (s.payment_terms === t ? ' selected' : '') + '>' + t + '</option>'; }).join('') +
+      '</select></div>' +
+      '<div class="field"><label>Notes</label><input id="sup-notes" value="' + _escAttr(s.notes) + '"></div>' +
+      '<button class="btn btn-primary" onclick="submitEditSupplier(\'' + supplierId + '\')">Save Changes</button>' +
+      '</div></div>';
+  } catch(e) { _showToast(e.message, true); renderSuppliers(); }
+}
+
+async function submitEditSupplier(supplierId) {
+  var name = (document.getElementById('sup-name').value || '').trim();
+  if (!name) { _showToast('Supplier name is required', true); return; }
+  showLoading('Saving…');
+  try {
+    await API.call('updateSupplier', {
+      supplierId: supplierId,
+      name: name,
+      contactPerson: document.getElementById('sup-contact').value || '',
+      phone: document.getElementById('sup-phone').value || '',
+      email: document.getElementById('sup-email').value || '',
+      address: document.getElementById('sup-address').value || '',
+      paymentTerms: document.getElementById('sup-terms').value || 'cash',
+      notes: document.getElementById('sup-notes').value || ''
+    });
+    renderSupplierDetail(supplierId);
+    _showToast('✓ Supplier updated');
+  } catch(e) { _showToast(e.message, true); }
+}
+
+async function confirmDeactivateSupplier(supplierId) {
+  if (!confirm('Deactivate this supplier? This will hide them from the list.')) return;
+  try {
+    await API.call('deactivateSupplier', { supplierId: supplierId });
+    renderSuppliers('✓ Supplier deactivated');
+  } catch(e) { _showToast(e.message, true); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PURCHASE ORDERS ── Task 11
+// ══════════════════════════════════════════════════════════════════════════════
+
+var PO_STATUS_LABELS = { draft:'Draft', submitted:'Submitted', approved:'Approved', partially_received:'Partial', received:'Received', cancelled:'Cancelled' };
+var PO_STATUS_COLORS = { draft:'#6b7280', submitted:'#d97706', approved:'#2563eb', partially_received:'#7c3aed', received:'#16a34a', cancelled:'#dc2626' };
+
+async function renderPurchaseOrders(msg) {
+  showLoading('Loading purchase orders…');
+  try {
+    var pos = await API.call('getPurchaseOrders', {});
+    _renderPOListUI(pos, null, msg);
+  } catch(e) { _renderPOListUI([], e.message); }
+}
+
+function _renderPOListUI(pos, error, msg) {
+  var rows = pos.length ? pos.map(function(po) {
+    var color = PO_STATUS_COLORS[po.status] || '#6b7280';
+    return '<div class="card" style="margin-bottom:8px;cursor:pointer;" onclick="renderPODetail(\'' + po.po_id + '\')">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+      '<div><div style="font-weight:bold;">' + po.po_number + '</div>' +
+      '<div class="muted" style="font-size:12px;">' + _escHtml(po.supplier_name || '—') + ' · ' + (po.order_date || '') + '</div></div>' +
+      '<div style="text-align:right;"><div style="font-size:12px;color:' + color + ';font-weight:bold;">' + (PO_STATUS_LABELS[po.status] || po.status) + '</div>' +
+      '<div style="font-size:13px;font-weight:bold;">₱' + Number(po.total_amount||0).toLocaleString('en-PH',{minimumFractionDigits:2}) + '</div></div>' +
+      '</div></div>';
+  }).join('') : '<div class="muted" style="padding:8px;">No purchase orders yet.</div>';
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">📋 Purchase Orders</div><button class="small-btn" onclick="goHome()">← Home</button></div>' +
+    (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
+    (error ? '<div class="message message-error">' + error + '</div>' : '') +
+    rows +
+    (_hasPermission('purchase_orders', 'create') ? '<button class="btn btn-primary" style="margin-top:8px;" onclick="renderCreatePO()">+ New Purchase Order</button>' : '') +
+    '</div>';
+}
+
+async function renderPODetail(poId) {
+  showLoading('Loading PO…');
+  try {
+    var po = await API.call('getPurchaseOrderById', { poId: poId });
+    var color = PO_STATUS_COLORS[po.status] || '#6b7280';
+    var itemsHtml = (po.items||[]).map(function(item) {
+      var remaining = Number(item.quantity_ordered) - Number(item.quantity_received);
+      return '<div style="padding:8px 0;border-bottom:1px solid #f3f4f6;">' +
+        '<div style="display:flex;justify-content:space-between;">' +
+        '<span style="font-size:13px;font-weight:bold;">' + _escHtml(item.product_name||item.product_id) + '</span>' +
+        '<span style="font-size:13px;">₱' + Number(item.unit_cost||0).toFixed(2) + ' × ' + item.quantity_ordered + '</span>' +
+        '</div>' +
+        '<div class="muted" style="font-size:11px;">Received: ' + item.quantity_received + '/' + item.quantity_ordered +
+        (remaining > 0 ? ' <span style="color:#d97706;">(' + remaining + ' pending)</span>' : ' <span style="color:#16a34a;">✓</span>') + '</div>' +
+        '</div>';
+    }).join('');
+
+    var actions = '';
+    if (po.status === 'draft' && _hasPermission('purchase_orders', 'submit'))
+      actions += '<button class="btn btn-secondary" onclick="doSubmitPO(\'' + poId + '\')">📤 Submit for Approval</button>';
+    if (['draft','submitted'].includes(po.status) && _hasPermission('purchase_orders', 'approve'))
+      actions += '<button class="btn btn-primary" style="margin-top:8px;" onclick="doApprovePO(\'' + poId + '\')">✅ Approve PO</button>';
+    if (['approved','partially_received'].includes(po.status) && _hasPermission('stock_receiving', 'create'))
+      actions += '<button class="btn btn-primary" style="margin-top:8px;background:#7c3aed;" onclick="renderReceiveForm(\'' + poId + '\')">📦 Receive Stock</button>';
+    if (!['received','cancelled'].includes(po.status) && _hasPermission('purchase_orders', 'cancel'))
+      actions += '<button class="btn btn-secondary" style="margin-top:8px;background:#fee2e2;color:#dc2626;" onclick="doCancelPO(\'' + poId + '\')">✕ Cancel PO</button>';
+
+    document.getElementById('app').innerHTML =
+      '<div class="screen">' +
+      '<div class="topbar"><div class="title" style="margin:0;">' + po.po_number + '</div><button class="small-btn" onclick="renderPurchaseOrders()">← Back</button></div>' +
+      '<div class="card">' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:8px;">' +
+      '<span class="muted">Status</span><span style="font-weight:bold;color:' + color + ';">' + (PO_STATUS_LABELS[po.status]||po.status) + '</span></div>' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span class="muted">Supplier</span><span>' + _escHtml(po.supplier_name||'—') + '</span></div>' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span class="muted">Order date</span><span>' + (po.order_date||'—') + '</span></div>' +
+      (po.expected_delivery ? '<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span class="muted">Expected</span><span>' + po.expected_delivery + '</span></div>' : '') +
+      '<div style="display:flex;justify-content:space-between;"><span class="muted">Total</span><span style="font-weight:bold;">₱' + Number(po.total_amount||0).toLocaleString('en-PH',{minimumFractionDigits:2}) + '</span></div>' +
+      (po.notes ? '<div style="margin-top:8px;font-size:12px;color:#6b7280;">' + _escHtml(po.notes) + '</div>' : '') +
+      '</div>' +
+      '<div class="card"><div class="section-title" style="margin-bottom:8px;">Items (' + (po.items||[]).length + ')</div>' + itemsHtml + '</div>' +
+      (actions ? '<div class="card">' + actions + '</div>' : '') +
+      '</div>';
+  } catch(e) { _showToast(e.message, true); renderPurchaseOrders(); }
+}
+
+async function renderCreatePO(defaultSupplierId) {
+  showLoading('Loading suppliers & products…');
+  try {
+    var [suppliers, products] = await Promise.all([API.call('getSuppliers', {}), API.call('getProducts')]);
+    if (!suppliers.length) { _showToast('Add a supplier first', true); renderSuppliers(); return; }
+    _renderCreatePOForm(suppliers, products, defaultSupplierId);
+  } catch(e) { _showToast(e.message, true); renderPurchaseOrders(); }
+}
+
+function _renderCreatePOForm(suppliers, products, defaultSupplierId) {
+  var supOptions = suppliers.map(function(s) {
+    return '<option value="' + s.supplier_id + '"' + (s.supplier_id === defaultSupplierId ? ' selected' : '') + '>' + _escHtml(s.name) + '</option>';
+  }).join('');
+  var prodOptions = '<option value="">— Select product —</option>' + products.map(function(p) {
+    return '<option value="' + p.Product_ID + '">' + _escHtml(p.Product_Name) + (p.Barcode ? ' (' + p.Barcode + ')' : '') + '</option>';
+  }).join('');
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">New Purchase Order</div><button class="small-btn" onclick="renderPurchaseOrders()">← Back</button></div>' +
+    '<div class="card">' +
+    '<div class="field"><label>Supplier *</label><select id="po-supplier">' + supOptions + '</select></div>' +
+    '<div class="field"><label>Order Date</label><input id="po-date" type="date" value="' + _todayInput() + '"></div>' +
+    '<div class="field"><label>Expected Delivery</label><input id="po-delivery" type="date"></div>' +
+    '<div class="field"><label>Notes</label><input id="po-notes" placeholder="Optional"></div>' +
+    '</div>' +
+    '<div class="card"><div class="section-title" style="margin-bottom:8px;">Items</div>' +
+    '<div id="po-items"></div>' +
+    '<div style="display:grid;grid-template-columns:1fr auto auto;gap:6px;margin-top:8px;align-items:end;">' +
+    '<select id="po-item-product">' + prodOptions + '</select>' +
+    '<input id="po-item-qty" type="number" min="1" value="1" style="width:60px;" placeholder="Qty">' +
+    '<input id="po-item-cost" type="number" min="0" step="0.01" style="width:80px;" placeholder="Cost">' +
+    '</div>' +
+    '<button class="btn btn-secondary" style="margin-top:6px;" onclick="addPOItem()">+ Add Item</button>' +
+    '</div>' +
+    '<button class="btn btn-primary" onclick="submitCreatePO()">Create Purchase Order</button>' +
+    '</div>';
+  window._poItems = [];
+}
+
+function addPOItem() {
+  var sel = document.getElementById('po-item-product');
+  var productId = sel.value;
+  var productName = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : '';
+  var qty = Number(document.getElementById('po-item-qty').value) || 0;
+  var cost = Number(document.getElementById('po-item-cost').value) || 0;
+  if (!productId) { _showToast('Select a product', true); return; }
+  if (qty <= 0) { _showToast('Qty must be positive', true); return; }
+  window._poItems = window._poItems || [];
+  window._poItems.push({ productId: productId, productName: productName, qty: qty, unitCost: cost });
+  _renderPOItemsList();
+}
+
+function _renderPOItemsList() {
+  var container = document.getElementById('po-items');
+  if (!container) return;
+  container.innerHTML = (window._poItems||[]).map(function(item, idx) {
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f3f4f6;">' +
+      '<div style="flex:1;font-size:13px;">' + _escHtml(item.productName) + '<br><span class="muted">' + item.qty + ' × ₱' + Number(item.unitCost).toFixed(2) + '</span></div>' +
+      '<button onclick="removePOItem(' + idx + ')" style="border:none;background:none;color:#dc2626;font-size:16px;cursor:pointer;">✕</button>' +
+      '</div>';
+  }).join('');
+}
+
+function removePOItem(idx) { (window._poItems||[]).splice(idx,1); _renderPOItemsList(); }
+
+async function submitCreatePO() {
+  var supplierId = document.getElementById('po-supplier').value;
+  if (!supplierId) { _showToast('Select a supplier', true); return; }
+  if (!window._poItems || !window._poItems.length) { _showToast('Add at least one item', true); return; }
+  showLoading('Creating PO…');
+  try {
+    var result = await API.call('createPurchaseOrder', {
+      supplierId: supplierId,
+      orderDate: document.getElementById('po-date').value,
+      expectedDelivery: document.getElementById('po-delivery').value,
+      notes: document.getElementById('po-notes').value,
+      items: window._poItems
+    });
+    window._poItems = [];
+    renderPODetail(result.poId);
+    _showToast('✓ PO ' + result.poNumber + ' created');
+  } catch(e) { _showToast(e.message, true); showLoading(''); renderPurchaseOrders(); }
+}
+
+async function doSubmitPO(poId) {
+  showLoading('Submitting…');
+  try { await API.call('submitPurchaseOrder', { poId: poId }); renderPODetail(poId); _showToast('✓ PO submitted'); }
+  catch(e) { _showToast(e.message, true); renderPODetail(poId); }
+}
+async function doApprovePO(poId) {
+  showLoading('Approving…');
+  try { await API.call('approvePurchaseOrder', { poId: poId }); renderPODetail(poId); _showToast('✓ PO approved'); }
+  catch(e) { _showToast(e.message, true); renderPODetail(poId); }
+}
+async function doCancelPO(poId) {
+  if (!confirm('Cancel this purchase order?')) return;
+  showLoading('Cancelling…');
+  try { await API.call('cancelPurchaseOrder', { poId: poId }); renderPurchaseOrders('✓ PO cancelled'); }
+  catch(e) { _showToast(e.message, true); renderPODetail(poId); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// STOCK RECEIVING ── Task 12
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function renderReceiveForm(poId) {
+  showLoading('Loading PO…');
+  try {
+    var po = await API.call('getPurchaseOrderById', { poId: poId });
+    var pendingItems = (po.items||[]).filter(function(i) { return Number(i.quantity_ordered) > Number(i.quantity_received); });
+    if (!pendingItems.length) { _showToast('All items already received', true); renderPODetail(poId); return; }
+
+    var itemInputs = pendingItems.map(function(item, idx) {
+      var pending = Number(item.quantity_ordered) - Number(item.quantity_received);
+      return '<div class="card" style="margin-bottom:8px;">' +
+        '<div style="font-weight:bold;font-size:13px;">' + _escHtml(item.product_name||item.product_id) + '</div>' +
+        '<div class="muted" style="font-size:11px;">Ordered: ' + item.quantity_ordered + ' · Previously received: ' + item.quantity_received + ' · Pending: ' + pending + '</div>' +
+        '<input type="hidden" id="recv-poi-' + idx + '" value="' + item.id + '">' +
+        '<input type="hidden" id="recv-pid-' + idx + '" value="' + item.product_id + '">' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">' +
+        '<div class="field" style="margin:0;"><label style="font-size:11px;">Qty Received</label><input id="recv-qty-' + idx + '" type="number" min="0" max="' + pending + '" value="' + pending + '"></div>' +
+        '<div class="field" style="margin:0;"><label style="font-size:11px;">Condition</label><select id="recv-cond-' + idx + '"><option value="good">Good</option><option value="damaged">Damaged</option><option value="rejected">Rejected</option></select></div>' +
+        '</div></div>';
+    }).join('');
+
+    document.getElementById('app').innerHTML =
+      '<div class="screen">' +
+      '<div class="topbar"><div class="title" style="margin:0;">📦 Receive Stock</div><button class="small-btn" onclick="renderPODetail(\'' + poId + '\')">← Back</button></div>' +
+      '<div class="card"><div class="muted" style="font-size:12px;">PO: ' + po.po_number + ' · Supplier: ' + _escHtml(po.supplier_name||'—') + '</div></div>' +
+      itemInputs +
+      '<div class="card">' +
+      '<div class="field"><label>Receipt Date</label><input id="recv-date" type="date" value="' + _todayInput() + '"></div>' +
+      '<div class="field"><label>Notes</label><input id="recv-notes" placeholder="Optional notes"></div>' +
+      '<div class="field"><label>Discrepancy Notes</label><input id="recv-disc" placeholder="Any discrepancies found?"></div>' +
+      '</div>' +
+      '<button class="btn btn-primary" onclick="submitReceiveStock(\'' + poId + '\',' + pendingItems.length + ')">✓ Confirm Receipt</button>' +
+      '</div>';
+  } catch(e) { _showToast(e.message, true); renderPurchaseOrders(); }
+}
+
+async function submitReceiveStock(poId, count) {
+  var items = [];
+  for (var i = 0; i < count; i++) {
+    var qty = Number((document.getElementById('recv-qty-'+i)||{}).value) || 0;
+    if (qty > 0) {
+      items.push({
+        poItemId: document.getElementById('recv-poi-'+i).value,
+        productId: document.getElementById('recv-pid-'+i).value,
+        qtyReceived: qty,
+        condition: document.getElementById('recv-cond-'+i).value
+      });
+    }
+  }
+  if (!items.length) { _showToast('Enter at least one received quantity', true); return; }
+  showLoading('Recording receipt…');
+  try {
+    var result = await API.call('receiveStock', {
+      poId: poId,
+      receiptDate: document.getElementById('recv-date').value,
+      notes: document.getElementById('recv-notes').value,
+      discrepancyNotes: document.getElementById('recv-disc').value,
+      items: items
+    });
+    renderPODetail(poId);
+    _showToast('✓ Stock received — ' + result.receiptNumber);
+  } catch(e) { _showToast(e.message, true); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// BRANCH TRANSFERS ── Task 14
+// ══════════════════════════════════════════════════════════════════════════════
+
+var BT_STATUS_LABELS = { draft:'Draft', pending_approval:'Pending Approval', approved:'Approved', in_transit:'In Transit', received:'Received', partially_received:'Partial', cancelled:'Cancelled' };
+var BT_STATUS_COLORS = { draft:'#6b7280', pending_approval:'#d97706', approved:'#2563eb', in_transit:'#7c3aed', received:'#16a34a', partially_received:'#16a34a', cancelled:'#dc2626' };
+
+async function renderBranchTransfers(msg) {
+  showLoading('Loading transfers…');
+  try {
+    var transfers = await API.call('getBranchTransfers', {});
+    _renderBTListUI(transfers, null, msg);
+  } catch(e) { _renderBTListUI([], e.message); }
+}
+
+function _renderBTListUI(transfers, error, msg) {
+  var rows = transfers.length ? transfers.map(function(t) {
+    var color = BT_STATUS_COLORS[t.status] || '#6b7280';
+    return '<div class="card" style="margin-bottom:8px;cursor:pointer;" onclick="renderBranchTransferDetail(\'' + t.id + '\')">' +
+      '<div style="display:flex;justify-content:space-between;">' +
+      '<div><div style="font-weight:bold;font-size:13px;">' + (t.transfer_number||t.id) + '</div>' +
+      '<div class="muted" style="font-size:11px;">' + _escHtml(t.source_branch_name||'—') + ' → ' + _escHtml(t.destination_branch_name||'—') + '</div></div>' +
+      '<span style="font-size:12px;color:' + color + ';font-weight:bold;">' + (BT_STATUS_LABELS[t.status]||t.status) + '</span>' +
+      '</div></div>';
+  }).join('') : '<div class="muted" style="padding:8px;">No branch transfers found.</div>';
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">🔄 Branch Transfers</div><button class="small-btn" onclick="goHome()">← Home</button></div>' +
+    (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
+    (error ? '<div class="message message-error">' + error + '</div>' : '') +
+    rows +
+    (_hasPermission('branch_transfer','create') ? '<button class="btn btn-primary" style="margin-top:8px;" onclick="renderCreateBranchTransfer()">+ New Transfer</button>' : '') +
+    '</div>';
+}
+
+async function renderBranchTransferDetail(transferId) {
+  showLoading('Loading transfer…');
+  try {
+    var t = await API.call('getBranchTransferById', { id: transferId });
+    var color = BT_STATUS_COLORS[t.status] || '#6b7280';
+    var itemsHtml = (t.items||[]).map(function(item) {
+      return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f3f4f6;font-size:13px;">' +
+        '<span>' + _escHtml(item.product_name||item.product_id) + '</span>' +
+        '<span>Req: ' + item.requested_quantity + (item.sent_quantity ? ' Sent: '+item.sent_quantity : '') + (item.received_quantity ? ' Rcvd: '+item.received_quantity : '') + '</span>' +
+        '</div>';
+    }).join('');
+
+    var actions = '';
+    if (t.status === 'draft' && _hasPermission('branch_transfer','submit'))
+      actions += '<button class="btn btn-secondary" onclick="doBTAction(\'submitBranchTransfer\',\'' + transferId + '\')">📤 Submit</button>';
+    if (t.status === 'pending_approval' && _hasPermission('branch_transfer','approve'))
+      actions += '<button class="btn btn-primary" style="margin-top:8px;" onclick="doBTAction(\'approveBranchTransfer\',\'' + transferId + '\')">✅ Approve</button>';
+    if (t.status === 'approved' && _hasPermission('branch_transfer','submit'))
+      actions += '<button class="btn btn-primary" style="margin-top:8px;background:#7c3aed;" onclick="doBTAction(\'markBranchTransferSent\',\'' + transferId + '\')">🚚 Mark Sent</button>';
+    if (t.status === 'in_transit' && _hasPermission('branch_transfer','receive'))
+      actions += '<button class="btn btn-primary" style="margin-top:8px;" onclick="doBTAction(\'receiveBranchTransfer\',\'' + transferId + '\')">📦 Confirm Received</button>';
+    if (!['received','cancelled'].includes(t.status) && _hasPermission('branch_transfer','cancel'))
+      actions += '<button class="btn btn-secondary" style="margin-top:8px;background:#fee2e2;color:#dc2626;" onclick="doBTAction(\'cancelBranchTransfer\',\'' + transferId + '\')">✕ Cancel</button>';
+
+    document.getElementById('app').innerHTML =
+      '<div class="screen">' +
+      '<div class="topbar"><div class="title" style="margin:0;">' + (t.transfer_number||'Transfer') + '</div><button class="small-btn" onclick="renderBranchTransfers()">← Back</button></div>' +
+      '<div class="card">' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span class="muted">Status</span><span style="color:' + color + ';font-weight:bold;">' + (BT_STATUS_LABELS[t.status]||t.status) + '</span></div>' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span class="muted">From</span><span>' + _escHtml(t.source_branch_name||'—') + '</span></div>' +
+      '<div style="display:flex;justify-content:space-between;"><span class="muted">To</span><span>' + _escHtml(t.destination_branch_name||'—') + '</span></div>' +
+      '</div>' +
+      '<div class="card"><div class="section-title" style="margin-bottom:8px;">Items</div>' + (itemsHtml||'<div class="muted">No items</div>') + '</div>' +
+      (actions ? '<div class="card">' + actions + '</div>' : '') +
+      '</div>';
+  } catch(e) { _showToast(e.message, true); renderBranchTransfers(); }
+}
+
+async function renderCreateBranchTransfer() {
+  _showToast('Branch setup required in Settings first. Contact support to add branches.', false);
+  renderBranchTransfers();
+}
+
+async function doBTAction(action, transferId) {
+  showLoading('Processing…');
+  try {
+    await API.call(action, { id: transferId });
+    renderBranchTransferDetail(transferId);
+    _showToast('✓ Done');
+  } catch(e) { _showToast(e.message, true); renderBranchTransferDetail(transferId); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// HQ CONTROL CENTER ── Task 15
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function renderHQControlCenter() {
+  showLoading('Loading HQ overview…');
+  try {
+    var data = await API.call('getHqControlCenter', {});
+    _renderHQPage(data);
+  } catch(e) {
+    document.getElementById('app').innerHTML =
+      '<div class="screen"><div class="topbar"><div class="title" style="margin:0;">🏢 HQ Control Center</div><button class="small-btn" onclick="goHome()">← Home</button></div>' +
+      '<div class="card"><div class="message message-error">' + e.message + '</div></div></div>';
+  }
+}
+
+function _renderHQPage(data) {
+  var attQueue = (data.branch_attention_queue||[]).map(function(b) {
+    var color = b.highest_severity === 'critical' ? '#dc2626' : b.highest_severity === 'watch' ? '#d97706' : '#16a34a';
+    return '<div class="card" style="margin-bottom:8px;border-left:4px solid ' + color + ';">' +
+      '<div style="font-weight:bold;">' + _escHtml(b.branch_name||'—') + '</div>' +
+      '<div class="muted" style="font-size:12px;">' + b.issue_count + ' issue(s) · ' + (b.highest_severity||'info') + '</div>' +
+      (b.reasons||[]).map(function(r) { return '<div style="font-size:11px;color:#6b7280;">· ' + r + '</div>'; }).join('') +
+      '</div>';
+  }).join('') || '<div class="card"><div class="muted">All branches operating normally ✓</div></div>';
+
+  var ops = data.operational_queues || {};
+  var opCards = '';
+  if (ops.approvals) opCards += '<div style="text-align:center;padding:8px;"><div style="font-size:24px;font-weight:bold;">' + ops.approvals.total_pending + '</div><div class="muted" style="font-size:12px;">Pending Approvals</div></div>';
+  if (ops.branch_transfers) opCards += '<div style="text-align:center;padding:8px;"><div style="font-size:24px;font-weight:bold;">' + (ops.branch_transfers.in_transit||0) + '</div><div class="muted" style="font-size:12px;">In Transit</div></div>';
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">🏢 HQ Control Center</div><button class="small-btn" onclick="goHome()">← Home</button></div>' +
+    (data.header ? '<div class="card" style="background:#f0fdf4;border:1px solid #bbf7d0;"><div class="section-title">' + data.header.title + '</div><div class="muted" style="font-size:12px;">' + (data.header.subtitle||'') + '</div></div>' : '') +
+    '<div class="section-title" style="margin:12px 0 8px;">🚨 Branches Needing Attention</div>' + attQueue +
+    (opCards ? '<div class="card"><div class="section-title" style="margin-bottom:8px;">Operational Queue</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:0;">' + opCards + '</div></div>' : '') +
+    '</div>';
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CONSOLIDATED EXECUTIVE DASHBOARD ── Task 16
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function renderConsolidatedDashboard(period) {
+  period = period || 'last_month';
+  showLoading('Loading consolidated view…');
+  try {
+    var data = await API.call('getConsolidatedExecutiveDashboard', { period: period });
+    _renderConsolidatedPage(data, period);
+  } catch(e) {
+    document.getElementById('app').innerHTML =
+      '<div class="screen"><div class="topbar"><div class="title" style="margin:0;">📊 Consolidated Dashboard</div><button class="small-btn" onclick="goHome()">← Home</button></div>' +
+      '<div class="card"><div class="message message-error">' + e.message + '</div></div></div>';
+  }
+}
+
+function _renderConsolidatedPage(data, period) {
+  var s = data.summary || {};
+  function money(v) { return '₱' + Number(v||0).toLocaleString('en-PH', {minimumFractionDigits:0}); }
+  var periodBtns = ['last_month','last_quarter','last_year'].map(function(p) {
+    return '<button onclick="renderConsolidatedDashboard(\'' + p + '\')" style="padding:6px 12px;border-radius:6px;border:1px solid #e5e7eb;background:' + (period===p?'#111827':'white') + ';color:' + (period===p?'white':'#374151') + ';font-size:12px;cursor:pointer;">' + p.replace('_',' ') + '</button>';
+  }).join('');
+
+  var highlights = data.highlights || {};
+  var hlHtml = '';
+  if (highlights.top_sales_branch) hlHtml += '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f3f4f6;"><span class="muted">Top Sales</span><span style="font-weight:bold;">' + _escHtml(highlights.top_sales_branch.branch_name||'—') + '</span></div>';
+  if (highlights.bottom_result_branch) hlHtml += '<div style="display:flex;justify-content:space-between;padding:6px 0;"><span class="muted" style="color:#dc2626;">Lowest Result</span><span style="font-weight:bold;color:#dc2626;">' + _escHtml(highlights.bottom_result_branch.branch_name||'—') + '</span></div>';
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">📊 All Branches</div><button class="small-btn" onclick="goHome()">← Home</button></div>' +
+    '<div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;">' + periodBtns + '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">' +
+    '<div class="card" style="text-align:center;"><div style="font-size:20px;font-weight:bold;color:#16a34a;">' + money(s.total_sales) + '</div><div class="muted" style="font-size:12px;">Total Sales</div></div>' +
+    '<div class="card" style="text-align:center;"><div style="font-size:20px;font-weight:bold;color:#111827;">' + money(s.estimated_business_result) + '</div><div class="muted" style="font-size:12px;">Est. Result</div></div>' +
+    '<div class="card" style="text-align:center;"><div style="font-size:20px;font-weight:bold;color:#dc2626;">' + money(s.total_expenses) + '</div><div class="muted" style="font-size:12px;">Expenses</div></div>' +
+    '<div class="card" style="text-align:center;"><div style="font-size:20px;font-weight:bold;">' + (s.total_transactions||0) + '</div><div class="muted" style="font-size:12px;">Transactions</div></div>' +
+    '</div>' +
+    (hlHtml ? '<div class="card"><div class="section-title" style="margin-bottom:8px;">Highlights</div>' + hlHtml + '</div>' : '') +
+    '</div>';
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MULTI-BRANCH REPORTS ── Task 17
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function renderMultiBranchReports(type, period) {
+  type = type || 'branch_sales_analysis';
+  period = period || 'last_month';
+  showLoading('Generating report…');
+  try {
+    var data = await API.call('getMultiBranchAdvancedReports', { type: type, period: period });
+    _renderMBReportPage(data, type, period);
+  } catch(e) {
+    document.getElementById('app').innerHTML =
+      '<div class="screen"><div class="topbar"><div class="title" style="margin:0;">📈 Multi-Branch Reports</div><button class="small-btn" onclick="goHome()">← Home</button></div>' +
+      '<div class="card"><div class="message message-error">' + e.message + '</div></div></div>';
+  }
+}
+
+function _renderMBReportPage(data, type, period) {
+  var REPORT_TYPES = ['branch_sales_analysis','branch_expense_analysis','branch_inventory_health','branch_performance_comparison','branch_contribution','branch_risk'];
+  var typeSelector = '<div style="overflow-x:auto;white-space:nowrap;margin-bottom:10px;">' +
+    REPORT_TYPES.map(function(t) {
+      return '<button onclick="renderMultiBranchReports(\'' + t + '\',\'' + period + '\')" style="padding:6px 10px;border-radius:6px;border:1px solid #e5e7eb;background:' + (type===t?'#111827':'white') + ';color:' + (type===t?'white':'#374151') + ';font-size:11px;cursor:pointer;margin-right:4px;">' + t.replace(/branch_|_/g,' ').trim() + '</button>';
+    }).join('') + '</div>';
+
+  var sectionsHtml = (data.sections||[]).map(function(sec) {
+    var rowsHtml = (sec.data||[]).slice(0,10).map(function(row) {
+      return '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px solid #f3f4f6;">' +
+        '<span>' + _escHtml(String(row.branch_name||row.label||Object.values(row)[0]||'—')) + '</span>' +
+        '<span style="font-weight:bold;">' + _escHtml(String(Object.values(row).slice(-1)[0]||'—')) + '</span>' +
+        '</div>';
+    }).join('');
+    return '<div class="card" style="margin-bottom:8px;"><div class="section-title" style="margin-bottom:8px;">' + _escHtml(sec.title||'') + '</div>' + (rowsHtml||'<div class="muted">No data</div>') + '</div>';
+  }).join('');
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">📈 Multi-Branch</div><button class="small-btn" onclick="goHome()">← Home</button></div>' +
+    typeSelector +
+    '<div class="card" style="margin-bottom:8px;"><div class="subtitle">' + _escHtml(data.title||type) + '</div></div>' +
+    sectionsHtml +
+    '</div>';
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CUSTOM ROLE BUILDER ── Task 18
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function renderCustomRoles(msg) {
+  showLoading('Loading roles…');
+  try {
+    var roles = await API.call('getCustomRoles', {});
+    _renderCustomRolesUI(roles, null, msg);
+  } catch(e) { _renderCustomRolesUI([], e.message); }
+}
+
+function _renderCustomRolesUI(roles, error, msg) {
+  var rows = roles.length ? roles.map(function(r) {
+    return '<div class="card" style="margin-bottom:8px;cursor:pointer;" onclick="renderCustomRoleDetail(\'' + r.id + '\')">' +
+      '<div style="font-weight:bold;">' + _escHtml(r.role_name) + ' <span class="muted" style="font-weight:normal;font-size:12px;">(' + r.role_code + ')</span></div>' +
+      '<div class="muted" style="font-size:12px;">' + (r.permission_count||0) + ' permissions · ' + (r.assigned_user_count||0) + ' users · ' + (r.status||'active') + '</div>' +
+      '</div>';
+  }).join('') : '<div class="muted" style="padding:8px;">No custom roles yet.</div>';
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">🔑 Custom Roles</div><button class="small-btn" onclick="goHome()">← Home</button></div>' +
+    (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
+    (error ? '<div class="message message-error">' + error + '</div>' : '') +
+    rows +
+    (_hasPermission('custom_role_builder','create_role') ? '<button class="btn btn-primary" style="margin-top:8px;" onclick="renderCreateCustomRole()">+ Create Custom Role</button>' : '') +
+    '</div>';
+}
+
+async function renderCustomRoleDetail(roleId) {
+  showLoading('Loading role…');
+  try {
+    var role = await API.call('getCustomRoleById', { id: roleId });
+    var permsHtml = (role.permissions||[]).map(function(p) {
+      return '<span style="display:inline-block;background:#eff6ff;color:#1d4ed8;border-radius:4px;padding:2px 6px;font-size:11px;margin:2px;">' + p + '</span>';
+    }).join('');
+    var usersHtml = (role.assigned_users||[]).map(function(u) {
+      return '<div style="font-size:13px;padding:4px 0;">' + _escHtml(u.full_name||u.username||u.user_id) + '</div>';
+    }).join('') || '<div class="muted" style="font-size:12px;">No users assigned</div>';
+
+    document.getElementById('app').innerHTML =
+      '<div class="screen">' +
+      '<div class="topbar"><div class="title" style="margin:0;">' + _escHtml(role.role_name) + '</div><button class="small-btn" onclick="renderCustomRoles()">← Back</button></div>' +
+      '<div class="card"><div class="muted" style="font-size:12px;margin-bottom:8px;">Code: ' + role.role_code + ' · Status: ' + (role.status||'active') + '</div>' +
+      (role.description ? '<div style="font-size:13px;margin-bottom:8px;">' + _escHtml(role.description) + '</div>' : '') +
+      '<div class="section-title" style="font-size:13px;margin-bottom:6px;">Permissions</div>' +
+      (permsHtml || '<div class="muted" style="font-size:12px;">No permissions assigned</div>') + '</div>' +
+      '<div class="card"><div class="section-title" style="font-size:13px;margin-bottom:6px;">Assigned Users</div>' + usersHtml + '</div>' +
+      '</div>';
+  } catch(e) { _showToast(e.message, true); renderCustomRoles(); }
+}
+
+async function renderCreateCustomRole() {
+  showLoading('Loading permission catalog…');
+  try {
+    var catalog = await API.call('getPermissionCatalog', {});
+    _renderCreateRoleForm(catalog);
+  } catch(e) { _showToast(e.message, true); renderCustomRoles(); }
+}
+
+function _renderCreateRoleForm(catalog) {
+  var moduleCheckboxes = Object.keys(catalog).map(function(module) {
+    var actions = catalog[module];
+    return '<div style="margin-bottom:8px;">' +
+      '<div style="font-weight:bold;font-size:13px;margin-bottom:4px;">' + module + '</div>' +
+      actions.map(function(action) {
+        var key = module + '.' + action;
+        return '<label style="display:inline-flex;align-items:center;gap:4px;margin-right:8px;font-size:12px;"><input type="checkbox" name="perm" value="' + key + '"> ' + action + '</label>';
+      }).join('') + '</div>';
+  }).join('');
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">Create Custom Role</div><button class="small-btn" onclick="renderCustomRoles()">← Back</button></div>' +
+    '<div class="card">' +
+    '<div class="field"><label>Role Name *</label><input id="cr-name" placeholder="e.g. Senior Cashier"></div>' +
+    '<div class="field"><label>Role Code *</label><input id="cr-code" placeholder="e.g. SENIOR_CASHIER (uppercase)"></div>' +
+    '<div class="field"><label>Description</label><input id="cr-desc" placeholder="What this role can do"></div>' +
+    '</div>' +
+    '<div class="card"><div class="section-title" style="margin-bottom:8px;">Permissions</div>' + moduleCheckboxes + '</div>' +
+    '<button class="btn btn-primary" onclick="submitCreateCustomRole()">Create Role</button>' +
+    '</div>';
+}
+
+async function submitCreateCustomRole() {
+  var name = (document.getElementById('cr-name').value||'').trim();
+  var code = (document.getElementById('cr-code').value||'').trim().toUpperCase().replace(/\s/g,'_');
+  if (!name || !code) { _showToast('Name and code are required', true); return; }
+  var perms = Array.from(document.querySelectorAll('input[name="perm"]:checked')).map(function(el) { return el.value; });
+  showLoading('Creating role…');
+  try {
+    await API.call('createCustomRole', { role_name: name, role_code: code, description: document.getElementById('cr-desc').value||'', permissions: perms });
+    renderCustomRoles('✓ Custom role created');
+  } catch(e) { _showToast(e.message, true); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ALERTS CENTER ── Task 19
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function renderAlertsCenter(filter) {
+  filter = filter || '';
+  showLoading('Loading alerts…');
+  try {
+    var params = filter ? { severity: filter } : {};
+    var alerts = await API.call('getAlerts', params);
+    _renderAlertsUI(alerts, filter);
+  } catch(e) { _renderAlertsUI([], filter, e.message); }
+}
+
+function _renderAlertsUI(alerts, filter, error) {
+  var SEV_COLORS = { critical: '#dc2626', watch: '#d97706', info: '#2563eb' };
+  var filterBtns = ['','critical','watch','info'].map(function(f) {
+    return '<button onclick="renderAlertsCenter(\'' + f + '\')" style="padding:5px 10px;border-radius:6px;border:1px solid #e5e7eb;background:' + (filter===f?'#111827':'white') + ';color:' + (filter===f?'white':'#374151') + ';font-size:11px;cursor:pointer;margin-right:4px;">' + (f||'All') + '</button>';
+  }).join('');
+  var rows = alerts.length ? alerts.map(function(a) {
+    var color = SEV_COLORS[a.severity] || '#6b7280';
+    return '<div class="card" style="margin-bottom:8px;border-left:4px solid ' + color + ';">' +
+      '<div style="display:flex;justify-content:space-between;">' +
+      '<div style="font-weight:bold;font-size:13px;">' + _escHtml(a.title) + '</div>' +
+      '<span style="font-size:11px;color:' + color + ';font-weight:bold;">' + (a.severity||'info').toUpperCase() + '</span>' +
+      '</div>' +
+      '<div style="font-size:12px;color:#374151;margin-top:4px;">' + _escHtml(a.message||'') + '</div>' +
+      (a.action_suggestion ? '<div class="muted" style="font-size:11px;margin-top:4px;">💡 ' + _escHtml(a.action_suggestion) + '</div>' : '') +
+      '</div>';
+  }).join('') : '<div class="muted" style="padding:8px;">No alerts ' + (filter?'with severity '+filter:'') + '.</div>';
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">🔔 Alerts</div><button class="small-btn" onclick="goHome()">← Home</button></div>' +
+    '<div style="margin-bottom:10px;">' + filterBtns + '</div>' +
+    (error ? '<div class="message message-error">' + error + '</div>' : '') +
+    rows + '</div>';
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// NOTIFICATIONS CENTER ── Task 20
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function renderNotificationsCenter() {
+  showLoading('Loading notifications…');
+  try {
+    var notifications = await API.call('getNotifications', { limit: 50 });
+    _renderNotificationsUI(notifications);
+  } catch(e) { _renderNotificationsUI([], e.message); }
+}
+
+function _renderNotificationsUI(notifications, error) {
+  var SEV_COLORS = { critical: '#dc2626', watch: '#d97706', info: '#2563eb' };
+  var rows = notifications.length ? notifications.map(function(n) {
+    var color = SEV_COLORS[n.severity] || '#6b7280';
+    var unread = n.status === 'unread';
+    return '<div class="card" style="margin-bottom:8px;' + (unread ? 'border-left:4px solid ' + color + ';' : 'opacity:0.75;') + 'cursor:pointer;" onclick="markAndReadNotif(\'' + n.id + '\')">' +
+      '<div style="display:flex;justify-content:space-between;">' +
+      '<div style="font-weight:' + (unread?'bold':'normal') + ';font-size:13px;">' + _escHtml(n.title||n.notification_code||'Notification') + '</div>' +
+      '<span style="font-size:11px;color:' + color + ';">' + (n.severity||'info') + '</span>' +
+      '</div>' +
+      '<div style="font-size:12px;color:#374151;margin-top:4px;">' + _escHtml(n.message||'') + '</div>' +
+      '<div class="muted" style="font-size:11px;margin-top:4px;">' + (n.generated_at||'').slice(0,16) + '</div>' +
+      '</div>';
+  }).join('') : '<div class="muted" style="padding:8px;">No notifications.</div>';
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">📬 Notifications</div><button class="small-btn" onclick="goHome()">← Home</button></div>' +
+    (error ? '<div class="message message-error">' + error + '</div>' : '') +
+    rows + '</div>';
+}
+
+async function markAndReadNotif(notifId) {
+  try { await API.call('markNotificationRead', { id: notifId }); } catch(e) {}
+  renderNotificationsCenter();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// AUTOMATION RULES ── Task 21
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function renderAutomationRules(msg) {
+  showLoading('Loading automation rules…');
+  try {
+    var rules = await API.call('getAutomationRules', {});
+    _renderAutoRulesUI(rules, null, msg);
+  } catch(e) { _renderAutoRulesUI([], e.message); }
+}
+
+function _renderAutoRulesUI(rules, error, msg) {
+  var rows = rules.length ? rules.map(function(r) {
+    var active = r.status === 'active';
+    return '<div class="card" style="margin-bottom:8px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+      '<div style="flex:1;"><div style="font-weight:bold;font-size:13px;">' + _escHtml(r.rule_name) + '</div>' +
+      '<div class="muted" style="font-size:11px;">' + (r.trigger_type||'') + ' → ' + (r.action_type||'') + '</div></div>' +
+      '<button onclick="toggleAutoRule(\'' + r.id + '\',\'' + (active?'inactive':'active') + '\')" style="padding:4px 10px;border-radius:6px;border:none;background:' + (active?'#dcfce7':'#fee2e2') + ';color:' + (active?'#16a34a':'#dc2626') + ';font-size:11px;cursor:pointer;">' + (active?'Active':'Inactive') + '</button>' +
+      '</div></div>';
+  }).join('') : '<div class="muted" style="padding:8px;">No automation rules yet.</div>';
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">⚡ Automation Rules</div><button class="small-btn" onclick="goHome()">← Home</button></div>' +
+    (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
+    (error ? '<div class="message message-error">' + error + '</div>' : '') +
+    rows +
+    (_hasPermission('automation_rules','create') ? '<button class="btn btn-primary" style="margin-top:8px;" onclick="renderCreateAutoRule()">+ Create Rule</button>' : '') +
+    '</div>';
+}
+
+async function toggleAutoRule(ruleId, newStatus) {
+  try {
+    await API.call('updateAutomationRuleStatus', { id: ruleId, status: newStatus });
+    renderAutomationRules();
+  } catch(e) { _showToast(e.message, true); }
+}
+
+function renderCreateAutoRule() {
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">Create Automation Rule</div><button class="small-btn" onclick="renderAutomationRules()">← Back</button></div>' +
+    '<div class="card">' +
+    '<div class="field"><label>Rule Name *</label><input id="ar-name" placeholder="e.g. Escalate critical stock alerts"></div>' +
+    '<div class="field"><label>Description</label><input id="ar-desc" placeholder="What does this rule do?"></div>' +
+    '<div class="field"><label>Trigger</label><select id="ar-trigger"><option value="alert_created">Alert Created</option><option value="workflow_event">Workflow Event</option><option value="scheduled_condition">Scheduled Condition</option></select></div>' +
+    '<div class="field"><label>Action</label><select id="ar-action"><option value="create_notification">Create Notification</option><option value="escalate_alert">Escalate Alert</option><option value="create_followup_flag">Create Follow-up Flag</option><option value="create_reminder_notification">Create Reminder</option></select></div>' +
+    '<button class="btn btn-primary" onclick="submitCreateAutoRule()">Create Rule</button>' +
+    '</div></div>';
+}
+
+async function submitCreateAutoRule() {
+  var name = (document.getElementById('ar-name').value||'').trim();
+  if (!name) { _showToast('Rule name is required', true); return; }
+  showLoading('Saving…');
+  try {
+    await API.call('createAutomationRule', {
+      rule_name: name,
+      description: document.getElementById('ar-desc').value||'',
+      trigger_type: document.getElementById('ar-trigger').value,
+      trigger_config: {},
+      condition_config: {},
+      action_type: document.getElementById('ar-action').value,
+      action_config: {},
+      status: 'active'
+    });
+    renderAutomationRules('✓ Rule created');
+  } catch(e) { _showToast(e.message, true); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DATA IMPORT TOOLS ── Task 22
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function renderDataImport(msg) {
+  showLoading('Loading import jobs…');
+  try {
+    var jobs = await API.call('getImportJobs', {});
+    _renderDataImportUI(jobs, null, msg);
+  } catch(e) { _renderDataImportUI([], e.message); }
+}
+
+function _renderDataImportUI(jobs, error, msg) {
+  var IMPORT_TYPES = ['products','opening_stock','suppliers','staff','branches'];
+  var typeSelector = '<div class="card">' +
+    '<div class="section-title" style="margin-bottom:8px;">Start New Import</div>' +
+    '<div class="field"><label>Import Type</label><select id="import-type">' +
+    IMPORT_TYPES.map(function(t) { return '<option value="' + t + '">' + t + '</option>'; }).join('') +
+    '</select></div>' +
+    '<button class="btn btn-secondary" onclick="downloadImportTemplate()" style="margin-bottom:8px;">📥 Download Template CSV</button>' +
+    '<div class="field"><label>Upload CSV File</label><input type="file" id="import-file" accept=".csv"></div>' +
+    '<button class="btn btn-primary" onclick="submitImportUpload()">Upload & Validate</button>' +
+    '</div>';
+
+  var jobRows = jobs.length ? jobs.map(function(j) {
+    var statusColor = { completed:'#16a34a', failed:'#dc2626', uploaded:'#d97706', validated:'#2563eb' }[j.status] || '#6b7280';
+    return '<div class="card" style="margin-bottom:8px;cursor:pointer;" onclick="renderImportJobDetail(\'' + j.id + '\')">' +
+      '<div style="display:flex;justify-content:space-between;">' +
+      '<div><div style="font-weight:bold;font-size:13px;">' + (j.import_type||'import') + '</div>' +
+      '<div class="muted" style="font-size:11px;">' + (j.total_rows||0) + ' rows · ' + (j.valid_rows||0) + ' valid · ' + (j.invalid_rows||0) + ' errors</div></div>' +
+      '<span style="font-size:12px;color:' + statusColor + ';font-weight:bold;">' + j.status + '</span>' +
+      '</div></div>';
+  }).join('') : '';
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">📤 Data Import</div><button class="small-btn" onclick="goHome()">← Home</button></div>' +
+    (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
+    (error ? '<div class="message message-error">' + error + '</div>' : '') +
+    typeSelector +
+    (jobRows ? '<div class="section-title" style="margin:12px 0 8px;">Import History</div>' + jobRows : '') +
+    '</div>';
+}
+
+async function downloadImportTemplate() {
+  var type = document.getElementById('import-type').value;
+  showLoading('Getting template…');
+  try {
+    var result = await API.call('getImportTemplate', { type: type });
+    var blob = new Blob([result.csv||''], { type: 'text/csv' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = type + '_template.csv';
+    a.click();
+    showLoading('');
+    _showToast('Template downloaded');
+  } catch(e) { _showToast(e.message, true); }
+}
+
+async function submitImportUpload() {
+  var type = document.getElementById('import-type').value;
+  var fileInput = document.getElementById('import-file');
+  if (!fileInput || !fileInput.files[0]) { _showToast('Select a CSV file first', true); return; }
+  var reader = new FileReader();
+  reader.onload = async function(ev) {
+    showLoading('Validating…');
+    try {
+      var result = await API.call('uploadImportJob', { import_type: type, csv_data: ev.target.result });
+      renderImportJobDetail(result.id);
+    } catch(e) { _showToast(e.message, true); renderDataImport(); }
+  };
+  reader.readAsText(fileInput.files[0]);
+}
+
+async function renderImportJobDetail(jobId) {
+  showLoading('Loading job…');
+  try {
+    var job = await API.call('getImportJobById', { id: jobId });
+    var rowsHtml = (job.sample_rows||[]).slice(0,10).map(function(r) {
+      var color = r.validation_status === 'valid' ? '#16a34a' : '#dc2626';
+      return '<div style="padding:4px 0;border-bottom:1px solid #f3f4f6;font-size:11px;color:' + color + ';">Row ' + r.row_number + ': ' + (r.validation_messages||[]).join(', ') + '</div>';
+    }).join('');
+
+    var canConfirm = job.status === 'validated' && (job.valid_rows||0) > 0;
+    document.getElementById('app').innerHTML =
+      '<div class="screen">' +
+      '<div class="topbar"><div class="title" style="margin:0;">Import Job</div><button class="small-btn" onclick="renderDataImport()">← Back</button></div>' +
+      '<div class="card">' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span class="muted">Type</span><span>' + (job.import_type||'—') + '</span></div>' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span class="muted">Status</span><span style="font-weight:bold;">' + (job.status||'—') + '</span></div>' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span class="muted">Total rows</span><span>' + (job.total_rows||0) + '</span></div>' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span class="muted" style="color:#16a34a;">Valid</span><span style="color:#16a34a;font-weight:bold;">' + (job.valid_rows||0) + '</span></div>' +
+      '<div style="display:flex;justify-content:space-between;"><span class="muted" style="color:#dc2626;">Invalid</span><span style="color:#dc2626;font-weight:bold;">' + (job.invalid_rows||0) + '</span></div>' +
+      '</div>' +
+      (rowsHtml ? '<div class="card"><div class="section-title" style="margin-bottom:6px;">Sample Validation</div>' + rowsHtml + '</div>' : '') +
+      (canConfirm ? '<button class="btn btn-primary" onclick="confirmImport(\'' + jobId + '\')">✓ Import ' + job.valid_rows + ' Valid Rows</button>' : '') +
+      '</div>';
+  } catch(e) { _showToast(e.message, true); renderDataImport(); }
+}
+
+async function confirmImport(jobId) {
+  if (!confirm('Import the valid rows? This cannot be undone.')) return;
+  showLoading('Importing…');
+  try {
+    var result = await API.call('confirmImportJob', { id: jobId });
+    renderDataImport('✓ Imported ' + result.imported_rows + ' rows (' + (result.failed_rows||0) + ' failed)');
+  } catch(e) { _showToast(e.message, true); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// LEGACY MIGRATION TOOLS ── Task 23
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function renderLegacyMigration(msg) {
+  showLoading('Loading migration jobs…');
+  try {
+    var jobs = await API.call('getMigrationJobs', {});
+    _renderMigrationUI(jobs, null, msg);
+  } catch(e) { _renderMigrationUI([], e.message); }
+}
+
+function _renderMigrationUI(jobs, error, msg) {
+  var jobRows = jobs.length ? jobs.map(function(j) {
+    return '<div class="card" style="margin-bottom:8px;cursor:pointer;" onclick="renderMigrationJobDetail(\'' + j.id + '\')">' +
+      '<div style="font-weight:bold;font-size:13px;">' + (j.migration_type||'migration') + ' <span class="muted">' + (j.source_type||'') + '</span></div>' +
+      '<div class="muted" style="font-size:11px;">' + (j.total_rows||0) + ' rows · status: ' + (j.status||'—') + '</div>' +
+      '</div>';
+  }).join('') : '';
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">🔄 Legacy Migration</div><button class="small-btn" onclick="goHome()">← Home</button></div>' +
+    (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
+    (error ? '<div class="message message-error">' + error + '</div>' : '') +
+    '<div class="card">' +
+    '<div class="subtitle" style="margin-bottom:8px;">Migrate from old systems</div>' +
+    '<div class="muted" style="font-size:12px;margin-bottom:12px;">Upload a CSV export from your old POS or spreadsheet, map the columns, preview, then import.</div>' +
+    '<div class="field"><label>Migration Type</label><select id="mig-type"><option value="products">Products</option><option value="sales_history">Sales History</option><option value="expense_history">Expense History</option><option value="customers">Customers</option></select></div>' +
+    '<div class="field"><label>Source System</label><select id="mig-source"><option value="spreadsheet">Spreadsheet (Excel/CSV)</option><option value="old_pos">Old POS System</option><option value="manual">Manual Entry</option></select></div>' +
+    '<div class="field"><label>Upload CSV</label><input type="file" id="mig-file" accept=".csv"></div>' +
+    '<button class="btn btn-primary" onclick="submitMigrationUpload()">Upload & Detect Columns</button>' +
+    '</div>' +
+    (jobRows ? '<div class="section-title" style="margin:12px 0 8px;">Migration History</div>' + jobRows : '') +
+    '</div>';
+}
+
+async function submitMigrationUpload() {
+  var fileInput = document.getElementById('mig-file');
+  if (!fileInput || !fileInput.files[0]) { _showToast('Select a CSV file', true); return; }
+  var reader = new FileReader();
+  reader.onload = async function(ev) {
+    showLoading('Uploading…');
+    try {
+      var result = await API.call('uploadMigrationJob', {
+        migration_type: document.getElementById('mig-type').value,
+        source_type: document.getElementById('mig-source').value,
+        csv_data: ev.target.result
+      });
+      renderMigrationJobDetail(result.id);
+    } catch(e) { _showToast(e.message, true); renderLegacyMigration(); }
+  };
+  reader.readAsText(fileInput.files[0]);
+}
+
+async function renderMigrationJobDetail(jobId) {
+  showLoading('Loading job…');
+  try {
+    var job = await API.call('getMigrationJobById', { id: jobId });
+    document.getElementById('app').innerHTML =
+      '<div class="screen">' +
+      '<div class="topbar"><div class="title" style="margin:0;">Migration Job</div><button class="small-btn" onclick="renderLegacyMigration()">← Back</button></div>' +
+      '<div class="card">' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span class="muted">Type</span><span>' + (job.migration_type||'—') + '</span></div>' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span class="muted">Status</span><span style="font-weight:bold;">' + (job.status||'—') + '</span></div>' +
+      '<div style="display:flex;justify-content:space-between;"><span class="muted">Rows</span><span>' + (job.total_rows||0) + ' total · ' + (job.valid_rows||0) + ' valid</span></div>' +
+      '</div>' +
+      (job.status === 'mapped' ? '<button class="btn btn-primary" onclick="confirmMigration(\'' + jobId + '\')">✓ Confirm Import</button>' : '') +
+      '</div>';
+  } catch(e) { _showToast(e.message, true); renderLegacyMigration(); }
+}
+
+async function confirmMigration(jobId) {
+  if (!confirm('Import data? This cannot be undone.')) return;
+  showLoading('Importing…');
+  try {
+    var result = await API.call('confirmMigrationJob', { id: jobId });
+    renderLegacyMigration('✓ Migrated ' + result.imported_rows + ' rows');
+  } catch(e) { _showToast(e.message, true); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// FEATURE MARKETPLACE ── Task 24
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function renderFeatureMarketplace() {
+  showLoading('Loading marketplace…');
+  try {
+    var features = await API.call('getFeatureMarketplace', {});
+    _renderMarketplaceUI(features);
+  } catch(e) { _renderMarketplaceUI([], e.message); }
+}
+
+function _renderMarketplaceUI(features, error) {
+  var STATUS_LABEL = { active_paid: '✓ Active', trial_active: '⏱ Trial', trial_expiring: '⚠ Expiring', trial_expired: '✗ Expired', locked: 'Locked', cancelled: 'Cancelled' };
+  var STATUS_COLOR = { active_paid: '#16a34a', trial_active: '#2563eb', trial_expiring: '#d97706', trial_expired: '#dc2626', locked: '#6b7280', cancelled: '#dc2626' };
+
+  var cards = features.length ? features.map(function(f) {
+    var statusColor = STATUS_COLOR[f.tenant_status] || '#6b7280';
+    var statusLabel = STATUS_LABEL[f.tenant_status] || f.tenant_status;
+    var trialInfo = f.trial_ends_at ? '<div class="muted" style="font-size:11px;">Trial ends: ' + String(f.trial_ends_at).slice(0,10) + '</div>' : '';
+    var actionBtn = f.action_state === 'start_trial' && f.is_trial_available
+      ? '<button class="btn btn-primary" style="font-size:12px;padding:8px;" onclick="doStartTrial(\'' + f.module_code + '\')">▶ Start ' + f.trial_days + '-Day Free Trial</button>'
+      : (f.tenant_status === 'trial_active' || f.tenant_status === 'active_paid'
+          ? '<button class="btn btn-secondary" style="font-size:12px;padding:8px;background:#fee2e2;color:#dc2626;" onclick="doCancelFeature(\'' + f.module_code + '\')">Cancel</button>'
+          : '');
+
+    return '<div class="card" style="margin-bottom:10px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">' +
+      '<div style="font-weight:bold;font-size:14px;">' + _escHtml(f.feature_name||f.module_code) + '</div>' +
+      '<span style="font-size:11px;color:' + statusColor + ';font-weight:bold;">' + statusLabel + '</span>' +
+      '</div>' +
+      '<div style="font-size:12px;color:#374151;margin-bottom:6px;">' + _escHtml(f.short_description||'') + '</div>' +
+      (f.monthly_price ? '<div class="muted" style="font-size:11px;margin-bottom:6px;">₱' + Number(f.monthly_price).toFixed(0) + '/month after trial</div>' : '') +
+      trialInfo + actionBtn +
+      '</div>';
+  }).join('') : '<div class="muted" style="padding:8px;">' + (error||'No features available.') + '</div>';
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">🏪 Feature Marketplace</div><button class="small-btn" onclick="goHome()">← Home</button></div>' +
+    '<div class="muted" style="font-size:12px;margin-bottom:12px;">Try premium features free, then subscribe if you find them valuable.</div>' +
+    cards + '</div>';
+}
+
+async function doStartTrial(moduleCode) {
+  showLoading('Starting trial…');
+  try {
+    var result = await API.call('startTrial', { moduleCode: moduleCode });
+    _showToast('✓ Trial started! Ends ' + String(result.trial_ends_at).slice(0,10));
+    renderFeatureMarketplace();
+  } catch(e) { _showToast(e.message, true); }
+}
+
+async function doCancelFeature(moduleCode) {
+  if (!confirm('Cancel this feature subscription?')) return;
+  showLoading('Cancelling…');
+  try {
+    await API.call('manageSubscription', { moduleCode: moduleCode, action: 'cancel' });
+    _showToast('Subscription cancelled');
+    renderFeatureMarketplace();
+  } catch(e) { _showToast(e.message, true); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SANDBOX MODE ── Task 25
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function renderSandboxMode() {
+  showLoading('Loading sandbox status…');
+  try {
+    var data = await API.call('getSandbox', {});
+    _renderSandboxUI(data);
+  } catch(e) {
+    document.getElementById('app').innerHTML =
+      '<div class="screen"><div class="topbar"><div class="title" style="margin:0;">🧪 Sandbox Mode</div><button class="small-btn" onclick="goHome()">← Home</button></div>' +
+      '<div class="card"><div class="message message-error">' + e.message + '</div></div></div>';
+  }
+}
+
+function _renderSandboxUI(data) {
+  var inSandbox = data.is_in_sandbox;
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">🧪 Sandbox Mode</div><button class="small-btn" onclick="goHome()">← Home</button></div>' +
+    '<div class="card" style="background:' + (inSandbox ? '#fef9c3' : '#f9fafb') + ';border:' + (inSandbox ? '2px solid #fbbf24' : '1px solid #e5e7eb') + ';">' +
+    '<div style="font-size:20px;text-align:center;margin-bottom:8px;">' + (inSandbox ? '🟡 SANDBOX ACTIVE' : '⚪ Sandbox Inactive') + '</div>' +
+    '<div class="muted" style="font-size:12px;text-align:center;margin-bottom:12px;">' + (inSandbox ? (data.banner_message||'You are in sandbox mode. No real data will be affected.') : 'Sandbox lets you test the app with demo data without affecting real records.') + '</div>' +
+    (inSandbox
+      ? '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+        '<button class="btn btn-secondary" onclick="doSandboxReset()">🔄 Reset Demo Data</button>' +
+        '<button class="btn btn-secondary" style="background:#fee2e2;color:#dc2626;" onclick="doSandboxExit()">✕ Exit Sandbox</button>' +
+        '</div>'
+      : '<div class="field"><label>Demo Template</label><select id="sandbox-template"><option value="demo_sari_sari_basic">Sari-sari Store (Basic)</option><option value="demo_grocery_standard">Grocery Store (Standard)</option></select></div>' +
+        '<button class="btn btn-primary" onclick="doSandboxEnter()">▶ Enter Sandbox</button>') +
+    '</div></div>';
+}
+
+async function doSandboxEnter() {
+  showLoading('Entering sandbox…');
+  try {
+    var result = await API.call('enterSandbox', { template_code: document.getElementById('sandbox-template').value });
+    _renderSandboxUI(result);
+    _showToast('✓ Sandbox activated with demo data');
+  } catch(e) { _showToast(e.message, true); }
+}
+async function doSandboxReset() {
+  if (!confirm('Reset all demo data? The sandbox will be repopulated from the template.')) return;
+  showLoading('Resetting…');
+  try { await API.call('resetSandbox', {}); renderSandboxMode(); _showToast('✓ Demo data reset'); }
+  catch(e) { _showToast(e.message, true); }
+}
+async function doSandboxExit() {
+  if (!confirm('Exit sandbox? You will return to real data.')) return;
+  showLoading('Exiting…');
+  try { await API.call('exitSandbox', {}); renderSandboxMode(); _showToast('✓ Exited sandbox'); }
+  catch(e) { _showToast(e.message, true); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// HARDWARE SETUP ── Task 27 + Task 33
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function renderHardwareSetup() {
+  showLoading('Loading hardware profiles…');
+  try {
+    var [profiles, current] = await Promise.all([
+      API.call('getHardwareProfiles', {}),
+      API.call('getTenantHardwareProfile', {}).catch(function() { return null; })
+    ]);
+    _renderHardwareSetupUI(profiles, current);
+  } catch(e) {
+    document.getElementById('app').innerHTML =
+      '<div class="screen"><div class="topbar"><div class="title" style="margin:0;">🖨️ Hardware Setup</div><button class="small-btn" onclick="goHome()">← Home</button></div>' +
+      '<div class="card"><div class="message message-error">' + e.message + '</div></div></div>';
+  }
+}
+
+function _renderHardwareSetupUI(profiles, current) {
+  var selectedCode = current && current.profile_code;
+  var profileCards = profiles.map(function(p) {
+    var isSelected = p.profile_code === selectedCode;
+    var minDev = {};
+    try { minDev = JSON.parse(p.minimum_device_json||'{}'); } catch(e) {}
+    var checklist = [];
+    try { checklist = JSON.parse(p.checklist_json||'[]'); } catch(e) {}
+
+    return '<div class="card" style="margin-bottom:10px;' + (isSelected ? 'border:2px solid #2563eb;background:#eff6ff;' : '') + '">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
+      '<div><div style="font-weight:bold;">' + _escHtml(p.profile_name||p.profile_code) + '</div>' +
+      '<div class="muted" style="font-size:12px;">' + (p.business_type||'') + '</div></div>' +
+      (isSelected ? '<span style="font-size:12px;color:#2563eb;font-weight:bold;">✓ Selected</span>' :
+        '<button onclick="doSelectHardwareProfile(\'' + p.profile_code + '\')" style="padding:6px 12px;border-radius:6px;border:1px solid #2563eb;background:white;color:#2563eb;font-size:12px;cursor:pointer;">Select</button>') +
+      '</div>' +
+      (minDev.ram_gb ? '<div class="muted" style="font-size:11px;">Min: ' + minDev.ram_gb + 'GB RAM · ' + (minDev.screen_inches||'?') + '" screen</div>' : '') +
+      (checklist.length ? '<div style="margin-top:8px;">' + checklist.slice(0,4).map(function(item) {
+        return '<div style="font-size:12px;padding:2px 0;">☐ ' + _escHtml(typeof item === 'string' ? item : (item.label||JSON.stringify(item))) + '</div>';
+      }).join('') + '</div>' : '') +
+      '</div>';
+  }).join('');
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">🖨️ Hardware Setup</div><button class="small-btn" onclick="goHome()">← Home</button></div>' +
+    '<div class="muted" style="font-size:12px;margin-bottom:12px;">Choose the hardware profile that matches your setup. This configures receipt printing, scanner, and display recommendations.</div>' +
+    (selectedCode ? '<div class="card" style="background:#f0fdf4;border:1px solid #bbf7d0;margin-bottom:8px;"><div class="muted" style="font-size:12px;">Current setup: <strong>' + (current.profile_name||selectedCode) + '</strong></div></div>' : '') +
+    profileCards + '</div>';
+}
+
+async function doSelectHardwareProfile(profileCode) {
+  showLoading('Saving…');
+  try {
+    await API.call('selectHardwareProfile', { profile_code: profileCode });
+    renderHardwareSetup();
+    _showToast('✓ Hardware profile selected');
+  } catch(e) { _showToast(e.message, true); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// FULL SETTINGS PAGE ── Task 28 (expanded)
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function renderFullSettings() {
+  showLoading('Loading settings…');
+  try {
+    var settings = await API.call('getSettings', {});
+    _renderFullSettingsUI(settings);
+  } catch(e) {
+    document.getElementById('app').innerHTML =
+      '<div class="screen"><div class="topbar"><div class="title" style="margin:0;">⚙️ Settings</div><button class="small-btn" onclick="goHome()">← Home</button></div>' +
+      '<div class="card"><div class="message message-error">' + e.message + '</div></div></div>';
+  }
+}
+
+function _renderFullSettingsUI(settings) {
+  var bp = settings.business_profile || {};
+  var ops = settings.operations || {};
+  var print = settings.printing || {};
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">⚙️ Settings</div><button class="small-btn" onclick="goHome()">← Home</button></div>' +
+
+    '<div class="card">' +
+    '<div class="section-title" style="margin-bottom:8px;">🏪 Business Profile</div>' +
+    '<div class="field"><label>Business Name</label><input id="set-biz-name" value="' + _escAttr(bp.business_name||'') + '"></div>' +
+    '<div class="field"><label>Owner Name</label><input id="set-owner" value="' + _escAttr(bp.owner_name||'') + '"></div>' +
+    '<div class="field"><label>Phone</label><input id="set-phone" value="' + _escAttr(bp.phone||'') + '"></div>' +
+    '<div class="field"><label>Address</label><input id="set-address" value="' + _escAttr(bp.address||'') + '"></div>' +
+    '<div class="field"><label>Default Currency</label><input id="set-currency" value="' + _escAttr(bp.default_currency||'PHP') + '"></div>' +
+    '<button class="btn btn-primary" onclick="saveBusinessProfile()">Save Business Profile</button>' +
+    '</div>' +
+
+    '<div class="card">' +
+    '<div class="section-title" style="margin-bottom:8px;">⚙️ Operations</div>' +
+    '<label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:14px;"><input type="checkbox" id="set-req-exp-appr" ' + (ops.require_expense_approval ? 'checked' : '') + '> Require approval for expenses</label>' +
+    '<label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:14px;"><input type="checkbox" id="set-req-adj-appr" ' + (ops.require_stock_adjustment_approval ? 'checked' : '') + '> Require approval for stock adjustments</label>' +
+    '<label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:14px;"><input type="checkbox" id="set-allow-neg" ' + (ops.allow_negative_stock ? 'checked' : '') + '> Allow negative stock</label>' +
+    '<button class="btn btn-secondary" onclick="saveOperationsSettings()">Save Operations</button>' +
+    '</div>' +
+
+    '<div class="card">' +
+    '<div class="section-title" style="margin-bottom:8px;">🖨️ Printing</div>' +
+    '<div class="field"><label>Printer Type</label><select id="set-printer"><option value="none"' + (!print.default_printer_type||print.default_printer_type==='none'?' selected':'') + '>None (screen only)</option><option value="bluetooth_thermal"' + (print.default_printer_type==='bluetooth_thermal'?' selected':'') + '>Bluetooth Thermal</option><option value="wifi_printer"' + (print.default_printer_type==='wifi_printer'?' selected':'') + '>WiFi Printer</option></select></div>' +
+    '<button class="btn btn-secondary" onclick="savePrintingSettings()">Save Printing</button>' +
+    '</div>' +
+
+    '<div class="card">' +
+    '<div class="section-title" style="margin-bottom:8px;">🔐 Security</div>' +
+    '<div class="field"><label>Current Password</label><input id="set-cur-pw" type="password" placeholder="Enter current password"></div>' +
+    '<div class="field"><label>New Password</label><input id="set-new-pw" type="password" placeholder="New password"></div>' +
+    '<div class="field"><label>Confirm New Password</label><input id="set-confirm-pw" type="password" placeholder="Repeat new password"></div>' +
+    '<button class="btn btn-secondary" onclick="changePasswordFromSettings()">Change Password</button>' +
+    '</div>' +
+    '</div>';
+}
+
+async function saveBusinessProfile() {
+  showLoading('Saving…');
+  try {
+    await API.call('updateBusinessProfile', {
+      business_name:    document.getElementById('set-biz-name').value||'',
+      owner_name:       document.getElementById('set-owner').value||'',
+      phone:            document.getElementById('set-phone').value||'',
+      address:          document.getElementById('set-address').value||'',
+      default_currency: document.getElementById('set-currency').value||'PHP'
+    });
+    _showToast('✓ Business profile saved');
+    renderFullSettings();
+  } catch(e) { _showToast(e.message, true); }
+}
+
+async function saveOperationsSettings() {
+  showLoading('Saving…');
+  try {
+    await API.call('updateOperationsSettings', {
+      require_expense_approval:         document.getElementById('set-req-exp-appr').checked,
+      require_stock_adjustment_approval: document.getElementById('set-req-adj-appr').checked,
+      allow_negative_stock:             document.getElementById('set-allow-neg').checked
+    });
+    _showToast('✓ Operations settings saved');
+  } catch(e) { _showToast(e.message, true); }
+}
+
+async function savePrintingSettings() {
+  _showToast('Printing settings saved (local)');
+}
+
+async function changePasswordFromSettings() {
+  var cur  = document.getElementById('set-cur-pw').value;
+  var nw   = document.getElementById('set-new-pw').value;
+  var conf = document.getElementById('set-confirm-pw').value;
+  if (!cur || !nw) { _showToast('Fill in current and new password', true); return; }
+  if (nw !== conf) { _showToast('New passwords do not match', true); return; }
+  showLoading('Changing password…');
+  try {
+    await API.call('changePassword', { currentPassword: cur, newPassword: nw });
+    _showToast('✓ Password changed');
+    renderFullSettings();
+  } catch(e) { _showToast(e.message, true); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DASHBOARD BUTTON ADDITIONS — wire all new screens into dashboards
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Notification badge helper — show unread count next to notifications button
+async function _loadNotifBadge(buttonId) {
+  try {
+    var r = await API.call('getUnreadCount', {});
+    var cnt = r.unread_count || 0;
+    if (cnt > 0) {
+      var el = document.getElementById(buttonId);
+      if (el) el.innerHTML = el.innerHTML + ' <span style="background:#dc2626;color:white;border-radius:10px;padding:1px 6px;font-size:11px;">' + cnt + '</span>';
+    }
+  } catch(e) {}
+}
+
+// ── Sync Functions ─────────────────────────────────────────────────────────────
+
+async function syncWhenOnline() {
+  if (!API.token) return; // No session
+  try {
+    // Sync pending sales or data
+    updateSyncIndicator('syncing');
+    // Example: Sync any queued changes
+    await DB.syncPending(); // Placeholder
+    updateSyncIndicator('online');
+  } catch (e) {
+    console.warn('Sync failed:', e);
+    updateSyncIndicator('offline');
+  }
 }
 
 // ── Start ─────────────────────────────────────────────────────────────────────

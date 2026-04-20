@@ -152,8 +152,8 @@
     <h2>📷 Scanner Opening…</h2>
     <p>A scanner window should open.<br>After scanning, the barcode fills in automatically.<br>If the window was blocked, type barcode below.</p>
     <div id="scan-manual-row">
-      <input id="scan-manual-input" placeholder="Type barcode manually…" inputmode="numeric" autocomplete="off">
-      <button id="scan-go-btn" onclick="submitManualScan()">Go</button>
+      <input id="scan-manual-input-fallback" placeholder="Type barcode manually…" inputmode="numeric" autocomplete="off">
+      <button id="scan-go-btn-fallback" onclick="submitManualScan()">Go</button>
     </div>
     <button class="cancel-btn" onclick="closeScannerModal()">Cancel</button>
   </div>
