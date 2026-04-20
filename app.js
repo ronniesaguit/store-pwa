@@ -318,6 +318,7 @@ function renderOwnerDashboard(msg) {
   if (_hasModule('expenses'))      btns += '<button class="big-btn" onclick="renderExpenses()">💸 Expenses</button>';
   if (_hasModule('reports'))       btns += '<button class="big-btn" onclick="renderReports()">📊 Reports</button>';
   if (_hasModule('internal_chat')) btns += '<button class="big-btn" onclick="renderChat()">💬 Chat</button>';
+  if (_hasModule('staff_management')) btns += '<button class="big-btn" onclick="renderStaffList()">👥 Staff</button>';
   if (_hasModule('approvals'))     btns += '<button class="big-btn" onclick="renderApprovalsQueue()">✅ Approvals</button>';
   if (_hasModule('settings'))      btns += '<button class="big-btn" onclick="renderSettings()">⚙️ Settings</button>';
   if (_hasModule('roi'))           btns += '<button class="big-btn" onclick="renderROIMonitor()">📈 ROI</button>';
@@ -2154,6 +2155,238 @@ async function rejectRequest(id) {
     renderApprovalsQueue();
   } catch(err) {
     _showToast(err.message || 'Failed to reject', true);
+  }
+}
+
+// ── Staff Management ───────────────────────────────────────────────────────────
+
+async function renderStaffList() {
+  showLoading('Loading staff…');
+  try {
+    var staff = await API.getStaff();
+    _renderStaffListUI(staff);
+  } catch(err) {
+    _renderStaffListUI([], err.message);
+  }
+}
+
+function _renderStaffListUI(staff, error) {
+  var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
+  var header = _dashboardHeader_(storeName, '', 'Staff Management', state.isOffline);
+  var content = '';
+
+  if (error) {
+    content = '<div class="message message-error">' + error + '</div>';
+  } else if (!staff.length) {
+    content = '<div class="card"><div class="title">👥 No Staff Yet</div><div class="subtitle">Add your first staff member to get started.</div></div>';
+  } else {
+    content = staff.map(function(s) {
+      var statusColor = s.employment_status === 'active' ? '#10b981' : '#ef4444';
+      var statusText = s.employment_status.charAt(0).toUpperCase() + s.employment_status.slice(1);
+      var lastLogin = s.last_login ? new Date(s.last_login).toLocaleDateString() : 'Never';
+      var activity = s.activity_summary || {};
+      var activityText = `Sales: ${activity.recent_sales || 0}, Expenses: ${activity.recent_expenses || 0}, Stock: ${activity.recent_stock_movements || 0}`;
+
+      return '<div class="card" onclick="renderStaffDetail(\'' + s.id + '\')">' +
+        '<div class="title">' + _escAttr(s.full_name) + ' (' + s.role_code + ')</div>' +
+        '<div class="subtitle">Last login: ' + lastLogin + '</div>' +
+        '<div class="subtitle" style="font-size:0.8rem;">' + activityText + '</div>' +
+        '<div style="margin-top:8px;"><span style="background:' + statusColor + ';color:#fff;padding:4px 8px;border-radius:12px;font-size:0.8rem;font-weight:600;">' + statusText + '</span></div>' +
+        '</div>';
+    }).join('');
+  }
+
+  // Add staff button if permission
+  if (_hasPermission('staff_management.create')) {
+    content += '<div class="card"><button class="btn btn-primary" onclick="renderAddStaffForm()">+ Add Staff Member</button></div>';
+  }
+
+  document.getElementById('app').innerHTML = '<div class="screen">' + header + content + '</div>';
+}
+
+async function renderStaffDetail(staffId) {
+  showLoading('Loading staff details…');
+  try {
+    var staff = await API.getStaffById(staffId);
+    _renderStaffDetailUI(staff);
+  } catch(err) {
+    _renderStaffDetailUI(null, err.message);
+  }
+}
+
+function _renderStaffDetailUI(staff, error) {
+  var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
+  var header = _dashboardHeader_(storeName, '', 'Staff Detail', state.isOffline);
+  var content = '';
+
+  if (error) {
+    content = '<div class="message message-error">' + error + '</div>';
+  } else {
+    var statusColor = staff.employment_status === 'active' ? '#10b981' : '#ef4444';
+    var statusText = staff.employment_status.charAt(0).toUpperCase() + staff.employment_status.slice(1);
+    var lastLogin = staff.last_login ? new Date(staff.last_login).toLocaleString() : 'Never';
+    var created = new Date(staff.created_at).toLocaleDateString();
+    var activity = staff.activity_summary || {};
+
+    content = '<div class="card">' +
+      '<div class="title">' + _escAttr(staff.full_name) + '</div>' +
+      '<div class="subtitle">Username: ' + _escAttr(staff.username) + '</div>' +
+      '<div class="field"><label>Role:</label> <span style="font-weight:600;">' + staff.role_code + '</span></div>' +
+      '<div class="field"><label>Status:</label> <span style="background:' + statusColor + ';color:#fff;padding:4px 8px;border-radius:12px;font-size:0.8rem;">' + statusText + '</span></div>' +
+      '<div class="field"><label>Phone:</label> ' + (staff.phone || 'Not set') + '</div>' +
+      '<div class="field"><label>Email:</label> ' + (staff.email || 'Not set') + '</div>' +
+      '<div class="field"><label>Last Login:</label> ' + lastLogin + '</div>' +
+      '<div class="field"><label>Account Created:</label> ' + created + '</div>' +
+      '<div class="field"><label>Recent Activity:</label> Sales: ' + (activity.recent_sales || 0) + ', Expenses: ' + (activity.recent_expenses || 0) + ', Stock Movements: ' + (activity.recent_stock_movements || 0) + '</div>';
+
+    if (staff.notes) {
+      content += '<div class="field"><label>Notes:</label> ' + _escAttr(staff.notes) + '</div>';
+    }
+
+    content += '</div>';
+
+    // Action buttons
+    var actions = '';
+    if (_hasPermission('staff_management.edit')) {
+      actions += '<button class="btn btn-secondary" onclick="renderEditStaffForm(\'' + staff.id + '\')">Edit Info</button>';
+      actions += '<button class="btn btn-secondary" onclick="renderAssignRoleForm(\'' + staff.id + '\', \'' + staff.role_code + '\')">Change Role</button>';
+      actions += '<button class="btn btn-secondary" onclick="renderSetPasswordForm(\'' + staff.id + '\')">Set Password</button>';
+      actions += '<button class="btn btn-secondary" onclick="toggleStaffStatus(\'' + staff.id + '\', \'' + staff.employment_status + '\')">' +
+        (staff.employment_status === 'active' ? 'Deactivate' : 'Activate') + '</button>';
+    }
+
+    if (actions) {
+      content += '<div class="card">' + actions + '</div>';
+    }
+  }
+
+  document.getElementById('app').innerHTML = '<div class="screen">' + header + content + '</div>';
+}
+
+function renderAddStaffForm() {
+  var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
+  var header = _dashboardHeader_(storeName, '', 'Add Staff', state.isOffline);
+
+  var content = '<div class="card">' +
+    '<div class="field"><label>Full Name *</label><input id="staff-fullname" placeholder="Enter full name"></div>' +
+    '<div class="field"><label>Username *</label><input id="staff-username" placeholder="Enter username"></div>' +
+    '<div class="field"><label>Password *</label><input id="staff-password" type="password" placeholder="Enter password"></div>' +
+    '<div class="field"><label>Role *</label><select id="staff-role">' +
+      '<option value="CASHIER">Cashier</option>' +
+      '<option value="INVENTORY_STAFF">Inventory Staff</option>' +
+      '<option value="VIEWER">Viewer</option>' +
+      '<option value="MANAGER">Manager</option>' +
+    '</select></div>' +
+    '<div class="field"><label>Phone</label><input id="staff-phone" placeholder="Enter phone number"></div>' +
+    '<div class="field"><label>Email</label><input id="staff-email" type="email" placeholder="Enter email"></div>' +
+    '<div class="field"><label>Notes</label><textarea id="staff-notes" placeholder="Optional notes"></textarea></div>' +
+    '<button class="btn btn-primary" onclick="submitAddStaff()">Create Staff</button>' +
+    '<button class="btn btn-secondary" onclick="renderStaffList()">Cancel</button>' +
+    '</div>';
+
+  document.getElementById('app').innerHTML = '<div class="screen">' + header + content + '</div>';
+}
+
+async function submitAddStaff() {
+  var data = {
+    fullName: document.getElementById('staff-fullname').value.trim(),
+    username: document.getElementById('staff-username').value.trim(),
+    password: document.getElementById('staff-password').value.trim(),
+    role: document.getElementById('staff-role').value,
+    phone: document.getElementById('staff-phone').value.trim(),
+    email: document.getElementById('staff-email').value.trim(),
+    notes: document.getElementById('staff-notes').value.trim()
+  };
+
+  if (!data.fullName || !data.username || !data.password || !data.role) {
+    _showToast('Please fill all required fields', true);
+    return;
+  }
+
+  try {
+    await API.createStaff(data);
+    _showToast('Staff member created successfully!', false);
+    renderStaffList();
+  } catch(err) {
+    _showToast(err.message || 'Failed to create staff', true);
+  }
+}
+
+function renderEditStaffForm(staffId) {
+  // Simplified: redirect to detail for now
+  renderStaffDetail(staffId);
+  // TODO: Implement full edit form
+}
+
+function renderAssignRoleForm(staffId, currentRole) {
+  var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
+  var header = _dashboardHeader_(storeName, '', 'Change Role', state.isOffline);
+
+  var content = '<div class="card">' +
+    '<div class="field"><label>New Role</label><select id="new-role">' +
+      '<option value="CASHIER"' + (currentRole === 'CASHIER' ? ' selected' : '') + '>Cashier</option>' +
+      '<option value="INVENTORY_STAFF"' + (currentRole === 'INVENTORY_STAFF' ? ' selected' : '') + '>Inventory Staff</option>' +
+      '<option value="VIEWER"' + (currentRole === 'VIEWER' ? ' selected' : '') + '>Viewer</option>' +
+      '<option value="MANAGER"' + (currentRole === 'MANAGER' ? ' selected' : '') + '>Manager</option>' +
+    '</select></div>' +
+    '<button class="btn btn-primary" onclick="submitAssignRole(\'' + staffId + '\')">Update Role</button>' +
+    '<button class="btn btn-secondary" onclick="renderStaffDetail(\'' + staffId + '\')">Cancel</button>' +
+    '</div>';
+
+  document.getElementById('app').innerHTML = '<div class="screen">' + header + content + '</div>';
+}
+
+async function submitAssignRole(staffId) {
+  var newRole = document.getElementById('new-role').value;
+  try {
+    await API.assignStaffRole(staffId, newRole);
+    _showToast('Role updated successfully!', false);
+    renderStaffDetail(staffId);
+  } catch(err) {
+    _showToast(err.message || 'Failed to update role', true);
+  }
+}
+
+function renderSetPasswordForm(staffId) {
+  var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
+  var header = _dashboardHeader_(storeName, '', 'Set Password', state.isOffline);
+
+  var content = '<div class="card">' +
+    '<div class="field"><label>New Password</label><input id="new-password" type="password" placeholder="Enter new password"></div>' +
+    '<button class="btn btn-primary" onclick="submitSetPassword(\'' + staffId + '\')">Set Password</button>' +
+    '<button class="btn btn-secondary" onclick="renderStaffDetail(\'' + staffId + '\')">Cancel</button>' +
+    '</div>';
+
+  document.getElementById('app').innerHTML = '<div class="screen">' + header + content + '</div>';
+}
+
+async function submitSetPassword(staffId) {
+  var password = document.getElementById('new-password').value.trim();
+  if (!password) {
+    _showToast('Password is required', true);
+    return;
+  }
+  try {
+    await API.setStaffPassword(staffId, password);
+    _showToast('Password set successfully!', false);
+    renderStaffDetail(staffId);
+  } catch(err) {
+    _showToast(err.message || 'Failed to set password', true);
+  }
+}
+
+async function toggleStaffStatus(staffId, currentStatus) {
+  var newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+  var action = newStatus === 'active' ? 'activate' : 'deactivate';
+
+  if (!confirm('Are you sure you want to ' + action + ' this staff member?')) return;
+
+  try {
+    await API.setStaffStatus(staffId, newStatus);
+    _showToast('Staff member ' + action + 'd successfully!', false);
+    renderStaffDetail(staffId);
+  } catch(err) {
+    _showToast(err.message || 'Failed to ' + action + ' staff', true);
   }
 }
 

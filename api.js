@@ -116,6 +116,29 @@ const API = {
   // Stock adjustment
   async createStockAdjustment(data) {
     return this.call('createStockAdjustment', data);
+  },
+
+  // Staff Management
+  async getStaff() {
+    return this.call('getStaff');
+  },
+  async getStaffById(id) {
+    return this.call('getStaffById', { id });
+  },
+  async createStaff(data) {
+    return this.call('createStaff', data);
+  },
+  async updateStaff(id, data) {
+    return this.call('updateStaff', { id, ...data });
+  },
+  async assignStaffRole(id, role) {
+    return this.call('assignStaffRole', { id, role });
+  },
+  async setStaffPassword(id, password) {
+    return this.call('setStaffPassword', { id, password });
+  },
+  async setStaffStatus(id, status) {
+    return this.call('setStaffStatus', { id, status });
   }
 };
 
