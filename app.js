@@ -319,6 +319,7 @@ function renderOwnerDashboard(msg) {
   if (_hasModule('reports'))       btns += '<button class="big-btn" onclick="renderReports()">📊 Reports</button>';
   if (_hasModule('internal_chat')) btns += '<button class="big-btn" onclick="renderChat()">💬 Chat</button>';
   if (_hasModule('staff_management')) btns += '<button class="big-btn" onclick="renderStaffList()">👥 Staff</button>';
+  if (_hasModule('reports') && _hasPermission('reports.view_advanced')) btns += '<button class="big-btn" onclick="renderAdvancedReportsHome()">📊 Advanced Reports</button>';
   if (_hasModule('approvals'))     btns += '<button class="big-btn" onclick="renderApprovalsQueue()">✅ Approvals</button>';
   if (_hasModule('settings'))      btns += '<button class="big-btn" onclick="renderSettings()">⚙️ Settings</button>';
   if (_hasModule('roi'))           btns += '<button class="big-btn" onclick="renderROIMonitor()">📈 ROI</button>';
@@ -2388,6 +2389,90 @@ async function toggleStaffStatus(staffId, currentStatus) {
   } catch(err) {
     _showToast(err.message || 'Failed to ' + action + ' staff', true);
   }
+}
+
+// ── Advanced Reports ────────────────────────────────────────────────────────────
+
+async function renderAdvancedReportsHome() {
+  var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
+  var header = _dashboardHeader_(storeName, '', 'Advanced Reports', state.isOffline);
+
+  var reportTypes = [
+    { id: 'sales_analysis', title: 'Sales Analysis', desc: 'Deep sales performance insights' },
+    { id: 'product_performance', title: 'Product Performance', desc: 'Top products, slow-movers, stock alerts' },
+    { id: 'inventory_movement', title: 'Inventory Movement', desc: 'Stock changes and inventory health' },
+    { id: 'expense_analysis', title: 'Expense Analysis', desc: 'Expense breakdown and trends' },
+    { id: 'staff_performance', title: 'Staff Performance', desc: 'Staff contribution metrics' },
+    { id: 'business_performance_comparison', title: 'Performance Comparison', desc: 'Period-over-period business comparison' }
+  ];
+
+  var content = '<div class="card"><div class="subtitle">Select Report Type</div>' +
+    reportTypes.map(rt => `<button class="big-btn" onclick="selectAdvancedReportPeriod('${rt.id}', '${rt.title}')">${rt.title}<br><small>${rt.desc}</small></button>`).join('') +
+    '</div>';
+
+  document.getElementById('app').innerHTML = '<div class="screen">' + header + content + '</div>';
+}
+
+function selectAdvancedReportPeriod(reportType, reportTitle) {
+  var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
+  var header = _dashboardHeader_(storeName, '', reportTitle, state.isOffline);
+
+  var periods = [
+    { id: 'today', label: 'Today' },
+    { id: 'last_week', label: 'Last Week' },
+    { id: 'last_month', label: 'Last Month' },
+    { id: 'last_quarter', label: 'Last Quarter' },
+    { id: 'last_year', label: 'Last Year' }
+  ];
+
+  var content = '<div class="card"><div class="subtitle">Select Period</div>' +
+    periods.map(p => `<button class="big-btn" onclick="loadAdvancedReport('${reportType}', '${p.id}', '${reportTitle}')">${p.label}</button>`).join('') +
+    '</div>';
+
+  document.getElementById('app').innerHTML = '<div class="screen">' + header + content + '</div>';
+}
+
+async function loadAdvancedReport(reportType, period, reportTitle) {
+  showLoading('Generating report…');
+  try {
+    var report = await API.getAdvancedReport(reportType, period);
+    _renderAdvancedReport(report, reportTitle);
+  } catch(err) {
+    var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
+    var header = _dashboardHeader_(storeName, '', reportTitle, state.isOffline);
+    var content = '<div class="card"><div class="message message-error">' + (err.message || 'Failed to load report') + '</div></div>';
+    document.getElementById('app').innerHTML = '<div class="screen">' + header + content + '</div>';
+  }
+}
+
+function _renderAdvancedReport(report, reportTitle) {
+  var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
+  var header = _dashboardHeader_(storeName, '', reportTitle, state.isOffline);
+
+  var summaryHtml = '';
+  if (report.summary) {
+    var s = report.summary;
+    summaryHtml = '<div class="card"><div class="title">Summary</div>';
+    if (s.sales_total !== undefined) summaryHtml += '<div>Sales: ₱' + Number(s.sales_total).toLocaleString() + '</div>';
+    if (s.expense_total !== undefined) summaryHtml += '<div>Expenses: ₱' + Number(s.expense_total).toLocaleString() + '</div>';
+    if (s.transactions_count !== undefined) summaryHtml += '<div>Transactions: ' + s.transactions_count + '</div>';
+    if (s.active_staff_count !== undefined) summaryHtml += '<div>Active Staff: ' + s.active_staff_count + '</div>';
+    summaryHtml += '</div>';
+  }
+
+  var sectionsHtml = report.sections.map(sec => {
+    var itemsHtml = sec.items.map(item => `<div class="field"><label>${_escAttr(item.label)}</label> ${_escAttr(item.value)}</div>`).join('');
+    return `<div class="card"><div class="title">${_escAttr(sec.title)}</div>${itemsHtml}</div>`;
+  }).join('');
+
+  var alertsHtml = '';
+  if (report.alerts && report.alerts.length) {
+    alertsHtml = report.alerts.map(alert => `<div class="message message-${alert.type === 'warning' ? 'error' : 'ok'}">${_escAttr(alert.message)}</div>`).join('');
+  }
+
+  var content = summaryHtml + sectionsHtml + alertsHtml;
+
+  document.getElementById('app').innerHTML = '<div class="screen">' + header + content + '</div>';
 }
 
 // ── Reports ───────────────────────────────────────────────────────────────────

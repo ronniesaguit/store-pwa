@@ -139,6 +139,11 @@ const API = {
   },
   async setStaffStatus(id, status) {
     return this.call('setStaffStatus', { id, status });
+  },
+
+  // Advanced Reports
+  async getAdvancedReport(type, period) {
+    return this.call('getAdvancedReport', { type, period });
   }
 };
 
