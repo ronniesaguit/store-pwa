@@ -3660,13 +3660,17 @@ var CAPITAL_CATEGORIES = [
 async function renderROIMonitor() {
   showLoading('Loading ROI data…');
   var d;
-  try { d = await API.call('getROIData'); } catch(e) {
-    _showToast('Error: ' + e.message, true); goHome(); return;
+  try {
+    d = await API.call('getROIData');
+  } catch(e) {
+    document.getElementById('app').innerHTML = '<div class="screen"><div class="topbar"><div class="title">📈 ROI Monitor</div><button class="small-btn" onclick="goHome()">Back</button></div><div class="card"><div class="message message-error">Error: ' + _esc(e.message) + '</div></div></div>';
+    return;
   }
 
-  var perf    = d.performance;
-  var proj    = d.projection;
-  var summary = d.summary;
+  try {
+  var perf    = d.performance  || {};
+  var proj    = d.projection   || {};
+  var summary = d.summary      || {};
   var prog    = perf.progressPercent;
   var hasCapital = summary.totalCostOfCapital > 0;
 
@@ -3778,6 +3782,9 @@ async function renderROIMonitor() {
     '<button class="btn btn-primary" onclick="renderCapitalSetup()">✏️ Edit Capital</button>' +
     '<button class="btn btn-secondary" onclick="renderROIMonitor()">🔄 Refresh</button>' +
     '</div></div>';
+  } catch(renderErr) {
+    document.getElementById('app').innerHTML = '<div class="screen"><div class="topbar"><div class="title">📈 ROI Monitor</div><button class="small-btn" onclick="goHome()">Back</button></div><div class="card"><div class="message message-error">Render error: ' + _esc(renderErr.message) + '</div></div></div>';
+  }
 }
 
 async function renderCapitalSetup() {
