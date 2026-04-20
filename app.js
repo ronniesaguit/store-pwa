@@ -3920,6 +3920,9 @@ async function saveLoanSettings() {
   } catch(e) { _showToast('Error: ' + e.message, true); }
 }
 
+function _money(v) {
+  return '₱' + Number(v || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
 function _moneyShort(v) {
   var n = Number(v || 0);
   if (n >= 1000) return '₱' + (n / 1000).toFixed(1) + 'k';
