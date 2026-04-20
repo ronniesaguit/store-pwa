@@ -292,6 +292,13 @@ function _hasPerm(permCode) {
   return perms.indexOf(permCode) !== -1;
 }
 
+function _hasPermission(moduleOrPerm, action) {
+  // Two-arg form: _hasPermission('suppliers', 'create') → checks 'suppliers.create'
+  if (action) return _hasPerm(moduleOrPerm + '.' + action);
+  // One-arg form: _hasPermission('reports.view_advanced')
+  return _hasPerm(moduleOrPerm);
+}
+
 // ── Dashboards ────────────────────────────────────────────────────────────────
 
 function _dashboardHeader_(storeName, subLabel, onlineLabel, isOffline) {
