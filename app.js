@@ -15,6 +15,9 @@ var state = {
   lastBIRData:   null
 };
 
+// Executive dashboard state
+var execCurrentPeriod = 'last_month';
+
 // ── Boot ─────────────────────────────────────────────────────────────────────
 
 async function boot() {
@@ -262,6 +265,8 @@ function logout() {
   localStorage.removeItem('store_profile');
   // Clear per-role dashboard caches so next user starts fresh
   localStorage.removeItem('mgr_dash');
+  localStorage.removeItem('exec_dash_cache');
+  localStorage.removeItem('exec_dash_ts');
   ['today','last_week','last_month','last_quarter','last_year'].forEach(function(p) {
     localStorage.removeItem('mon_' + p);
   });
@@ -669,24 +674,401 @@ function renderViewerDashboard(msg) {
 }
 
 // EXECUTIVE — read-only access to reports, ROI, monitors, expenses overview
-function renderExecutiveDashboard(msg) {
+// ── Executive Dashboard ─────────────────────────────────────────────────────────
+
+let execCurrentPeriod = 'last_month';
+
+async function renderExecutiveDashboard(msg) {
   var storeName = (state.storeProfile && (state.storeProfile.storeName || state.storeProfile.Store_Name)) || '';
   var userName  = state.session.user.Full_Name;
-  var btns = '';
-  if (_hasModule('reports'))       btns += '<button class="big-btn" onclick="renderReports()">📊 Reports</button>';
-  if (_hasModule('monitors'))      btns += '<button class="big-btn" onclick="renderMonitors()">📡 Monitors</button>';
-  if (_hasModule('roi'))           btns += '<button class="big-btn" onclick="renderROIMonitor()">📈 ROI</button>';
-  if (_hasModule('expenses'))      btns += '<button class="big-btn" onclick="renderExpenses()">💸 Expenses</button>';
-  if (_hasModule('products'))      btns += '<button class="big-btn" onclick="loadProducts()">📦 Products</button>';
-  if (_hasModule('inventory'))     btns += '<button class="big-btn" onclick="renderInventoryMenu()">📋 Inventory</button>';
-  if (_hasModule('internal_chat')) btns += '<button class="big-btn" onclick="renderChat()">💬 Chat</button>';
-  if (_hasModule('support'))       btns += '<button class="big-btn" onclick="renderSupport()">📞 Help</button>';
-  document.getElementById('app').innerHTML =
-    '<div class="screen">' +
-    _dashboardHeader_(storeName, userName + ' · Executive', '', state.isOffline) +
-    (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
-    '<div class="grid-buttons">' + btns + '</div></div>';
+
+  if (state.isOffline) {
+    var cached = localStorage.getItem('exec_dash_cache');
+    if (cached) {
+      try {
+        var cachedData = JSON.parse(cached);
+        _renderExecutivePage(cachedData, true);
+        return;
+      } catch(e) {}
+    }
+  }
+
+  showLoading('Loading executive dashboard…');
+  try {
+    var data = await API.call('getExecutiveDashboard', { period: execCurrentPeriod });
+    try {
+      localStorage.setItem('exec_dash_cache', JSON.stringify(data));
+      localStorage.setItem('exec_dash_ts', Date.now().toString());
+      localStorage.setItem('last_sync_at', Date.now().toString());
+    } catch(e) {}
+    _renderExecutivePage(data, false);
+  } catch(err) {
+    _showToast('Error: ' + (err.message || err), true);
+    goHome();
+  }
 }
+
+function _renderExecutivePage(data, fromCache) {
+  var storeName = (state.storeProfile && (state.storeProfile.storeName || state.storeProfile.Store_Name)) || '';
+  var userName  = state.session.user.Full_Name;
+
+  var cacheBanner = fromCache
+    ? '<div style="background:#fffbeb;border-bottom:1px solid #fde68a;padding:6px 12px;font-size:0.75rem;color:#92400e;text-align:center;">Showing cached data (offline)</div>'
+    : '';
+
+  var alertsHtml = '';
+  if (data.alerts && data.alerts.length) {
+    alertsHtml = '<div style="padding:4px 12px 2px;">' + data.alerts.map(function(a){
+      var bg = a.level === 'critical' ? '#fee2e2' : a.level === 'warning' ? '#fef3c7' : '#dbeafe';
+      var border = a.level === 'critical' ? '#dc2626' : a.level === 'warning' ? '#d97706' : '#1d4ed8';
+      var actionBtn = a.action_label
+        ? '<button onclick="_execAction(\''+a.action_target+'\')" style="margin-top:6px;background:#fff;border:1px solid '+border+';color:'+border+';padding:4px 10px;border-radius:6px;font-size:0.7rem;font-weight:700;cursor:pointer;">'+a.action_label+' →</button>'
+        : '';
+      return '<div style="background:'+bg+';border-left:3px solid '+border+';border-radius:8px;padding:10px;margin-bottom:6px;">'+
+        '<div style="font-weight:700;font-size:0.8rem;color:#111827;">'+_escAttr(a.title)+'</div>'+
+        '<div style="font-size:0.75rem;color:#374151;margin-top:2px;">'+_escAttr(a.message)+'</div>'+
+        actionBtn+
+        '</div>';
+    }).join('') + '</div>';
+  }
+
+
+  // Period selector
+  var periods = ['today','last_week','last_month','last_quarter','last_year'];
+  var periodHtml = '<div style="display:flex;gap:6px;overflow-x:auto;padding:0 4px 12px;-webkit-overflow-scrolling:touch;">' +
+    periods.map(function(p){
+      var active = p === execCurrentPeriod ? 'background:#111827;color:#fff;border-color:#111827;' : '';
+      return '<button class="period-btn" data-period="'+p+'" onclick="setExecPeriod(\''+p+'\')" style="'+active+'">'+
+        {today:'Today',last_week:'Week',last_month:'Month',last_quarter:'Quarter',last_year:'Year'}[p]+'</button>';
+    }).join('') + '</div>';
+
+  // Executive Summary KPIs
+  var s = data.summary || {};
+  var salesPct    = s.sales_total      && s.sales_total.trend_pct      !== null ? s.sales_total.trend_pct      : null;
+  var expPct      = s.expenses_total   && s.expenses_total.trend_pct   !== null ? s.expenses_total.trend_pct   : null;
+  var profitPct   = s.estimated_profit && s.estimated_profit.trend_pct !== null ? s.estimated_profit.trend_pct : null;
+
+  // Extract raw values and statuses
+  var salesVal       = s.sales_total       ? s.sales_total.value        : null;
+  var salesStatus    = s.sales_total       ? s.sales_total.status       : 'no_data';
+  var expVal         = s.expenses_total    ? s.expenses_total.value     : null;
+  var expStatus      = s.expenses_total    ? s.expenses_total.status    : 'no_data';
+  var profitVal      = s.estimated_profit  ? s.estimated_profit.value   : null;
+  var profitStatus   = s.estimated_profit  ? s.estimated_profit.status  : 'no_data';
+  var marginVal      = s.profit_margin     ? s.profit_margin.value      : null;
+  var txVal          = s.transactions      ? s.transactions.value       : null;
+  var lowStockVal    = s.low_stock_count   ? s.low_stock_count.value    : null;
+  var activeStaff    = s.active_staff      ? s.active_staff.value       : null;
+  var pendingAppr    = s.pending_approvals ? s.pending_approvals.value  : null;
+
+  function fmtPct(p) {
+    if (p === null || p === undefined) return '';
+    var sign = p > 0 ? '+' : '';
+    var color = p > 0 ? '#16a34a' : p < 0 ? '#dc2626' : '#6b7280';
+    return '<span style="color:'+color+';font-size:0.7rem;">'+sign+p.toFixed(1)+'%</span>';
+  }
+
+  var summaryHtml = '<div class="card">'+
+    '<div class="subtitle">Executive Summary — '+_escAttr(data.period)+'</div>'+
+    '<div class="grid-buttons" style="grid-template-columns:repeat(3,1fr);gap:8px;">'+
+      _execMetricCard('Sales',      _esc(salesVal, '₱'),     salesPct, salesStatus)+
+      _execMetricCard('Expenses',   _esc(expVal, '₱'),       expPct,   expStatus)+
+      _execMetricCard('Profit',     _esc(profitVal, '₱'),    profitPct, profitStatus, (data.meta && data.meta.profit_label) ? data.meta.profit_label : '')+
+    '</div>';
+
+  // Optional KPIs
+  var optHtml = '';
+  if (txVal !== null || lowStockVal !== null || activeStaff !== null || pendingAppr !== null) {
+    optHtml = '<div class="grid-buttons" style="grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px;">';
+    if (txVal !== null) {
+      optHtml += '<div style="background:#f9fafb;padding:10px;border-radius:10px;"><div style="font-size:11px;color:#6b7280;">Transactions</div><div style="font-weight:700;">'+Number(txVal).toLocaleString()+'</div></div>';
+    }
+    if (lowStockVal !== null) {
+      optHtml += '<div style="background:#f9fafb;padding:10px;border-radius:10px;"><div style="font-size:11px;color:#6b7280;">Low Stock Items</div><div style="font-weight:700;color:#d97706;">'+Number(lowStockVal)+'</div></div>';
+    }
+    if (activeStaff !== null) {
+      optHtml += '<div style="background:#f9fafb;padding:10px;border-radius:10px;"><div style="font-size:11px;color:#6b7280;">Active Staff</div><div style="font-weight:700;color:#16a34a;">'+Number(activeStaff)+'</div></div>';
+    }
+    if (pendingAppr !== null) {
+      optHtml += '<div style="background:#f9fafb;padding:10px;border-radius:10px;"><div style="font-size:11px;color:#6b7280;">Pending Approvals</div><div style="font-weight:700;color:#92400e;">'+Number(pendingAppr)+'</div></div>';
+    }
+    if (s.roi_summary) {
+      optHtml += '<div style="background:#f9fafb;padding:10px;border-radius:10px;"><div style="font-size:11px;color:#6b7280;">ROI</div><div style="font-weight:700;color:#1d4ed8;">'+s.roi_summary.roi_percent.toFixed(1)+'%</div></div>';
+    }
+    optHtml += '</div>';
+  }
+  summaryHtml += optHtml + '</div>';
+
+  // Trends (simple indicators)
+  var trendsHtml = '<div class="card"><div class="subtitle">Performance vs Prior Period</div>';
+  if (data.trends) {
+    var tr = data.trends;
+    var trendItem = function(label, pct, dir, color) {
+      var arrow = pct !== null ? (pct > 0 ? '↑' : pct < 0 ? '↓' : '→') : '→';
+      var pctStr = pct !== null ? pct.toFixed(1)+'%' : '—';
+      var col = pct !== null ? (pct > 0 ? '#16a34a' : pct < 0 ? '#dc2626' : '#6b7280') : '#6b7280';
+      return '<div style="background:#f9fafb;padding:10px;border-radius:10px;text-align:center;">'+
+             '<div style="font-size:11px;color:#6b7280;">'+label+'</div>'+
+             '<div style="font-size:18px;font-weight:700;color:'+col+';">'+arrow+' '+pctStr+'</div>'+
+             '<div style="font-size:0.7rem;color:#6b7280;">vs prior</div>'+
+             '</div>';
+    };
+    trendsHtml += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">'+
+      trendItem('Sales',   tr.sales   && tr.sales.pct,   tr.sales   && tr.sales.dir,   '#16a34a')+
+      trendItem('Expenses',tr.expenses&& tr.expenses.pct,tr.expenses&& tr.expenses.dir,'#dc2626')+
+      trendItem('Profit',  tr.profit  && tr.profit.pct,  tr.profit  && tr.profit.dir,  '#2563eb')+
+      '</div>';
+  }
+  trendsHtml += '</div>';
+
+  // Sales & Profit Snapshot
+  var sp = data.sales_profit_snapshot || {};
+  var cProfitStatus = function(v){
+    if (v === null || v === undefined) return '#6b7280';
+    return v < 0 ? '#dc2626' : v === 0 ? '#d97706' : '#16a34a';
+  };
+  var salesHtml = '<div class="card"><div class="subtitle">Sales & Profit Snapshot</div>'+
+    '<div class="grid-buttons" style="grid-template-columns:1fr 1fr;gap:8px;">'+
+      '<div><strong>Transactions</strong><br><span style="font-size:16px;font-weight:700;">'+(sp.transactions && sp.transactions.value!==undefined ? Number(sp.transactions.value).toLocaleString() : '—')+'</span></div>'+
+      '<div><strong>Avg Sale</strong><br><span style="font-size:16px;font-weight:700;">₱'+(sp.avg_sale && sp.avg_sale.value !== null ? Number(sp.avg_sale.value).toFixed(2) : '—')+'</span></div>'+
+      '<div><strong>Top Product</strong><br><span style="font-size:12px;">'+(sp.top_product && sp.top_product.name ? _escAttr(sp.top_product.name) : '—')+'</span></div>'+
+    '</div>'+
+    '<div style="margin-top:10px;padding-top:10px;border-top:1px solid #f3f4f6;">'+
+      '<div style="display:flex;justify-content:space-between;"><strong>Total Sales</strong><span style="font-weight:700;color:#16a34a;font-size:18px;">₱'+_esc(salesVal)+'</span></div>'+
+      '<div style="display:flex;justify-content:space-between;margin-top:6px;"><strong>Est. Profit</strong><span style="font-weight:700;color:'+cProfitStatus(profitVal)+';font-size:16px;">₱'+_esc(profitVal)+'</span></div>'+
+      '<div style="display:flex;justify-content:space-between;margin-top:6px;"><strong>Margin</strong><span style="font-weight:600;">'+(marginVal!==null?marginVal.toFixed(1)+'%':'—')+'</span></div>'+
+    '</div></div>';
+
+  // Expense Snapshot
+  var es = data.expense_snapshot || {};
+  var expPressureHtml = '';
+  if (es.is_available) {
+    var expTotalVal = es.expenses_total ? es.expenses_total.value : null;
+    var expTrendPct = es.expenses_total ? es.expenses_total.trend_pct : null;
+    var expTrendDir = es.expenses_total ? es.expenses_total.trend_dir : null;
+    var hasExpTrend = expTrendPct !== null && expTrendPct !== undefined;
+    var expPressure = es.pressure_alert || false;
+    expPressureHtml = '<div class="card"><div class="subtitle">Expense Snapshot</div>'+
+      '<div style="display:flex;justify-content:space-between;"><strong>Total Expenses</strong><span style="font-weight:700;color:#dc2626;font-size:18px;">₱'+_esc(expTotalVal)+'</span></div>'+
+      '<div class="muted" style="margin-top:4px;">Top category: <strong>'+(es.top_category && es.top_category.name ? _escAttr(es.top_category.name) : '—')+'</strong></div>'+
+      (hasExpTrend
+        ? '<div style="margin-top:6px;font-size:0.75rem;color:'+(expPressure?'#dc2626':'#16a34a')+';font-weight:700;">'+
+           (expTrendPct > 0 ? '↑ '+expTrendPct.toFixed(1)+'% vs prior' : '↓ '+Math.abs(expTrendPct).toFixed(1)+'% vs prior')+
+          '</div>'
+        : '')+
+      '<div style="margin-top:'+(hasExpTrend?'6px':'10px')+';padding:8px;background:'+(expPressure?'#fef2f2':'#f0fdf4')+';border-radius:6px;font-size:0.75rem;color:'+(expPressure?'#dc2626':'#16a34a')+';">'+
+        (expPressure ? '💸 Expenses rising faster than revenue' : '✅ Expense growth is in check')+
+      '</div>'+
+    '</div>';
+  }
+
+  // Inventory Snapshot
+  var inv = data.inventory_snapshot || {};
+  var invHtml = '';
+  if (inv.is_available) {
+    var lowVal = inv.low_stock    ? inv.low_stock.value    : null;
+    var outVal = inv.out_of_stock ? inv.out_of_stock.value : null;
+    var fast   = inv.fast_moving  || {};
+    var slow   = inv.slow_moving  || {};
+    invHtml = '<div class="card"><div class="subtitle">Inventory Health</div>'+
+      '<div class="grid-buttons" style="grid-template-columns:1fr 1fr;gap:8px;">'+
+        '<div><strong>Low Stock</strong><br><span style="font-size:16px;font-weight:700;color:#d97706;">'+(lowVal!==null?lowVal:'—')+' items</span></div>'+
+        '<div><strong>Out of Stock</strong><br><span style="font-size:16px;font-weight:700;color:#dc2626;">'+(outVal!==null?outVal:'—')+' items</span></div>'+
+      '</div>'+
+      '<div class="muted" style="margin-top:10px;">'+
+        '🚀 <strong>Fast:</strong> '+_esc(fast.name)+' ('+(fast.qty||0)+' sold)<br>'+
+        '🐢 <strong>Slow:</strong> '+_esc(slow.name)+' ('+(slow.qty_sold||0)+' sold, '+(slow.stock||0)+' in stock)'+
+      '</div></div>';
+  }
+
+  // Expense Snapshot
+  var es = data.expense_snapshot || {};
+  var expPressureHtml = '';
+  if (es.is_available) {
+    var expStatusColor = es.expense_pressure ? (es.pressure_alert ? '#dc2626' : '#d97706') : '#16a34a';
+    var expTotalVal = es.expenses_total ? es.expenses_total.value : null;
+    var expTrendPct = es.expenses_total ? es.expenses_total.trend_pct : null;
+    var hasExpTrend = expTrendPct !== null;
+    expPressureHtml = '<div class="card"><div class="subtitle">Expense Snapshot</div>'+
+      '<div style="display:flex;justify-content:space-between;"><strong>Total Expenses</strong><span style="font-weight:700;color:#dc2626;font-size:18px;">₱'+_esc(expTotalVal)+'</span></div>'+
+      '<div class="muted" style="margin-top:4px;">Top category: <strong>'+_esc(es.top_category ? es.top_category.name : '—')+'</strong></div>'+
+      (hasExpTrend
+        ? '<div style="margin-top:6px;font-size:0.75rem;color:'+expStatusColor+';font-weight:700;">'+
+           (expTrendPct > 0 ? '↑ '+expTrendPct.toFixed(1)+'% vs prior' : '↓ '+Math.abs(expTrendPct).toFixed(1)+'% vs prior')+
+          '</div>'
+        : '')+
+      '<div style="margin-top:'+(hasExpTrend?'6px':'10px')+';padding:8px;background:'+(es.pressure_alert?'#fef2f2':'#f0fdf4')+';border-radius:6px;font-size:0.75rem;color:'+(es.pressure_alert?'#dc2626':'#16a34a')+';">'+
+        (es.pressure_alert ? '💸 Expenses rising faster than revenue' : '✅ Expense growth is in check')+
+      '</div>'+
+    '</div>';
+  } else {
+    expPressureHtml = '';
+  }
+
+  // Inventory Snapshot
+  var inv = data.inventory_snapshot || {};
+  var invHtml = '';
+  if (inv.is_available) {
+    invHtml = '<div class="card"><div class="subtitle">Inventory Health</div>'+
+      '<div class="grid-buttons" style="grid-template-columns:1fr 1fr;gap:8px;">'+
+        '<div><strong>Low Stock</strong><br><span style="font-size:16px;font-weight:700;color:#d97706;">'+(lowVal!==null?lowVal:'—')+' items</span></div>'+
+        '<div><strong>Out of Stock</strong><br><span style="font-size:16px;font-weight:700;color:#dc2626;">'+(outVal!==null?outVal:'—')+' items</span></div>'+
+      '</div>'+
+      '<div class="muted" style="margin-top:10px;">'+
+        '🚀 <strong>Fast:</strong> '+_esc(fast.name)+' ('+(fast.qty||0)+' sold)<br>'+
+        '🐢 <strong>Slow:</strong> '+_esc(slow.name)+' ('+(slow.qty_sold||0)+' sold, '+(slow.stock||0)+' in stock)'+
+      '</div></div>';
+  }
+
+  // Staff & Operations
+  var sf = data.staff_operations_summary || {};
+  var staffHtml = '<div class="card"><div class="subtitle">Staff & Operations</div>';
+  if (sf.top_staff) {
+    staffHtml += '<div style="padding:8px;background:#f9fafb;border-radius:8px;margin-bottom:8px;">'+
+      '<div style="font-weight:700;font-size:0.9rem;">'+_esc(sf.top_staff.name)+'</div>'+
+      '<div style="font-size:0.8rem;color:#6b7280;">Top performer — ₱'+Number(sf.top_staff.total||0).toLocaleString()+' sales</div>'+
+    '</div>';
+  }
+   staffHtml += '<div class="grid-buttons" style="grid-template-columns:1fr 1fr;gap:8px;">'+
+     '<div><strong>Active Staff</strong><br><span style="font-size:16px;font-weight:700;">'+(sf.active_count ? (sf.active_count.value || 0) : 0)+'</span></div>';
+   if (sf.approvals && sf.approvals.available) {
+     staffHtml += '<div><strong>Pending Approvals</strong><br><span style="font-size:16px;font-weight:700;color:#92400e;">'+(sf.approvals.pending||0)+'</span></div>';
+   }
+   staffHtml += '</div></div>';
+
+  // Insight Shortcuts
+  var shortcutsHtml = '<div class="card"><div class="subtitle">Insights & Quick Access</div>'+
+    '<div class="grid-buttons" style="grid-template-columns:repeat(2,1fr);gap:8px;">';
+  if (data.shortcuts) {
+    data.shortcuts.forEach(function(sc) {
+      shortcutsHtml += '<button onclick="_execShortcut(\''+sc.id+'\')" class="shortcut-btn" style="background:#fff;border:1px solid #e5e7eb;padding:12px;border-radius:10px;font-size:0.9rem;font-weight:600;cursor:pointer;">'+
+        sc.icon+' '+sc.label+'</button>';
+    });
+  }
+  shortcutsHtml += '</div></div>';
+
+  // System Confidence (client-side)
+  var syncHtml = '<div class="card"><div class="subtitle">System Status</div>';
+  try {
+    var pending = await (typeof DB !== 'undefined' ? DB.getSyncQueue() : Promise.resolve([]));
+    var lastSync = localStorage.getItem('last_sync_at');
+    syncHtml += '<div class="muted">Last sync: '+(lastSync?new Date(Number(lastSync)).toLocaleString():'Never')+'</div>'+
+                '<div class="muted">Pending: '+(pending.length)+' records</div>';
+    if (pending.length > 10) {
+      syncHtml += '<div class="message message-offline" style="margin-top:6px;">⚠️ '+pending.length+' items pending sync</div>';
+    }
+  } catch(e) {
+    syncHtml += '<div class="muted">Sync status unavailable</div>';
+  }
+  syncHtml += '</div>';
+
+  // Support
+  // Recent Strategic Activity
+  var recentHtml = '';
+  if (data.recent_activity && data.recent_activity.items && data.recent_activity.items.length) {
+    recentHtml = '<div class="card"><div class="subtitle">Recent Strategic Activity</div>'+
+      data.recent_activity.items.map(function(act){
+        var time = act.time ? new Date(act.time).toLocaleString('en-PH', {hour:'2-digit',minute:'2-digit'}) : '';
+        return '<div style="padding:8px;border-bottom:1px solid #f3f4f6;"><div style="font-weight:600;font-size:0.85rem;">'+_escAttr(act.label)+'</div>'+
+               (act.detail?'<div style="font-size:0.75rem;color:#6b7280;margin-top:2px;">'+_escAttr(act.detail)+'</div>':'')+
+               '<div style="font-size:0.65rem;color:#9ca3af;margin-top:2px;">'+_escAttr(time)+'</div></div>';
+      }).join('')+'</div>';
+  } else {
+    recentHtml = '<div class="card"><div class="subtitle">Recent Strategic Activity</div>'+
+                 '<div class="muted" style="padding:12px;text-align:center;">No recent strategic activity</div></div>';
+  }
+
+  var supportHtml = '';
+  if (data.support && data.support.available) {
+    supportHtml = '<div style="text-align:center;padding:12px 0;">'+
+      '<button class="btn btn-secondary" onclick="renderChat()">📞 Contact Support</button></div>';
+  }
+
+  // Assemble
+  document.getElementById('app').innerHTML =
+    '<div class="screen">'+
+    _dashboardHeader_(storeName, userName+' · Executive', '', state.isOffline) +
+    cacheBanner +
+    periodHtml +
+    alertsHtml +
+    summaryHtml +
+    trendsHtml +
+    salesHtml +
+    expPressureHtml +
+    invHtml +
+    staffHtml +
+    shortcutsHtml +
+    recentHtml +
+    syncHtml +
+    supportHtml +
+    '<div style="height:24px;"></div></div>';
+}
+
+// Helper: format number safely
+function _esc(val, prefix='') {
+  if (val === null || val === undefined || val === '') return '—';
+  if (typeof val === 'number') return prefix + Number(val).toLocaleString('en-PH', {minimumFractionDigits:0,maximumFractionDigits:0});
+  return val;
+}
+
+function _execMetricCard(label, value, pct, status, subLabel) {
+  var color = status === 'good' ? '#16a34a' : status === 'watch' ? '#d97706' : status === 'critical' ? '#dc2626' : '#6b7280';
+  var displayVal = (value===null || value===undefined || value==='') ? '—' : value;
+  return '<div style="background:#f9fafb;padding:10px;border-radius:10px;text-align:center;">'+
+    '<div style="font-size:11px;color:#6b7280;text-transform:uppercase;">'+label+'</div>'+
+    '<div style="font-size:18px;font-weight:700;color:#111827;margin:4px 0;">'+displayVal+'</div>'+
+    (subLabel ? '<div style="font-size:0.65rem;color:#6b7280;margin-top:2px;">'+subLabel+'</div>':'')+
+    (pct !== null ? '<div style="font-size:0.7rem;color:'+color+';font-weight:700;">'+
+       (pct > 0 ? '↑'+pct.toFixed(1)+'%': pct < 0 ? '↓'+Math.abs(pct).toFixed(1)+'%' : '→0%')+
+      '</div>':'')+
+    '</div>';
+}
+
+function cProfitStatus(profit) {
+  if (profit === null || profit === undefined) return '#6b7280';
+  return profit < 0 ? '#dc2626' : profit === 0 ? '#d97706' : '#16a34a';
+}
+
+function setExecPeriod(period) {
+  execCurrentPeriod = period;
+  renderExecutiveDashboard();
+}
+
+function _execShortcut(id) {
+  var routes = {
+    reports:      'renderReports',
+    inventory:    'renderInventoryMenu',
+    staff:        'renderManageStaff',
+    support:      'renderChat',
+    monitors:     'renderMonitors',
+    roi:          'renderROIMonitor',
+    expenses:     'renderExpenses',
+    activity_log: '_showToast("Activity Log coming soon", false)'
+  };
+  var fn = routes[id];
+  if (fn) {
+    if (fn.startsWith('_')) { eval(fn); }
+    else { window[fn](); }
+  } else {
+    _showToast('Not available', false);
+  }
+}
+
+function _execAction(target) {
+  var routes = {
+    reports:      'renderReports',
+    expenses:     'renderExpenses',
+    inventory:    'renderInventoryMenu',
+    approvals:    '_showToast("Approvals coming soon", false)',
+    monitors:     'renderMonitors'
+  };
+  var fn = routes[target] || '_showToast("Feature not available", false)';
+  if (fn.startsWith('_')) { eval(fn); }
+   else { window[fn](); }
+ }
+
+ // Legacy alias — keep in case
+function renderExecutiveDashboardLegacy(msg) { renderExecutiveDashboard(msg); }
 
 // Legacy alias (kept for any residual direct calls during transition)
 function renderWatcherDashboard(msg) { renderViewerDashboard(msg); }
@@ -2396,6 +2778,8 @@ async function _submitHealthSnapshot() {
       revenue7Days:     0
     });
   } catch(e) { /* silent */ }
+  // Record last sync time for system confidence display
+  try { localStorage.setItem('last_sync_at', Date.now().toString()); } catch(e){}
 }
 
 // ── Capital & ROI Monitor ─────────────────────────────────────────────────────
