@@ -147,6 +147,26 @@ function _renderAddOnSelector(containerId, planId, selectedModuleCodes) {
     (_featureCatalog().length ? '' : '<div class="muted">No add-ons available yet.</div>');
 }
 
+function _renderCommercialStateFallback(planId, errMsg) {
+  var addOnPrice = _addOnPriceForPlan(planId);
+  var rows = _featureCatalog().map(function(feature) {
+    return '<div style="padding:10px 0;border-bottom:1px solid #f3f4f6;">' +
+      '<div style="font-size:13px;font-weight:700;">' + _esc(feature.feature_name || feature.module_code) + '</div>' +
+      '<div class="muted" style="font-size:12px;">' + _esc(feature.short_description || '') + '</div>' +
+      '<div class="hint">' + (addOnPrice !== null ? ('After trial: ' + _money(addOnPrice) + '/month') : 'Plan-based pricing') + '</div>' +
+      '</div>';
+  }).join('');
+
+  return '<div class="card">' +
+    '<div class="section-title">Add-ons</div>' +
+    '<div class="hint" style="margin-bottom:10px;">Per-store add-on subscription status is not available from the current backend yet. Showing the available add-on catalog instead.' +
+    (addOnPrice !== null ? ' Current Hub add-ons are ' + _money(addOnPrice) + '/month each after trial.' : '') +
+    '</div>' +
+    (rows || '<div class="muted">No add-ons available yet.</div>') +
+    (errMsg ? '<div class="hint" style="margin-top:10px;color:#92400e;">Backend note: ' + _esc(errMsg) + '</div>' : '') +
+    '</div>';
+}
+
 async function _loadStoreCommercialState(storeId, planId) {
   var host = document.getElementById('store-commercial-state');
   if (!host) return;
@@ -178,6 +198,10 @@ async function _loadStoreCommercialState(storeId, planId) {
       (rows || '<div class="muted">No add-ons selected yet.</div>') +
       '</div>';
   } catch(e) {
+    if (e && e.message && e.message.indexOf('Unknown admin action: adminGetStoreCommercialState') !== -1) {
+      host.innerHTML = _renderCommercialStateFallback(planId, e.message);
+      return;
+    }
     host.innerHTML = '<div class="card"><div class="msg-err">Failed to load add-ons: ' + _esc(e.message) + '</div></div>';
   }
 }
