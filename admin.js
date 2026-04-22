@@ -1,10 +1,13 @@
-// admin.js — Tindahan Hub Admin Panel
+// admin.js — HubSuite Admin Panel
 
 var adminState = {
   admin: null,
   stores: [],
-  platformSettings: {}
+  platformSettings: {},
+  featureCatalog: []
 };
+
+var HUB = window.HUBSUITE || null;
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 
@@ -16,6 +19,7 @@ async function adminBoot() {
       var dash = await ADMIN_API.call('adminGetDashboardData');
       adminState.stores           = dash.stores           || [];
       adminState.platformSettings = dash.platformSettings || {};
+      adminState.featureCatalog   = dash.featureCatalog   || [];
       if (adminState.platformSettings.NAME) localStorage.setItem('admin_platform_name', adminState.platformSettings.NAME);
       renderDashboard();
       return;
@@ -45,18 +49,156 @@ function _money(v) {
   return '₱' + Number(v || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 });
 }
 
+function _normalizePlanId(planId) {
+  if (HUB && HUB.normalizePlanId) return HUB.normalizePlanId(planId);
+  return String(planId || 'TRIAL').toUpperCase();
+}
+
+function _planLabel(planId) {
+  if (HUB && HUB.getPlanLabel) return HUB.getPlanLabel(planId);
+  return _normalizePlanId(planId);
+}
+
+function _planTier(planId) {
+  if (HUB && HUB.getTier) return HUB.getTier(planId);
+  return { id: _normalizePlanId(planId), name: _planLabel(planId), basePrice: 0, addOnPrice: null };
+}
+
+function _planOptions(includeCustom) {
+  if (HUB && HUB.getPlanOptions) return HUB.getPlanOptions(includeCustom);
+  var options = [{ value: 'TRIAL', label: 'Free Trial' }];
+  if (includeCustom) options.push({ value: 'CUSTOM', label: 'Custom / Flexible' });
+  return options;
+}
+
+function _hubPlanOptions(currentPlan) {
+  var options = [
+    { value: 'NEGOSYO_HUB', label: 'Negosyo Hub - ₱200/mo (Basic)' },
+    { value: 'BUSINESS_HUB', label: 'Business Hub - ₱500/mo (Mid)' },
+    { value: 'NEXORA_HUB', label: 'Nexora Hub - ₱1000/mo (High)' }
+  ];
+  var normalizedCurrent = _normalizePlanId(currentPlan || '');
+  if (normalizedCurrent && !options.some(function(opt) { return opt.value === normalizedCurrent; })) {
+    options.unshift({ value: normalizedCurrent, label: _planLabel(normalizedCurrent) });
+  }
+  return options;
+}
+
+function _planDefs() {
+  return {
+    TRIAL: { max_users: 2, max_products: 50, reports: 'DAILY', health: false, fee: 0 },
+    NEGOSYO_HUB: { max_users: 3, max_products: 500, reports: 'DAILY', health: false, fee: 200 },
+    BUSINESS_HUB: { max_users: 10, max_products: 5000, reports: 'ALL', health: true, fee: 500 },
+    NEXORA_HUB: { max_users: -1, max_products: -1, reports: 'ALL', health: true, fee: 1000 }
+  };
+}
+
+function _planLogoHtml(planId) {
+  if (HUB && HUB.logoMarkup) return HUB.logoMarkup(planId, _planLabel(planId));
+  return '<strong>' + _esc(_planLabel(planId)) + '</strong>';
+}
+
+function _addOnPriceForPlan(planId) {
+  if (HUB && HUB.getAddOnPrice) return HUB.getAddOnPrice(planId);
+  return null;
+}
+
+function _featureCatalog() {
+  return Array.isArray(adminState.featureCatalog) ? adminState.featureCatalog : [];
+}
+
+async function _ensureFeatureCatalog() {
+  if (_featureCatalog().length) return adminState.featureCatalog;
+  adminState.featureCatalog = await ADMIN_API.call('adminGetFeatureCatalog');
+  return adminState.featureCatalog;
+}
+
+function _selectedModulesFromForm(containerId) {
+  var root = document.getElementById(containerId);
+  if (!root) return [];
+  return Array.prototype.slice.call(root.querySelectorAll('input[type=checkbox][data-module-code]:checked')).map(function(el) {
+    return el.getAttribute('data-module-code');
+  });
+}
+
+function _renderAddOnSelector(containerId, planId, selectedModuleCodes) {
+  var container = document.getElementById(containerId);
+  if (!container) return;
+  var addOnPrice = _addOnPriceForPlan(planId);
+  var selectedMap = {};
+  (selectedModuleCodes || []).forEach(function(code) { selectedMap[String(code)] = true; });
+
+  container.innerHTML =
+    '<div class="section-title">Initial Add-ons</div>' +
+    '<div class="hint" style="margin-bottom:10px;">Every new Hub starts with a 30-day trial. These add-ons are prepared now and can also be managed later from the owner dashboard.</div>' +
+    _featureCatalog().map(function(feature) {
+      var code = feature.module_code;
+      return '<label style="display:block;border:1px solid #e5e7eb;border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;">' +
+        '<div style="display:flex;align-items:flex-start;gap:10px;">' +
+        '<input type="checkbox" data-module-code="' + _esc(code) + '"' + (selectedMap[code] ? ' checked' : '') + ' style="margin-top:3px;">' +
+        '<div style="flex:1;">' +
+        '<div style="font-size:13px;font-weight:700;color:#111827;">' + _esc(feature.feature_name || code) + '</div>' +
+        '<div class="muted" style="font-size:12px;">' + _esc(feature.short_description || '') + '</div>' +
+        '<div class="hint">After trial: ' + (addOnPrice !== null ? ('₱' + addOnPrice + '/month') : 'plan-based pricing') + '</div>' +
+        '</div>' +
+        '</div>' +
+        '</label>';
+    }).join('') +
+    (_featureCatalog().length ? '' : '<div class="muted">No add-ons available yet.</div>');
+}
+
+async function _loadStoreCommercialState(storeId, planId) {
+  var host = document.getElementById('store-commercial-state');
+  if (!host) return;
+  host.innerHTML = '<div class="card"><div class="muted">Loading add-ons...</div></div>';
+  try {
+    var data = await ADMIN_API.call('adminGetStoreCommercialState', { storeId: storeId });
+    if (data.featureCatalog && data.featureCatalog.length) adminState.featureCatalog = data.featureCatalog;
+    var subs = data.subscriptions || [];
+    var revenue = data.revenueState;
+    var addOnPrice = _addOnPriceForPlan(planId);
+    var rows = subs.map(function(sub) {
+      var label = sub.status === 'active_paid' ? 'Active' : (sub.status === 'trial_active' ? 'Trial' : sub.status);
+      var when = sub.trial_ends_at ? ('Trial until ' + String(sub.trial_ends_at).slice(0, 10)) : ('Recurring ' + _money(sub.monthly_price || 0));
+      return '<div style="padding:10px 0;border-bottom:1px solid #f3f4f6;">' +
+        '<div style="display:flex;justify-content:space-between;gap:10px;">' +
+        '<div><div style="font-size:13px;font-weight:700;">' + _esc(sub.feature_name || sub.module_code) + '</div>' +
+        '<div class="muted" style="font-size:12px;">' + _esc(sub.short_description || '') + '</div></div>' +
+        '<div style="text-align:right;font-size:12px;"><strong>' + _esc(label) + '</strong><div class="muted">' + _esc(when) + '</div></div>' +
+        '</div>' +
+        '</div>';
+    }).join('');
+    host.innerHTML =
+      '<div class="card">' +
+      '<div class="section-title">Add-ons</div>' +
+      '<div class="hint" style="margin-bottom:10px;">Owner-selected add-ons from the marketplace will show here automatically.' +
+      (addOnPrice !== null ? ' Current Hub add-ons are ₱' + addOnPrice + '/month each after trial.' : '') +
+      '</div>' +
+      (revenue ? '<div style="background:#f9fafb;border-radius:8px;padding:10px;margin-bottom:10px;font-size:12px;">Base: <strong>' + _money(revenue.base_recurring_amount || 0) + '</strong> · Add-ons: <strong>' + _money(revenue.addons_recurring_amount || 0) + '</strong> · Total: <strong>' + _money(revenue.total_recurring_amount || 0) + '</strong></div>' : '') +
+      (rows || '<div class="muted">No add-ons selected yet.</div>') +
+      '</div>';
+  } catch(e) {
+    host.innerHTML = '<div class="card"><div class="msg-err">Failed to load add-ons: ' + _esc(e.message) + '</div></div>';
+  }
+}
+
+function _storePwaUrl(apiKey) {
+  try {
+    var url = new URL('./', window.location.href);
+    url.search = '';
+    url.hash = '';
+    if (apiKey) url.searchParams.set('k', apiKey);
+    return url.toString();
+  } catch(e) {
+    return './?k=' + encodeURIComponent(apiKey || '');
+  }
+}
+
 function _storeStatus(store) {
   var now     = new Date();
-  var plan    = String(store.Plan || '').toUpperCase();
   var trial   = store.Trial_End            ? new Date(String(store.Trial_End))            : null;
   var expires = store.Subscription_Expires ? new Date(String(store.Subscription_Expires)) : null;
   if (String(store.Status).toUpperCase() === 'SUSPENDED') return 'SUSPENDED';
-  // A store with an explicit paid plan is never shown as FREE TRIAL
-  if (plan && plan !== 'TRIAL') {
-    if (expires && now <= expires) return 'ACTIVE';
-    // Plan upgraded but no expiry set yet (e.g. just changed) — show as ACTIVE
-    return 'ACTIVE';
-  }
   if (trial   && now <= trial)   return 'TRIAL';
   if (expires && now <= expires) return 'ACTIVE';
   return 'EXPIRED';
@@ -83,9 +225,9 @@ function _topbar(title, backFn) {
 function renderAdminLogin(msg) {
   _app('<div class="screen">' +
     '<div style="text-align:center;padding:32px 0 20px;">' +
-    '<div style="font-size:48px;">🏪</div>' +
-    '<h2 style="color:#1e3a5f;margin-top:8px;">' + (localStorage.getItem('admin_platform_name') || 'Admin Panel') + '</h2>' +
-    '<div class="muted">Admin Panel</div></div>' +
+    '<div style="margin-bottom:10px;">' + _planLogoHtml('NEGOSYO_HUB') + '</div>' +
+    '<h2 style="color:#1e3a5f;margin-top:8px;">' + (localStorage.getItem('admin_platform_name') || 'HubSuite') + '</h2>' +
+    '<div class="muted">HubSuite Admin Panel</div></div>' +
     '<div class="card">' +
     (msg ? '<div class="msg-err">' + msg + '</div>' : '') +
     '<div class="field"><label>Username</label><input id="a-user" placeholder="Admin username"></div>' +
@@ -108,6 +250,7 @@ async function submitAdminLogin() {
     adminState.admin            = result.admin;
     adminState.stores           = result.stores           || [];
     adminState.platformSettings = result.platformSettings || {};
+    adminState.featureCatalog   = result.featureCatalog   || [];
     if (adminState.platformSettings.NAME) localStorage.setItem('admin_platform_name', adminState.platformSettings.NAME);
     renderDashboard();
   } catch(e) {
@@ -149,12 +292,12 @@ function renderDashboard() {
     return '<div class="store-row" onclick="renderStoreDetail(' + i + ')">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;">' +
       '<div><div style="font-size:14px;font-weight:bold;">' + st.Store_Name + '</div>' +
-        '<div class="muted" style="font-size:12px;">' + (st.Owner_Name || 'No owner') + ' · ' + sub + '</div></div>' +
+        '<div class="muted" style="font-size:12px;">' + (st.Owner_Name || 'No owner') + ' · ' + _esc(_planLabel(st.Plan || '')) + ' · ' + sub + '</div></div>' +
       _badgeHtml(status) + '</div></div>';
   }).join('');
 
   _app('<div class="screen">' +
-    _topbar('🏪 ' + (adminState.platformSettings.NAME || localStorage.getItem('admin_platform_name') || 'Admin') + ' Admin') +
+    _topbar('HubSuite Admin') +
     '<div style="display:flex;justify-content:flex-end;margin-bottom:8px;">' +
     '<button class="btn-sm btn-primary btn" style="width:auto;" onclick="adminLogout()">Logout</button></div>' +
 
@@ -188,8 +331,8 @@ function renderDashboard() {
 function renderStoreDetail(idx) {
   var st     = adminState.stores[idx];
   var status = _storeStatus(st);
-  var plan   = String(st.Plan || '').toUpperCase();
-  var pwaDomain = 'https://ronniesaguit.github.io/store-pwa/?k=' + st.API_Key;
+  var plan   = _normalizePlanId(st.Plan || '');
+  var pwaDomain = _storePwaUrl(st.API_Key);
 
   _app('<div class="screen">' +
     _topbar('Store Detail', 'renderDashboard()') +
@@ -203,7 +346,7 @@ function renderStoreDetail(idx) {
     '<div style="font-size:13px;line-height:2;">' +
     '<div>📧 ' + (st.Owner_Email || '—') + '</div>' +
     '<div>📱 ' + (st.Owner_Phone || '—') + '</div>' +
-    '<div>📋 Plan: <strong>' + plan + '</strong> · ' + _money(st.Monthly_Fee) + '/mo</div>' +
+    '<div>📋 Plan: <strong>' + _esc(_planLabel(plan)) + '</strong> · ' + _money(st.Monthly_Fee) + '/mo</div>' +
     (status === 'TRIAL' ? '<div>🎁 Trial ends: <strong>' + (String(st.Trial_End || '').substring(0, 10) || '—') + '</strong></div>' : '') +
     '<div>📅 Expires: <strong>' + (String(st.Subscription_Expires || '').substring(0, 10) || '—') + '</strong></div>' +
     '</div>' +
@@ -213,6 +356,9 @@ function renderStoreDetail(idx) {
     '<div style="font-size:12px;word-break:break-all;color:#1d4ed8;">' + pwaDomain + '</div>' +
     '<div style="font-size:11px;font-weight:bold;color:#6b7280;margin-top:6px;margin-bottom:2px;">API Key</div>' +
     '<div style="font-size:12px;color:#374151;word-break:break-all;">' + st.API_Key + '</div>' +
+    '<div style="font-size:11px;font-weight:bold;color:#6b7280;margin-top:6px;margin-bottom:2px;">Database Provider</div>' +
+    '<div style="font-size:12px;color:#374151;">' + _esc(String(st.DB_Provider || 'libsql').toUpperCase()) +
+      (st.D1_Binding ? ' · ' + _esc(st.D1_Binding) : '') + '</div>' +
     '</div></div>' +
 
     // ── Extend trial ──
@@ -240,26 +386,17 @@ function renderStoreDetail(idx) {
     // ── Change plan ──
     '<div class="card">' +
     '<div class="section-title">📋 Change Plan</div>' +
-    '<div class="field"><label>Plan</label>' +
-    '<select id="chg-plan" onchange="_onChangePlan()">' +
-    ['TRIAL','BASIC','STANDARD','PRO','CUSTOM'].map(function(p) {
-      return '<option value="' + p + '"' + (p === plan ? ' selected' : '') + '>' + p + '</option>';
+    '<div class="field"><label>Hub Plan</label>' +
+    '<select id="chg-plan">' +
+    _hubPlanOptions(plan).map(function(opt) {
+      return '<option value="' + opt.value + '"' + (opt.value === plan ? ' selected' : '') + '>' + _esc(opt.label) + '</option>';
     }).join('') +
     '</select></div>' +
-    '<div id="custom-plan-fields" style="display:' + (plan === 'CUSTOM' ? 'block' : 'none') + ';">' +
-    '<div class="field"><label>Max Users (-1 = unlimited)</label><input id="chg-users" type="number" value="' + (st.Max_Users || 2) + '"></div>' +
-    '<div class="field"><label>Max Products (-1 = unlimited)</label><input id="chg-products" type="number" value="' + (st.Max_Products || 100) + '"></div>' +
-    '<div class="field"><label>Reports</label><select id="chg-reports">' +
-    '<option value="DAILY"' + (st.Reports_Level === 'DAILY' ? ' selected' : '') + '>Daily only</option>' +
-    '<option value="ALL"'   + (st.Reports_Level === 'ALL'   ? ' selected' : '') + '>All reports</option>' +
-    '</select></div>' +
-    '<div class="field"><label><input type="checkbox" id="chg-health"' + (String(st.Has_Health_Indicators).toUpperCase() === 'TRUE' ? ' checked' : '') + '> Include Health Indicators</label></div>' +
-    '<div class="field"><label>Monthly Fee (₱)</label><input id="chg-fee" type="number" value="' + (st.Monthly_Fee || 0) + '"></div>' +
-    '<div id="chg-suggested" class="hint" style="margin-bottom:8px;"></div>' +
-    '<button class="btn btn-secondary" onclick="_computeSuggestedPrice()">💡 Suggest Price</button>' +
-    '</div>' +
+    '<div class="hint" style="margin-bottom:8px;">All new and reassigned Hub plans are paired with add-ons separately. Owners can later add more modules from their dashboard.</div>' +
     '<button class="btn btn-primary" style="margin-top:8px;" onclick="_changePlan(\'' + st.Store_ID + '\')">Save Plan</button>' +
     '</div>' +
+
+    '<div id="store-commercial-state"></div>' +
 
     // ── Suspend / Activate ──
     '<div class="card">' +
@@ -274,12 +411,16 @@ function renderStoreDetail(idx) {
     '<div class="section-title">🔧 Database Migration</div>' +
     '<p style="font-size:12px;color:#6b7280;margin-bottom:8px;">Run this once to create missing tables (branch_transfers, purchase_orders, stock_receiving, branches) and add missing supplier columns.</p>' +
     '<button class="btn btn-secondary" onclick="_migrateStore(\'' + st.Store_ID + '\')">Run Migration</button>' +
+    '<div class="field" style="margin-top:12px;"><label>Dedicated D1 Binding</label><input id="d1-binding" placeholder="e.g. STORE_DB_DEMO" value="' + _esc(st.D1_Binding || '') + '"></div>' +
+    '<div class="field"><label><input type="checkbox" id="d1-activate"> Activate dedicated DB after successful copy</label></div>' +
+    '<button class="btn btn-primary" onclick="_copyStoreToDedicatedDb(\'' + st.Store_ID + '\')">Copy To Dedicated D1</button>' +
+    '<div class="hint">Use one D1 binding per store if you want strict database isolation.</div>' +
     '</div></div>');
+  _loadStoreCommercialState(st.Store_ID, plan);
 }
 
 function _onChangePlan() {
-  var plan = document.getElementById('chg-plan').value;
-  document.getElementById('custom-plan-fields').style.display = plan === 'CUSTOM' ? 'block' : 'none';
+  return;
 }
 
 async function _computeSuggestedPrice() {
@@ -329,10 +470,7 @@ async function _changePlan(storeId) {
     patch.Has_Health_Indicators = String(document.getElementById('chg-health').checked);
     patch.Monthly_Fee           = document.getElementById('chg-fee').value;
   } else {
-    var planDefs = { BASIC:{max_users:2,max_products:100,reports:'DAILY',health:false,fee:99},
-                     STANDARD:{max_users:5,max_products:-1,reports:'ALL',health:false,fee:249},
-                     PRO:{max_users:-1,max_products:-1,reports:'ALL',health:true,fee:499},
-                     TRIAL:{max_users:-1,max_products:-1,reports:'ALL',health:true,fee:0} };
+    var planDefs = _planDefs();
     var def = planDefs[plan];
     if (def) {
       patch.Max_Users             = def.max_users;
@@ -344,7 +482,7 @@ async function _changePlan(storeId) {
   }
   try {
     await ADMIN_API.call('adminUpdateStore', { storeId: storeId, patch: patch });
-    _toast('Plan updated to ' + plan);
+    _toast('Plan updated to ' + _planLabel(plan));
     await _refreshStores();
     renderDashboard();
   } catch(e) { _toast(e.message, true); }
@@ -368,6 +506,23 @@ async function _migrateStore(storeId) {
     var fail = (res.results || []).filter(function(r) { return !r.ok; }).length;
     _toast('Migration done: ' + ok + ' ok, ' + fail + ' skipped/already existed');
   } catch(e) { _toast('Migration failed: ' + e.message, true); }
+}
+
+async function _copyStoreToDedicatedDb(storeId) {
+  var d1Binding = (document.getElementById('d1-binding').value || '').trim();
+  var activate  = !!document.getElementById('d1-activate').checked;
+  if (!d1Binding) { _toast('Enter a D1 binding name first', true); return; }
+  if (!confirm('Copy this store into dedicated D1 binding "' + d1Binding + '"?' + (activate ? ' This will also activate the new database for this store.' : ''))) return;
+  try {
+    var res = await ADMIN_API.call('adminCopyStoreToDedicatedDb', {
+      storeId: storeId,
+      d1Binding: d1Binding,
+      activate: activate
+    });
+    _toast('Copied ' + res.totalCopiedRows + ' rows into ' + d1Binding + (res.activated ? ' and activated it' : ''));
+    await _refreshStores();
+    renderDashboard();
+  } catch(e) { _toast('Dedicated DB copy failed: ' + e.message, true); }
 }
 
 async function _refreshStores() {
@@ -394,15 +549,14 @@ function renderCreateStore(msg) {
     '<div class="section-title">Subscription Plan</div>' +
     '<div class="field"><label>Plan</label>' +
     '<select id="cs-plan" onchange="_onCreatePlanChange()">' +
-    '<option value="TRIAL" selected>Free Trial (30 days Pro)</option>' +
-    '<option value="BASIC">Tindahan (Basic) — ₱99/mo</option>' +
-    '<option value="STANDARD">Negosyo (Standard) — ₱249/mo</option>' +
-    '<option value="PRO">Superstore (Pro) — ₱499/mo</option>' +
-    '<option value="CUSTOM">Custom / Flexible</option>' +
+    '<option value="TRIAL" selected>Free Trial</option>' +
+    _planOptions(true).map(function(opt) {
+      return '<option value="' + opt.value + '"' + (opt.value === 'TRIAL' ? ' selected' : '') + '>' + _esc(opt.label) + '</option>';
+    }).join('') +
     '</select></div>' +
     '<div class="field"><label>Trial Days</label>' +
     '<input id="cs-trial" type="number" min="0" value="30">' +
-    '<div class="hint">Days of free Pro trial (set 0 to skip trial)</div></div>' +
+    '<div class="hint">Trial stores can explore HubSuite before moving into a paid Hub tier.</div></div>' +
     '</div>' +
 
     '<div class="card" id="cs-custom-card" style="display:none;">' +
@@ -426,7 +580,7 @@ function renderCreateStore(msg) {
 
 function _onCreatePlanChange() {
   var plan = document.getElementById('cs-plan').value;
-  document.getElementById('cs-custom-card').style.display = plan === 'CUSTOM' ? 'block' : 'none';
+  _renderAddOnSelector('cs-addons-card', plan, _selectedModulesFromForm('cs-addons-card'));
 }
 
 async function _computeCreateSuggest() {
@@ -474,7 +628,7 @@ async function submitCreateStore() {
 }
 
 function renderProvisionSuccess(r) {
-  var pwaUrl = 'https://ronniesaguit.github.io/store-pwa/?k=' + r.apiKey;
+  var pwaUrl = _storePwaUrl(r.apiKey);
   _app('<div class="screen">' +
     _topbar('✅ Store Created!', 'renderDashboard()') +
     '<div class="card" style="text-align:center;">' +
@@ -522,7 +676,7 @@ function renderPlatformSettings(msg) {
     '<div class="card">' +
     '<div class="section-title">Platform Identity</div>' +
     '<div class="field"><label>Platform Name</label>' +
-    '<input id="ps-name" value="' + (s.NAME || 'Tindahan Hub') + '"></div>' +
+    '<input id="ps-name" value="' + (s.NAME || 'HubSuite') + '"></div>' +
     '<div class="field"><label>Admin Email</label>' +
     '<input id="ps-email" type="email" value="' + (s.ADMIN_EMAIL || '') + '"></div>' +
     '</div>' +
@@ -853,6 +1007,187 @@ async function _sendAdminMessage(storeId) {
 
 // ── Escape helper ─────────────────────────────────────────────────────────────
 
+// Provisioning-aware overrides for the tenant creation flow
+async function renderCreateStore(msg) {
+  _app('<div style="text-align:center;padding:60px 20px;color:#6b7280;">Loading setup...</div>');
+  try { await _ensureFeatureCatalog(); } catch(e) {}
+
+  _app('<div class="screen">' +
+    _topbar('Create New Store', 'renderDashboard()') +
+    (msg ? '<div class="' + (msg.ok ? 'msg-ok' : 'msg-err') + '">' + msg.text + '</div>' : '') +
+
+    '<div class="card">' +
+    '<div class="section-title">Store Info</div>' +
+    '<div class="field"><label>Store Name *</label><input id="cs-name" placeholder="e.g. Aling Nena\'s Store"></div>' +
+    '<div class="field"><label>Owner Name</label><input id="cs-owner" placeholder="Full name"></div>' +
+    '<div class="field"><label>Owner Email</label><input id="cs-email" type="email" placeholder="email@example.com"></div>' +
+    '<div class="field"><label>Owner Phone</label><input id="cs-phone" placeholder="09xxxxxxxxx"></div>' +
+    '</div>' +
+
+    '<div class="card">' +
+    '<div class="section-title">Hub Plan</div>' +
+    '<div class="field"><label>Choose Hub</label>' +
+    '<select id="cs-plan" onchange="_onCreatePlanChange()">' +
+    _hubPlanOptions().map(function(opt) {
+      return '<option value="' + opt.value + '"' + (opt.value === 'NEGOSYO_HUB' ? ' selected' : '') + '>' + _esc(opt.label) + '</option>';
+    }).join('') +
+    '</select></div>' +
+    '<div class="hint">Every new store starts with a fixed 30-day trial of the selected Hub plan.</div>' +
+    '<input id="cs-trial" type="hidden" value="30">' +
+    '</div>' +
+
+    '<div class="card" id="cs-addons-card"></div>' +
+
+    '<div class="card">' +
+    '<div class="section-title">Owner Login Seed</div>' +
+    '<div class="field"><label>Owner Username</label><input id="cs-owner-user" value="owner" placeholder="owner"></div>' +
+    '<div class="field"><label>Owner Password</label><input id="cs-owner-pass" value="1234" placeholder="1234"></div>' +
+    '<div class="hint">These credentials are seeded into the store database during provisioning.</div>' +
+    '</div>' +
+
+    '<div class="card">' +
+    '<div class="section-title">Dedicated Database Target</div>' +
+    '<div class="field"><label>Database Provider</label>' +
+    '<select id="cs-db-provider" onchange="_onCreateDbProviderChange()">' +
+    '<option value="d1" selected>Cloudflare D1 dedicated DB</option>' +
+    '<option value="libsql">Legacy Turso / libSQL DB</option>' +
+    '</select></div>' +
+    '<div id="cs-libsql-fields" style="display:none;">' +
+    '<div class="field"><label>Turso DB URL</label><input id="cs-turso-url" placeholder="libsql://your-store-db.turso.io"></div>' +
+    '<div class="hint">Legacy path only while old Turso-backed tenants are being retired.</div>' +
+    '</div>' +
+    '<div id="cs-d1-fields">' +
+    '<div class="field"><label>D1 Binding Name</label><input id="cs-d1-binding" placeholder="e.g. STORE_DB_BRANCH_001"></div>' +
+    '<div class="hint">Use a pre-bound D1 database name from Wrangler for this tenant.</div>' +
+    '</div>' +
+    '</div>' +
+
+    '<div class="card">' +
+    '<div class="field"><label>Notes (internal only)</label>' +
+    '<textarea id="cs-notes" placeholder="Any notes about this store..."></textarea></div>' +
+    '<button class="btn btn-primary" onclick="submitCreateStore()">Provision Store</button>' +
+    '</div></div>');
+
+  _renderAddOnSelector('cs-addons-card', 'NEGOSYO_HUB', []);
+}
+
+function _onCreatePlanChange() {
+  var plan = document.getElementById('cs-plan').value;
+  _renderAddOnSelector('cs-addons-card', plan, _selectedModulesFromForm('cs-addons-card'));
+}
+
+function _onCreateDbProviderChange() {
+  var provider = document.getElementById('cs-db-provider').value;
+  document.getElementById('cs-libsql-fields').style.display = provider === 'libsql' ? 'block' : 'none';
+  document.getElementById('cs-d1-fields').style.display = provider === 'd1' ? 'block' : 'none';
+}
+
+async function submitCreateStore() {
+  var name = (document.getElementById('cs-name').value || '').trim();
+  if (!name) { _toast('Store name is required', true); return; }
+
+  var plan = document.getElementById('cs-plan').value;
+  var provider = document.getElementById('cs-db-provider').value;
+  var ownerUsername = (document.getElementById('cs-owner-user').value || '').trim();
+  var ownerPassword = document.getElementById('cs-owner-pass').value || '';
+  if (!ownerUsername) { _toast('Owner username is required', true); return; }
+  if (ownerPassword.length < 4) { _toast('Owner password must be at least 4 characters', true); return; }
+
+  var data = {
+    storeName: name,
+    ownerName: (document.getElementById('cs-owner').value || '').trim(),
+    ownerEmail: (document.getElementById('cs-email').value || '').trim(),
+    ownerPhone: (document.getElementById('cs-phone').value || '').trim(),
+    ownerUsername: ownerUsername,
+    ownerPassword: ownerPassword,
+    plan: plan,
+    trialDays: 30,
+    dbProvider: provider,
+    d1Binding: (document.getElementById('cs-d1-binding').value || '').trim(),
+    tursoDbUrl: (document.getElementById('cs-turso-url').value || '').trim(),
+    notes: (document.getElementById('cs-notes').value || '').trim(),
+    initialModuleCodes: _selectedModulesFromForm('cs-addons-card')
+  };
+  if (provider === 'libsql' && !data.tursoDbUrl) { _toast('Dedicated Turso DB URL is required', true); return; }
+  if (provider === 'd1' && !data.d1Binding) { _toast('Dedicated D1 binding is required', true); return; }
+
+  _app('<div style="text-align:center;padding:80px 20px;color:#6b7280;">Provisioning store...<br><small>This may take 10-30 seconds.</small></div>');
+
+  try {
+    var result = await ADMIN_API.call('adminProvisionStore', data);
+    adminState.stores = await ADMIN_API.call('adminGetStores');
+    renderProvisionSuccess(result);
+  } catch(e) {
+    renderCreateStore({ ok: false, text: 'Error: ' + e.message });
+  }
+}
+
+function renderProvisionSuccess(r) {
+  var pwaUrl = _storePwaUrl(r.apiKey);
+  var seededAddOns = Array.isArray(r.seededAddOns) ? r.seededAddOns : [];
+  var lifecycleHtml = r.trialEnd
+    ? '<div>Trial ends: <strong>' + _esc(r.trialEnd) + '</strong></div>'
+    : '<div>Billing cycle ends: <strong>' + _esc(r.subscriptionExpires || '—') + '</strong></div>';
+  var dbHtml = r.dbProvider === 'd1'
+    ? '<div>Dedicated DB: <strong>D1</strong> - ' + _esc(r.d1Binding || '—') + '</div>'
+    : '<div>Dedicated DB: <strong>libSQL</strong> - <span style="word-break:break-all;font-size:11px;">' + _esc(r.tursoDbUrl || '—') + '</span></div>';
+
+  _app('<div class="screen">' +
+    _topbar('Store Created', 'renderDashboard()') +
+    '<div class="card" style="text-align:center;">' +
+    '<div style="font-size:48px;margin-bottom:8px;">OK</div>' +
+    '<h3 style="margin-bottom:4px;">' + _esc(r.storeName) + '</h3>' +
+    '<div class="muted" style="margin-bottom:16px;">Store provisioned successfully</div>' +
+    '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:14px;margin-bottom:12px;text-align:left;">' +
+    '<div style="font-size:12px;font-weight:bold;color:#15803d;margin-bottom:8px;">PWA Link</div>' +
+    '<div style="font-size:13px;word-break:break-all;color:#1d4ed8;margin-bottom:0;">' + pwaUrl + '</div>' +
+    '</div>' +
+    '<div style="background:#fef9c3;border:1px solid #fde047;border-radius:8px;padding:14px;margin-bottom:12px;text-align:left;">' +
+    '<div style="font-size:12px;font-weight:bold;color:#854d0e;margin-bottom:8px;">Default Login Credentials</div>' +
+    '<div style="font-size:13px;line-height:2.2;">' +
+    '<div style="display:flex;justify-content:space-between;border-bottom:1px solid #fde047;">' +
+    '<span>Username</span><strong style="font-family:monospace;font-size:15px;">' + _esc(r.ownerUsername || 'owner') + '</strong></div>' +
+    '<div style="display:flex;justify-content:space-between;">' +
+    '<span>Password</span><strong style="font-family:monospace;font-size:15px;">' + _esc(r.ownerPassword || '1234') + '</strong></div>' +
+    '</div>' +
+    '<div style="font-size:11px;color:#92400e;margin-top:8px;">Ask the owner to change this password after first login.</div>' +
+    '</div>' +
+    '<div style="background:#f9fafb;border-radius:8px;padding:12px;text-align:left;">' +
+    '<div style="font-size:12px;line-height:2;color:#374151;">' +
+    lifecycleHtml +
+    '<div>Plan: <strong>' + _esc(_planLabel(r.plan)) + '</strong></div>' +
+    (r.monthlyFee ? '<div>Monthly fee: <strong>' + _money(r.monthlyFee) + '</strong></div>' : '') +
+    (seededAddOns.length ? '<div>Initial add-ons: <strong>' + _esc(seededAddOns.map(function(item) { return item.feature_name || item.module_code; }).join(', ')) + '</strong></div>' : '<div>Initial add-ons: <strong>None selected</strong></div>') +
+    dbHtml +
+    '<div>API Key: <span style="word-break:break-all;font-size:11px;">' + _esc(r.apiKey) + '</span></div>' +
+    '</div></div>' +
+    '</div>' +
+    '<button class="btn btn-primary" onclick="renderDashboard()">Back to Dashboard</button>' +
+    '</div>');
+}
+
+async function _changePlan(storeId) {
+  var plan = document.getElementById('chg-plan').value;
+  var patch = { Plan: plan };
+  var planDefs = _planDefs();
+  var def = planDefs[plan];
+  if (def) {
+    patch.Max_Users = def.max_users;
+    patch.Max_Products = def.max_products;
+    patch.Reports_Level = def.reports;
+    patch.Has_Health_Indicators = String(def.health);
+    patch.Monthly_Fee = def.fee;
+  }
+  try {
+    await ADMIN_API.call('adminUpdateStore', { storeId: storeId, patch: patch });
+    _toast('Plan updated to ' + _planLabel(plan));
+    await _refreshStores();
+    renderDashboard();
+  } catch(e) { _toast(e.message, true); }
+}
+
 function _esc(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+/ /   T r i g g e r   r e d e p l o y  
+ 
