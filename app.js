@@ -287,7 +287,10 @@ function logout() {
 // ── Module helpers ────────────────────────────────────────────────────────────
 
 function _planModules() {
-  return (state.session && state.session.plan && state.session.plan.modules) || null;
+  var plan = state.session && state.session.plan;
+  if (plan && Array.isArray(plan.modules) && plan.modules.length) return plan.modules;
+  if (HUB && HUB.getCoreModuleCodes && plan && plan.id) return HUB.getCoreModuleCodes(plan.id);
+  return null;
 }
 
 function _planTier(planId) {
@@ -387,33 +390,17 @@ function renderOwnerDashboard(msg) {
   if (_hasModule('support'))         btns += '<button class="big-btn" onclick="renderSupport()">📞 Help</button>';
 
   // Locked / upsell tiles for modules not in current plan
-  var UPSELL_META = {
-    monitors:        { icon: '📡', label: 'Monitors'         },
-    roi:             { icon: '📈', label: 'ROI'               },
-    inventory:       { icon: '📋', label: 'Inventory'         },
-    staff:           { icon: '👥', label: 'Staff'             },
-    reports:         { icon: '📊', label: 'Reports'           },
-    internal_chat:   { icon: '💬', label: 'Chat'              },
-    tax_reports:     { icon: '🧾', label: 'Tax Reports'       },
-    approvals:       { icon: '✅', label: 'Approvals'         },
-    activity_log:    { icon: '📜', label: 'Activity Log'      },
-    suppliers:       { icon: '🏭', label: 'Suppliers'         },
-    purchase_orders: { icon: '📋', label: 'Purchase Orders'   },
-    branch_transfers:{ icon: '🔄', label: 'Branch Transfers'  },
-    multi_branch:    { icon: '🏢', label: 'HQ Control'        },
-    custom_roles:    { icon: '🎭', label: 'Custom Roles'      },
-    automation_rules:{ icon: '⚡', label: 'Automation'        },
-    data_import:     { icon: '📥', label: 'Data Import'       },
-  };
   var lockedBtns = '';
   var mods = _planModules();
-  if (mods) {
-    Object.keys(UPSELL_META).forEach(function(m) {
-      if (!_hasModule(m)) {
-        var meta = UPSELL_META[m];
+  var planId = plan && plan.id;
+  var addOnCatalog = (HUB && HUB.getAddOnCatalog) ? HUB.getAddOnCatalog(planId, []) : [];
+  if (mods && addOnCatalog.length) {
+    addOnCatalog.forEach(function(feature) {
+      var moduleCode = feature.module_code || feature.code;
+      if (!_hasModule(moduleCode)) {
         lockedBtns += '<button class="big-btn" disabled style="opacity:0.45;cursor:default;position:relative;" title="Upgrade to unlock">' +
           '<span style="position:absolute;top:4px;right:6px;font-size:0.6rem;background:#f59e0b;color:#fff;padding:1px 5px;border-radius:8px;font-weight:700;">ADD-ON</span>' +
-          meta.icon + ' ' + meta.label + '<br><span style="font-size:0.65rem;opacity:0.7;">🔒 Upgrade</span></button>';
+          _escAttr(feature.icon || '🧩') + ' ' + _escAttr(feature.feature_name || feature.name || moduleCode) + '<br><span style="font-size:0.65rem;opacity:0.7;">Activate in Hub Add-ons</span></button>';
       }
     });
   }
@@ -5680,6 +5667,9 @@ function _renderMarketplaceUI(features, error) {
   var STATUS_COLOR = { active_paid: '#16a34a', trial_active: '#2563eb', trial_expiring: '#d97706', trial_expired: '#dc2626', locked: '#6b7280', cancelled: '#dc2626' };
   var tier = _planTier(state.session && state.session.plan && state.session.plan.id);
   var addonPrice = _planAddOnPrice();
+  if (HUB && HUB.getAddOnCatalog) {
+    features = HUB.getAddOnCatalog(tier.id, features || []);
+  }
 
   var cards = features.length ? features.map(function(f) {
     var statusColor = STATUS_COLOR[f.tenant_status] || '#6b7280';

@@ -107,6 +107,16 @@ function _featureCatalog() {
   return Array.isArray(adminState.featureCatalog) ? adminState.featureCatalog : [];
 }
 
+function _planCoreModuleCatalog(planId) {
+  if (HUB && HUB.getCoreModuleCatalog) return HUB.getCoreModuleCatalog(planId);
+  return [];
+}
+
+function _planAddOnCatalog(planId, catalog) {
+  if (HUB && HUB.getAddOnCatalog) return HUB.getAddOnCatalog(planId, catalog || _featureCatalog());
+  return catalog || _featureCatalog();
+}
+
 async function _ensureFeatureCatalog() {
   if (_featureCatalog().length) return adminState.featureCatalog;
   adminState.featureCatalog = await ADMIN_API.call('adminGetFeatureCatalog');
@@ -125,13 +135,14 @@ function _renderAddOnSelector(containerId, planId, selectedModuleCodes) {
   var container = document.getElementById(containerId);
   if (!container) return;
   var addOnPrice = _addOnPriceForPlan(planId);
+  var addOns = _planAddOnCatalog(planId, _featureCatalog());
   var selectedMap = {};
   (selectedModuleCodes || []).forEach(function(code) { selectedMap[String(code)] = true; });
 
   container.innerHTML =
     '<div class="section-title">Initial Add-ons</div>' +
     '<div class="hint" style="margin-bottom:10px;">Every new Hub starts with a 30-day trial. These add-ons are prepared now and can also be managed later from the owner dashboard.</div>' +
-    _featureCatalog().map(function(feature) {
+    addOns.map(function(feature) {
       var code = feature.module_code;
       return '<label style="display:block;border:1px solid #e5e7eb;border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;">' +
         '<div style="display:flex;align-items:flex-start;gap:10px;">' +
@@ -144,12 +155,12 @@ function _renderAddOnSelector(containerId, planId, selectedModuleCodes) {
         '</div>' +
         '</label>';
     }).join('') +
-    (_featureCatalog().length ? '' : '<div class="muted">No add-ons available yet.</div>');
+    (addOns.length ? '' : '<div class="muted">No add-ons available for this plan.</div>');
 }
 
 function _renderCommercialStateFallback(planId, errMsg) {
   var addOnPrice = _addOnPriceForPlan(planId);
-  var rows = _featureCatalog().map(function(feature) {
+  var rows = _planAddOnCatalog(planId, _featureCatalog()).map(function(feature) {
     return '<div style="padding:10px 0;border-bottom:1px solid #f3f4f6;">' +
       '<div style="font-size:13px;font-weight:700;">' + _esc(feature.feature_name || feature.module_code) + '</div>' +
       '<div class="muted" style="font-size:12px;">' + _esc(feature.short_description || '') + '</div>' +
@@ -164,6 +175,20 @@ function _renderCommercialStateFallback(planId, errMsg) {
     '</div>' +
     (rows || '<div class="muted">No add-ons available yet.</div>') +
     (errMsg ? '<div class="hint" style="margin-top:10px;color:#92400e;">Backend note: ' + _esc(errMsg) + '</div>' : '') +
+    '</div>';
+}
+
+function _renderPlanInclusionsCard(planId) {
+  var rows = _planCoreModuleCatalog(planId).map(function(feature) {
+    return '<div style="padding:6px 0;border-bottom:1px solid #f3f4f6;font-size:12px;">' +
+      '<strong>' + _esc(feature.icon || '•') + ' ' + _esc(feature.name || feature.code) + '</strong>' +
+      (feature.shortDescription ? '<div class="muted" style="font-size:11px;margin-top:2px;">' + _esc(feature.shortDescription) + '</div>' : '') +
+      '</div>';
+  }).join('');
+
+  return '<div class="card">' +
+    '<div class="section-title">Included In ' + _esc(_planLabel(planId)) + '</div>' +
+    (rows || '<div class="muted">No core feature summary available.</div>') +
     '</div>';
 }
 
@@ -419,6 +444,8 @@ function renderStoreDetail(idx) {
     '<div class="hint" style="margin-bottom:8px;">All new and reassigned Hub plans are paired with add-ons separately. Owners can later add more modules from their dashboard.</div>' +
     '<button class="btn btn-primary" style="margin-top:8px;" onclick="_changePlan(\'' + st.Store_ID + '\')">Save Plan</button>' +
     '</div>' +
+
+    _renderPlanInclusionsCard(plan) +
 
     '<div id="store-commercial-state"></div>' +
 
