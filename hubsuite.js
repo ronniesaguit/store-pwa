@@ -21,7 +21,11 @@
     multi_branch: 'hq_control_center',
     custom_roles: 'custom_role_builder',
     data_import: 'data_import_tools',
-    staff: 'staff_management'
+    staff: 'staff_management',
+    staff_accounts: 'staff_management',
+    activity_logs: 'activity_log',
+    tax_report: 'tax_reports',
+    tax_reporting: 'tax_reports'
   };
 
   var MODULE_CATALOG = {
@@ -59,6 +63,18 @@
       icon: '📊',
       shortDescription: 'Sales, profit and printable business reports.',
       sellAsAddOn: false
+    },
+    tax_reports: {
+      code: 'tax_reports',
+      name: 'Tax Reports',
+      icon: '🧾',
+      shortDescription: 'Tax-ready summaries, filing references and compliance exports.'
+    },
+    activity_log: {
+      code: 'activity_log',
+      name: 'Activity Log',
+      icon: '📜',
+      shortDescription: 'Operational audit trail, user actions and store event history.'
     },
     staff_management: {
       code: 'staff_management',
@@ -331,24 +347,54 @@
 
   function getAddOnCatalog(planId, featureCatalog) {
     var normalizedPlan = normalizePlanId(planId);
-    var source = Array.isArray(featureCatalog) && featureCatalog.length
-      ? featureCatalog
-      : Object.keys(MODULE_CATALOG).map(function(code) { return getModuleMeta(code); });
-    var seen = {};
+    var addOnPrice = getAddOnPrice(normalizedPlan);
+    var featureMap = {};
 
-    return source.map(function(feature) {
+    Object.keys(MODULE_CATALOG).forEach(function(moduleCode) {
+      var resolvedCode = resolveModuleId(moduleCode);
+      featureMap[resolvedCode] = Object.assign({}, getModuleMeta(resolvedCode), {
+        module_code: resolvedCode,
+        code: resolvedCode,
+        feature_name: getModuleMeta(resolvedCode).name,
+        short_description: getModuleMeta(resolvedCode).shortDescription,
+        icon: getModuleMeta(resolvedCode).icon,
+        tenant_status: 'locked',
+        action_state: 'start_trial',
+        is_trial_available: true,
+        trial_days: 30,
+        display_monthly_price: addOnPrice,
+        display_price_note: addOnPrice !== null ? ('₱' + addOnPrice + '/month after trial') : ''
+      });
+    });
+
+    (Array.isArray(featureCatalog) ? featureCatalog : []).forEach(function(feature) {
       var code = resolveModuleId(feature && (feature.module_code || feature.code));
-      if (!code || seen[code]) return null;
-      seen[code] = true;
-      if (!isAddOnEligible(normalizedPlan, code)) return null;
+      if (!code) return;
       var meta = getModuleMeta(code);
-      return Object.assign({}, meta, feature || {}, {
+      featureMap[code] = Object.assign({}, featureMap[code] || {}, meta, feature || {}, {
         module_code: code,
         code: code,
         feature_name: (feature && (feature.feature_name || feature.name)) || meta.name,
         short_description: (feature && feature.short_description) || meta.shortDescription,
         icon: (feature && feature.icon) || meta.icon
       });
+      if (featureMap[code].display_monthly_price == null && addOnPrice !== null) {
+        featureMap[code].display_monthly_price = addOnPrice;
+      }
+      if (!featureMap[code].display_price_note && addOnPrice !== null) {
+        featureMap[code].display_price_note = '₱' + addOnPrice + '/month after trial';
+      }
+      if (!featureMap[code].tenant_status) featureMap[code].tenant_status = 'locked';
+      if (!featureMap[code].action_state && featureMap[code].tenant_status === 'locked') {
+        featureMap[code].action_state = 'start_trial';
+      }
+      if (featureMap[code].is_trial_available == null) featureMap[code].is_trial_available = true;
+      if (!featureMap[code].trial_days) featureMap[code].trial_days = 30;
+    });
+
+    return Object.keys(featureMap).map(function(code) {
+      if (!isAddOnEligible(normalizedPlan, code)) return null;
+      return featureMap[code];
     }).filter(Boolean);
   }
 

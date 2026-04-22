@@ -596,7 +596,7 @@ function _renderMgrPage(data, fromCache) {
     (ss.top_staff
       ? _monRow('ðŸ† Top by Sales', _escAttr(ss.top_staff.name || '\u2014'), '\u20B1' + Number(ss.top_staff.total || 0).toLocaleString('en-PH', {minimumFractionDigits:0,maximumFractionDigits:0}) + ' today', 'good')
       : _monRow('Top by Sales', '\u2014', 'No sales recorded yet', 'no_data')) +
-    (_hasModule('staff') ? '<div style="margin-top:8px;"><button onclick="renderManageStaff()" style="background:#f0fdf4;border:1px solid #86efac;color:#16a34a;border-radius:8px;padding:8px 12px;font-size:0.75rem;font-weight:600;cursor:pointer;">ðŸ‘¥ Manage Staff</button></div>' : '');
+    ((_hasModule('staff_management') || _hasModule('staff')) ? '<div style="margin-top:8px;"><button onclick="renderManageStaff()" style="background:#f0fdf4;border:1px solid #86efac;color:#16a34a;border-radius:8px;padding:8px 12px;font-size:0.75rem;font-weight:600;cursor:pointer;">ðŸ‘¥ Manage Staff</button></div>' : '');
   var staffHtml = _monSection('ðŸ‘¥', 'Staff Activity', staffContent);
 
   // â”€â”€ Approvals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -673,7 +673,7 @@ function _renderMgrSimple(errMsg) {
   if (_hasModule('expenses'))      btns += '<button class="big-btn" onclick="renderExpenses()">ðŸ’¸ Expenses</button>';
   if (_hasModule('reports'))       btns += '<button class="big-btn" onclick="renderReports()">ðŸ“Š Reports</button>';
   if (_hasModule('monitors'))      btns += '<button class="big-btn" onclick="renderMonitors()">ðŸ“¡ Monitors</button>';
-  if (_hasModule('staff'))         btns += '<button class="big-btn" onclick="renderManageStaff()">ðŸ‘¥ Staff</button>';
+  if (_hasModule('staff_management') || _hasModule('staff')) btns += '<button class="big-btn" onclick="renderManageStaff()">ðŸ‘¥ Staff</button>';
   if (_hasModule('internal_chat')) btns += '<button class="big-btn" onclick="renderChat()">ðŸ’¬ Chat</button>';
   if (_hasModule('support'))       btns += '<button class="big-btn" onclick="renderSupport()">ðŸ“ž Help</button>';
   document.getElementById('app').innerHTML =
@@ -5696,6 +5696,7 @@ function _renderMarketplaceUI(features, error) {
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
     '<div class="topbar"><div class="title" style="margin:0;">ðŸª HubSuite Add-ons</div><button class="small-btn" onclick="goHome()">â† Home</button></div>' +
+    (error ? '<div class="card" style="background:#fffbeb;border-color:#fde68a;color:#92400e;font-size:12px;margin-bottom:12px;">Live add-on status could not be refreshed. Showing the shared add-on catalog instead.</div>' : '') +
     '<div class="muted" style="font-size:12px;margin-bottom:12px;">' +
       _escHtml(tier.name || 'HubSuite') +
       (addonPrice !== null ? ' add-ons are â‚±' + addonPrice + '/month each after the trial period.' : ' add-ons use feature-based pricing after trial.') +
