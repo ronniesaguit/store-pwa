@@ -1,6 +1,14 @@
 // app.js — Store Management PWA main logic
 
-var SCANNER_URL = 'https://ronniesaguit.github.io/store-pwa/scanner.html';
+var SCANNER_URL = (function() {
+  try { return new URL('./scanner.html', window.location.href).toString(); }
+  catch(e) { return './scanner.html'; }
+})();
+
+var HTML5_QRCODE_ASSET_URL = (function() {
+  try { return new URL('./vendor/html5-qrcode.min.js', window.location.href).toString(); }
+  catch(e) { return './vendor/html5-qrcode.min.js'; }
+})();
 
 var state = {
   session:       null,
@@ -17,6 +25,7 @@ var state = {
 
 // Executive dashboard state
 var execCurrentPeriod = 'last_month';
+var HUB = window.HUBSUITE || null;
 
 // ── Boot ─────────────────────────────────────────────────────────────────────
 
@@ -150,8 +159,9 @@ function goHome() {
 function renderLogin(msg) {
   document.getElementById('app').innerHTML =
     '<div class="screen"><div class="card">' +
-    '<h1 class="title">🏪 Store Login</h1>' +
-    '<div class="subtitle">Sign in to continue</div>' +
+    '<div style="margin-bottom:12px;">' + (HUB && HUB.logoMarkup ? HUB.logoMarkup('NEGOSYO_HUB', 'HubSuite') : '<strong>HubSuite</strong>') + '</div>' +
+    '<h1 class="title">HubSuite Login</h1>' +
+    '<div class="subtitle">Sign in to continue to your store workspace</div>' +
     (msg ? showError(msg) : '') +
     '<div class="field"><label>Username</label><input id="login-username" placeholder="Enter username" autocomplete="username"></div>' +
     '<div class="field"><label>Password</label><input id="login-password" type="password" placeholder="Enter password" autocomplete="current-password"></div>' +
@@ -280,10 +290,32 @@ function _planModules() {
   return (state.session && state.session.plan && state.session.plan.modules) || null;
 }
 
+function _planTier(planId) {
+  if (HUB && HUB.getTier) return HUB.getTier(planId);
+  return { id: String(planId || 'TRIAL').toUpperCase(), name: String(planId || 'TRIAL').toUpperCase(), addOnPrice: null };
+}
+
+function _planLabel(planId) {
+  if (HUB && HUB.getPlanLabel) return HUB.getPlanLabel(planId);
+  return String(planId || 'TRIAL').toUpperCase();
+}
+
+function _planAddOnPrice() {
+  var planId = state.session && state.session.plan && state.session.plan.id;
+  if (HUB && HUB.getAddOnPrice) return HUB.getAddOnPrice(planId);
+  var fallback = state.session && state.session.plan && state.session.plan.addon_price;
+  return Number.isFinite(Number(fallback)) ? Number(fallback) : null;
+}
+
+function _resolveModuleId(moduleId) {
+  if (HUB && HUB.resolveModuleId) return HUB.resolveModuleId(moduleId);
+  return moduleId;
+}
+
 function _hasModule(moduleId) {
   var mods = _planModules();
   if (!mods) return true; // CUSTOM plan or no plan info — allow all
-  return mods.indexOf(moduleId) !== -1;
+  return mods.indexOf(_resolveModuleId(moduleId)) !== -1 || mods.indexOf(moduleId) !== -1;
 }
 
 function _hasPerm(permCode) {
@@ -317,7 +349,14 @@ function renderOwnerDashboard(msg) {
   var storeName = (state.storeProfile && (state.storeProfile.storeName || state.storeProfile.Store_Name)) || '';
   var ownerName = (state.storeProfile && (state.storeProfile.ownerName || state.storeProfile.Owner_Name)) || state.session.user.Full_Name;
   var plan = state.session && state.session.plan;
-  var planLine = plan ? '<div style="font-size:0.7rem;color:rgba(255,255,255,0.55);margin-top:1px;">' + _escAttr(plan.name || plan.id || '') + (state.session.inTrial ? ' · Trial' : '') + '</div>' : '';
+  var addOnPrice = _planAddOnPrice();
+  var planLine = plan
+    ? '<div style="font-size:0.7rem;color:rgba(255,255,255,0.55);margin-top:1px;">' +
+      _escAttr(_planLabel(plan.id || plan.name || '')) +
+      (state.session.inTrial ? ' · Trial' : '') +
+      (addOnPrice !== null ? ' · Add-ons ₱' + addOnPrice + '/feature' : '') +
+      '</div>'
+    : '';
 
   var btns = '';
   if (_hasModule('products'))        btns += '<button class="big-btn" onclick="loadProducts()">📦 Products</button>';
@@ -329,22 +368,22 @@ function renderOwnerDashboard(msg) {
   if (_hasModule('reports'))         btns += '<button class="big-btn" onclick="renderAdvancedReportsHome()">📊 Advanced Reports</button>';
   if (_hasModule('suppliers'))       btns += '<button class="big-btn" onclick="renderSuppliers()">🏭 Suppliers</button>';
   if (_hasModule('purchase_orders')) btns += '<button class="big-btn" onclick="renderPurchaseOrders()">📋 Purchase Orders</button>';
-  if (_hasModule('branch_transfers'))btns += '<button class="big-btn" onclick="renderBranchTransfers()">🔄 Branch Transfers</button>';
-  if (_hasModule('multi_branch'))    btns += '<button class="big-btn" onclick="renderHQControlCenter()">🏢 HQ Control</button>';
+  if (_hasModule('branch_transfer')) btns += '<button class="big-btn" onclick="renderBranchTransfers()">🔄 Branch Transfers</button>';
+  if (_hasModule('hq_control_center')) btns += '<button class="big-btn" onclick="renderHQControlCenter()">🏢 HQ Control</button>';
   if (_hasModule('internal_chat'))   btns += '<button class="big-btn" onclick="renderChat()">💬 Chat</button>';
   if (_hasModule('staff_management') || _hasModule('staff')) btns += '<button class="big-btn" onclick="renderStaffList()">👥 Staff</button>';
-  if (_hasModule('custom_roles'))    btns += '<button class="big-btn" onclick="renderCustomRoles()">🎭 Custom Roles</button>';
+  if (_hasModule('custom_role_builder')) btns += '<button class="big-btn" onclick="renderCustomRoles()">🎭 Custom Roles</button>';
   if (_hasModule('approvals'))       btns += '<button class="big-btn" onclick="renderApprovalsQueue()">✅ Approvals</button>';
   if (_hasModule('roi'))             btns += '<button class="big-btn" onclick="renderROIMonitor()">📈 ROI</button>';
   if (_hasModule('monitors'))        btns += '<button class="big-btn" onclick="renderMonitors()">📡 Monitors</button>';
   if (_hasModule('automation_rules'))btns += '<button class="big-btn" onclick="renderAutomationRules()">⚡ Automation</button>';
-  if (_hasModule('data_import'))     btns += '<button class="big-btn" onclick="renderDataImport()">📥 Import Data</button>';
+  if (_hasModule('data_import_tools')) btns += '<button class="big-btn" onclick="renderDataImport()">📥 Import Data</button>';
   if (_hasModule('settings'))        btns += '<button class="big-btn" onclick="renderFullSettings()">⚙️ Settings</button>';
   btns += '<button class="big-btn" onclick="renderNotificationsCenter()">🔔 Notifications</button>';
   btns += '<button class="big-btn" onclick="renderAlertsCenter()">🚨 Alerts</button>';
-  btns += '<button class="big-btn" onclick="renderFeatureMarketplace()">🛒 Feature Store</button>';
-  btns += '<button class="big-btn" onclick="renderHardwareSetup()">🖨️ Hardware</button>';
-  btns += '<button class="big-btn" onclick="renderSandboxMode()">🧪 Sandbox</button>';
+  if (_hasModule('feature_marketplace')) btns += '<button class="big-btn" onclick="renderFeatureMarketplace()">🛒 Hub Add-ons</button>';
+  if (_hasModule('hardware_profiles')) btns += '<button class="big-btn" onclick="renderHardwareSetup()">🖨️ Hardware</button>';
+  if (_hasModule('sandbox_mode')) btns += '<button class="big-btn" onclick="renderSandboxMode()">🧪 Sandbox</button>';
   if (_hasModule('support'))         btns += '<button class="big-btn" onclick="renderSupport()">📞 Help</button>';
 
   // Locked / upsell tiles for modules not in current plan
@@ -370,10 +409,10 @@ function renderOwnerDashboard(msg) {
   var mods = _planModules();
   if (mods) {
     Object.keys(UPSELL_META).forEach(function(m) {
-      if (mods.indexOf(m) === -1) {
+      if (!_hasModule(m)) {
         var meta = UPSELL_META[m];
         lockedBtns += '<button class="big-btn" disabled style="opacity:0.45;cursor:default;position:relative;" title="Upgrade to unlock">' +
-          '<span style="position:absolute;top:4px;right:6px;font-size:0.6rem;background:#f59e0b;color:#fff;padding:1px 5px;border-radius:8px;font-weight:700;">PRO</span>' +
+          '<span style="position:absolute;top:4px;right:6px;font-size:0.6rem;background:#f59e0b;color:#fff;padding:1px 5px;border-radius:8px;font-weight:700;">ADD-ON</span>' +
           meta.icon + ' ' + meta.label + '<br><span style="font-size:0.65rem;opacity:0.7;">🔒 Upgrade</span></button>';
       }
     });
@@ -3620,7 +3659,7 @@ function printBIRData(d) {
     '</tbody></table>' +
 
     '<div style="margin-top:24px;font-size:10px;color:#999;border-top:1px solid #ddd;padding-top:8px;">' +
-    'DISCLAIMER: This is a computer-generated summary from Tindahan Hub POS. ' +
+    'DISCLAIMER: This is a computer-generated summary from HubSuite POS. ' +
     'This is NOT a BIR-registered document. Please consult a CPA or BIR-accredited tax preparer before filing. ' +
     'Data accuracy depends on complete recording of all sales and expenses in the system.' +
     '</div>';
@@ -3988,7 +4027,7 @@ function _renderMonitorLocked() {
     '<div style="font-size:2.5rem;margin-bottom:12px;">🔒</div>' +
     '<div style="font-weight:700;font-size:1.1rem;color:#111827;margin-bottom:8px;">Business Monitors</div>' +
     '<div style="font-size:0.85rem;color:#6b7280;max-width:260px;margin:0 auto 20px;">See sales trends, expense alerts, and business insights.<br>Available on Growth plan and above.</div>' +
-    '<button class="btn btn-primary" onclick="_showToast(\'Contact your Business Hub support to upgrade your plan.\', false)">Upgrade to Unlock</button>' +
+    '<button class="btn btn-primary" onclick="_showToast(\'Contact your HubSuite admin to upgrade your plan.\', false)">Upgrade to Unlock</button>' +
     '</div></div>';
 }
 
@@ -4236,7 +4275,7 @@ function _renderSupportScreen(msgs) {
         'border-radius:' + (isAdmin ? '4px 14px 14px 14px' : '14px 4px 14px 14px') + ';' +
         'padding:10px 14px;font-size:14px;">' + _escHtml(m.Message) + '</div>' +
       '<div style="font-size:10px;color:#9ca3af;margin-top:2px;">' +
-        (isAdmin ? '🏪 Tindahan Hub Admin' : '👤 ' + _escHtml(m.From_Name || 'You')) +
+        (isAdmin ? '🏪 HubSuite Admin' : '👤 ' + _escHtml(m.From_Name || 'You')) +
         ' · ' + time + '</div></div>';
   }).join('');
 
@@ -4246,7 +4285,7 @@ function _renderSupportScreen(msgs) {
     '<button class="small-btn" onclick="_stopSupportPoll();goHome();">← Back</button></div>' +
 
     '<div style="background:#fff;border-radius:0;padding:12px;margin-bottom:0;">' +
-    '<div style="font-size:12px;color:#6b7280;text-align:center;margin-bottom:8px;">Chat with Tindahan Hub Admin · ' +
+    '<div style="font-size:12px;color:#6b7280;text-align:center;margin-bottom:8px;">Chat with HubSuite Admin · ' +
     '<strong>09163561251</strong> (GCash/Viber)</div>' +
     '</div>' +
 
@@ -4284,7 +4323,7 @@ function _renderSupportScreen(msgs) {
             'border-radius:' + (isAdmin ? '4px 14px 14px 14px' : '14px 4px 14px 14px') + ';' +
             'padding:10px 14px;font-size:14px;">' + _escHtml(m.Message) + '</div>' +
           '<div style="font-size:10px;color:#9ca3af;margin-top:2px;">' +
-            (isAdmin ? '🏪 Tindahan Hub Admin' : '👤 ' + _escHtml(m.From_Name || 'You')) +
+            (isAdmin ? '🏪 HubSuite Admin' : '👤 ' + _escHtml(m.From_Name || 'You')) +
             ' · ' + time + '</div></div>';
       }).join('');
       el.innerHTML = newBubbles || el.innerHTML;
@@ -4323,14 +4362,14 @@ function showNoStoreKey() {
   document.getElementById('app').innerHTML =
     '<div class="screen"><div class="card" style="text-align:center;padding:32px 20px;">' +
     '<div style="font-size:48px;margin-bottom:12px;">🏪</div>' +
-    '<h2 style="margin:0 0 8px;">Tindahan Hub</h2>' +
+    '<h2 style="margin:0 0 8px;">HubSuite</h2>' +
     '<div class="muted" style="margin-bottom:24px;">This app is not linked to any store yet.</div>' +
     '<div class="subtitle" style="margin-bottom:8px;">Enter your Store Key</div>' +
     '<input id="sk-input" placeholder="sk_xxxxxxxxxxxxxxxxxxxxxxxx" ' +
       'style="width:100%;padding:12px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;' +
       'margin-bottom:12px;box-sizing:border-box;">' +
     '<button class="btn btn-primary" onclick="_applyStoreKey()">Connect Store</button>' +
-    '<div class="muted" style="margin-top:16px;font-size:12px;">Your store key was provided by Tindahan Hub when your store was created.<br>' +
+    '<div class="muted" style="margin-top:16px;font-size:12px;">Your store key was provided by HubSuite when your store was created.<br>' +
     'Contact <strong>09163561251</strong> (GCash/Viber) for assistance.</div>' +
     '</div></div>';
 }
@@ -4345,7 +4384,7 @@ function _applyStoreKey() {
 function showSubscriptionExpired(paymentInfo) {
   paymentInfo = paymentInfo || {};
   var gcash    = paymentInfo.gcashNumber  || '09163561251';
-  var gcashName= paymentInfo.gcashName    || 'Tindahan Hub';
+  var gcashName= paymentInfo.gcashName    || 'HubSuite';
   var qr       = paymentInfo.gcashQrUrl   || '';
 
   document.getElementById('app').innerHTML =
@@ -4486,7 +4525,7 @@ async function _startBarcodeCamera() {
   if (typeof Html5Qrcode === 'undefined') {
     await new Promise(function(res, rej) {
       var s = document.createElement('script');
-      s.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+      s.src = HTML5_QRCODE_ASSET_URL;
       s.onload = res; s.onerror = rej;
       document.head.appendChild(s);
     });
@@ -5639,6 +5678,8 @@ async function renderFeatureMarketplace() {
 function _renderMarketplaceUI(features, error) {
   var STATUS_LABEL = { active_paid: '✓ Active', trial_active: '⏱ Trial', trial_expiring: '⚠ Expiring', trial_expired: '✗ Expired', locked: 'Locked', cancelled: 'Cancelled' };
   var STATUS_COLOR = { active_paid: '#16a34a', trial_active: '#2563eb', trial_expiring: '#d97706', trial_expired: '#dc2626', locked: '#6b7280', cancelled: '#dc2626' };
+  var tier = _planTier(state.session && state.session.plan && state.session.plan.id);
+  var addonPrice = _planAddOnPrice();
 
   var cards = features.length ? features.map(function(f) {
     var statusColor = STATUS_COLOR[f.tenant_status] || '#6b7280';
@@ -5656,15 +5697,19 @@ function _renderMarketplaceUI(features, error) {
       '<span style="font-size:11px;color:' + statusColor + ';font-weight:bold;">' + statusLabel + '</span>' +
       '</div>' +
       '<div style="font-size:12px;color:#374151;margin-bottom:6px;">' + _escHtml(f.short_description||'') + '</div>' +
-      (f.monthly_price ? '<div class="muted" style="font-size:11px;margin-bottom:6px;">₱' + Number(f.monthly_price).toFixed(0) + '/month after trial</div>' : '') +
+      (f.display_monthly_price ? '<div class="muted" style="font-size:11px;margin-bottom:4px;">₱' + Number(f.display_monthly_price).toFixed(0) + '/month after trial</div>' : '') +
+      (f.display_price_note ? '<div class="muted" style="font-size:11px;margin-bottom:6px;">' + _escHtml(f.display_price_note) + '</div>' : '') +
       trialInfo + actionBtn +
       '</div>';
   }).join('') : '<div class="muted" style="padding:8px;">' + (error||'No features available.') + '</div>';
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">🏪 Feature Marketplace</div><button class="small-btn" onclick="goHome()">← Home</button></div>' +
-    '<div class="muted" style="font-size:12px;margin-bottom:12px;">Try premium features free, then subscribe if you find them valuable.</div>' +
+    '<div class="topbar"><div class="title" style="margin:0;">🏪 HubSuite Add-ons</div><button class="small-btn" onclick="goHome()">← Home</button></div>' +
+    '<div class="muted" style="font-size:12px;margin-bottom:12px;">' +
+      _escHtml(tier.name || 'HubSuite') +
+      (addonPrice !== null ? ' add-ons are ₱' + addonPrice + '/month each after the trial period.' : ' add-ons use feature-based pricing after trial.') +
+    '</div>' +
     cards + '</div>';
 }
 

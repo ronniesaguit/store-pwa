@@ -1,6 +1,90 @@
 // api.js — Cloudflare Workers API client
 
-const GAS_URL = 'https://businesshub-api.ronniesaguit.workers.dev';
+const API_BASE_STORAGE_KEY = 'store_api_base';
+const APP_CONFIG = window.__STORE_APP_CONFIG__ || {};
+
+function _normalizeApiBase(raw) {
+  if (!raw) return '';
+  var value = String(raw).trim();
+  if (!value) return '';
+  try {
+    return new URL(value, window.location.origin).toString();
+  } catch(e) {
+    return value.replace(/\/+$/, '');
+  }
+}
+
+function _persistApiBaseOverrideFromUrl() {
+  var fromUrl = new URLSearchParams(window.location.search).get('api');
+  if (fromUrl == null) return;
+  var value = String(fromUrl).trim();
+  if (!value || value.toLowerCase() === 'reset') {
+    localStorage.removeItem(API_BASE_STORAGE_KEY);
+  } else {
+    localStorage.setItem(API_BASE_STORAGE_KEY, value);
+  }
+}
+
+function _getApiTargets() {
+  var override = localStorage.getItem(API_BASE_STORAGE_KEY) || '';
+  var primary = _normalizeApiBase(override || APP_CONFIG.apiBase || '/api');
+  var fallback = _normalizeApiBase(APP_CONFIG.apiFallbackBase || '');
+  var targets = [];
+  if (primary) targets.push(primary);
+  if (fallback && targets.indexOf(fallback) === -1) targets.push(fallback);
+  return targets.length ? targets : [_normalizeApiBase('/api')];
+}
+
+async function _postToApiTargets(body) {
+  var targets = _getApiTargets();
+  var lastErr = null;
+
+  for (var i = 0; i < targets.length; i++) {
+    try {
+      return await _postToApi(targets[i], body);
+    } catch(e) {
+      lastErr = e;
+      if (!e.canFallback || i === targets.length - 1) throw e;
+    }
+  }
+
+  throw lastErr || new Error('No internet connection');
+}
+
+async function _postToApi(url, body) {
+  var response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: body,
+      redirect: 'follow'
+    });
+  } catch(e) {
+    var networkErr = new Error('No internet connection');
+    networkErr.canFallback = true;
+    throw networkErr;
+  }
+
+  var text = '';
+  try { text = await response.text(); } catch(e) {}
+
+  if (!text) {
+    var emptyErr = new Error('Bad response from server');
+    emptyErr.canFallback = response.status === 404 || response.status === 405;
+    throw emptyErr;
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch(e) {
+    var parseErr = new Error('Bad response from server');
+    parseErr.canFallback = response.status === 404 || response.status === 405;
+    throw parseErr;
+  }
+}
+
+_persistApiBaseOverrideFromUrl();
 
 // Store key for this store installation — set from URL ?k= param or localStorage
 const STORE_KEY = (function() {
@@ -45,16 +129,7 @@ const API = {
     const body = JSON.stringify({
       action, token: this.token, storeKey: STORE_KEY, data: data || {}
     });
-    let response;
-    try {
-      response = await fetch(GAS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body, redirect: 'follow'
-      });
-    } catch(e) { throw new Error('No internet connection'); }
-    try { return await response.json(); }
-    catch(e) { throw new Error('Bad response from server'); }
+    return _postToApiTargets(body);
   },
 
   _isExpired(msg) {
@@ -182,16 +257,7 @@ const ADMIN_API = {
 
   async _raw(action, data) {
     const body = JSON.stringify({ action, adminToken: this.token, data: data || {} });
-    let response;
-    try {
-      response = await fetch(GAS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body, redirect: 'follow'
-      });
-    } catch(e) { throw new Error('No internet connection'); }
-    try { return await response.json(); }
-    catch(e) { throw new Error('Bad response from server'); }
+    return _postToApiTargets(body);
   },
 
   _isExpired(msg) {

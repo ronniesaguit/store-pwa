@@ -1,16 +1,42 @@
 // sw.js — Service Worker for offline-first Store PWA
-const CACHE = 'store-pwa-v55';
+const CACHE = 'store-pwa-v58';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './app.js',
+  './hubsuite.js',
+  './config.js',
   './api.js',
   './db.js',
   './manifest.json',
   './scanner.html',
   './admin.html',
-  './admin.js'
+  './admin.js',
+  './assets/branding/hubsuite.svg',
+  './assets/branding/hubsuite-trial.svg',
+  './assets/branding/negosyo-hub.svg',
+  './assets/branding/business-hub.svg',
+  './assets/branding/nexora-hub.svg',
+  './vendor/html5-qrcode.min.js'
 ];
+
+const NETWORK_ONLY_HOSTS = ['script.google.com'];
+const NETWORK_ONLY_PATH_PREFIXES = ['/api'];
+
+function isNetworkOnlyRequest(url) {
+  return NETWORK_ONLY_HOSTS.some(function(host) {
+    return url.hostname === host || url.hostname.endsWith('.' + host);
+  }) || NETWORK_ONLY_PATH_PREFIXES.some(function(prefix) {
+    return url.origin === self.location.origin &&
+      (url.pathname === prefix || url.pathname.indexOf(prefix + '/') === 0);
+  });
+}
+
+function isConfigRequest(request, url) {
+  return request.method === 'GET' &&
+    url.origin === self.location.origin &&
+    /\/config\.js$/.test(url.pathname);
+}
 
 // Install: pre-cache all static assets
 self.addEventListener('install', function(e) {
@@ -39,10 +65,25 @@ self.addEventListener('activate', function(e) {
 
 // Fetch: cache-first for static, network-only for GAS API calls
 self.addEventListener('fetch', function(e) {
-  var url = e.request.url;
+  var url = new URL(e.request.url);
 
   // Never cache GAS API calls — always go to network
-  if (url.includes('script.google.com')) {
+  if (isConfigRequest(e.request, url)) {
+    e.respondWith(
+      fetch(e.request).then(function(response) {
+        if (response && response.status === 200) {
+          var clone = response.clone();
+          caches.open(CACHE).then(function(cache) { cache.put(e.request, clone); });
+        }
+        return response;
+      }).catch(function() {
+        return caches.match(e.request);
+      })
+    );
+    return;
+  }
+
+  if (isNetworkOnlyRequest(url)) {
     e.respondWith(fetch(e.request).catch(function() {
       return new Response(
         JSON.stringify({ success: false, error: 'No internet connection' }),
