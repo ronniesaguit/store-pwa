@@ -51,6 +51,38 @@ async function _postToApiTargets(body) {
   throw lastErr || new Error('No internet connection');
 }
 
+function _describeBadApiResponse(response, text) {
+  var status = 'HTTP ' + String((response && response.status) || 0);
+  if (response && response.statusText) status += ' ' + response.statusText;
+
+  var contentType = '';
+  try { contentType = String((response && response.headers && response.headers.get('content-type')) || ''); } catch(e) {}
+
+  var snippet = String(text || '').replace(/\s+/g, ' ').trim();
+  if (snippet.length > 180) snippet = snippet.slice(0, 177) + '...';
+
+  var looksHtml = /^<!doctype html/i.test(snippet) || /^<html/i.test(snippet) || contentType.toLowerCase().indexOf('text/html') !== -1;
+  if (looksHtml) {
+    return status + ' returned HTML instead of JSON. Check the /api route and Cloudflare Pages UPSTREAM_API_BASE.';
+  }
+  if (!snippet) {
+    return status + ' returned an empty response body.';
+  }
+  return status + ': ' + snippet;
+}
+
+function _shouldFallbackBadApiResponse(response, text) {
+  var status = (response && response.status) || 0;
+  if (status === 404 || status === 405 || status === 502 || status === 503 || status === 504) return true;
+
+  var contentType = '';
+  try { contentType = String((response && response.headers && response.headers.get('content-type')) || ''); } catch(e) {}
+  var snippet = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!snippet) return true;
+
+  return /^<!doctype html/i.test(snippet) || /^<html/i.test(snippet) || contentType.toLowerCase().indexOf('text/html') !== -1;
+}
+
 async function _postToApi(url, body) {
   var response;
   try {
@@ -70,16 +102,16 @@ async function _postToApi(url, body) {
   try { text = await response.text(); } catch(e) {}
 
   if (!text) {
-    var emptyErr = new Error('Bad response from server');
-    emptyErr.canFallback = response.status === 404 || response.status === 405;
+    var emptyErr = new Error(_describeBadApiResponse(response, text));
+    emptyErr.canFallback = _shouldFallbackBadApiResponse(response, text);
     throw emptyErr;
   }
 
   try {
     return JSON.parse(text);
   } catch(e) {
-    var parseErr = new Error('Bad response from server');
-    parseErr.canFallback = response.status === 404 || response.status === 405;
+    var parseErr = new Error(_describeBadApiResponse(response, text));
+    parseErr.canFallback = _shouldFallbackBadApiResponse(response, text);
     throw parseErr;
   }
 }
