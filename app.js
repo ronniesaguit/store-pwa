@@ -325,10 +325,17 @@ function logout() {
 
 function _planModules() {
   var plan = state.session && state.session.plan;
-  var base = null;
-  if (plan && Array.isArray(plan.modules) && plan.modules.length) base = plan.modules;
-  else if (HUB && HUB.getCoreModuleCodes && plan && plan.id) base = HUB.getCoreModuleCodes(plan.id);
-  if (!base) return null;
+  var planId = plan && (plan.id || plan.name || plan.Plan || plan.plan);
+  var base = [];
+  if (HUB && HUB.getCoreModuleCodes && planId) {
+    var core = HUB.getCoreModuleCodes(planId);
+    if (!core) return null;
+    base = base.concat(core);
+  }
+  if (plan && Array.isArray(plan.modules) && plan.modules.length) {
+    base = base.concat(plan.modules);
+  }
+  if (!base.length) return null;
 
   var seen = {};
   return base.concat(_ownerActiveAddOnModules()).map(function(moduleId) {
@@ -351,9 +358,10 @@ function _planLabel(planId) {
 }
 
 function _planAddOnPrice() {
-  var planId = state.session && state.session.plan && state.session.plan.id;
+  var plan = state.session && state.session.plan;
+  var planId = plan && (plan.id || plan.name || plan.Plan || plan.plan);
   if (HUB && HUB.getAddOnPrice) return HUB.getAddOnPrice(planId);
-  var fallback = state.session && state.session.plan && state.session.plan.addon_price;
+  var fallback = plan && plan.addon_price;
   return Number.isFinite(Number(fallback)) ? Number(fallback) : null;
 }
 
@@ -375,7 +383,8 @@ function _ownerActiveAddOnModules() {
 }
 
 function _normalizeOwnerAddOnCatalog(features) {
-  var planId = state.session && state.session.plan && state.session.plan.id;
+  var plan = state.session && state.session.plan;
+  var planId = plan && (plan.id || plan.name || plan.Plan || plan.plan);
   return (HUB && HUB.getAddOnCatalog) ? HUB.getAddOnCatalog(planId, features || []) : (features || []);
 }
 
