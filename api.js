@@ -118,6 +118,31 @@ async function _postToApi(url, body) {
 
 _persistApiBaseOverrideFromUrl();
 
+const STAFF_MANAGEMENT_ACTIONS = [
+  'getStoreUsers',
+  'createStoreUser',
+  'deleteStoreUser',
+  'resetStaffPassword',
+  'getStaff',
+  'getStaffById',
+  'createStaff',
+  'updateStaff',
+  'assignStaffRole',
+  'setStaffPassword',
+  'setStaffStatus'
+];
+
+function _isStaffManagementAction(action) {
+  return STAFF_MANAGEMENT_ACTIONS.indexOf(action) !== -1;
+}
+
+function _isStaffModuleGateResult(result) {
+  var msg = String((result && result.error) || '').toLowerCase();
+  return msg.indexOf('staff_management') !== -1 &&
+    msg.indexOf('module') !== -1 &&
+    msg.indexOf('current plan') !== -1;
+}
+
 // Store key for this store installation — set from URL ?k= param or localStorage
 const STORE_KEY = (function() {
   var fromUrl = new URLSearchParams(window.location.search).get('k');
@@ -145,6 +170,13 @@ const API = {
       if (ok) result = await this._raw(action, data);
     }
 
+    // GitHub Pages can call the Worker directly, bypassing the Pages proxy repair.
+    // Staff is now a core module, so repair legacy tenant access once and retry.
+    if (!result.success && _isStaffManagementAction(action) && _isStaffModuleGateResult(result)) {
+      const repaired = await this._repairCoreStaffAccess();
+      if (repaired) result = await this._raw(action, data);
+    }
+
     if (!result.success && result.errorCode === 'SUBSCRIPTION_EXPIRED') {
       showSubscriptionExpired(result.paymentInfo || {});
       throw new Error('SUBSCRIPTION_EXPIRED');
@@ -162,6 +194,26 @@ const API = {
       action, token: this.token, storeKey: STORE_KEY, data: data || {}
     });
     return _postToApiTargets(body);
+  },
+
+  async _repairCoreStaffAccess() {
+    if (!this.token || !STORE_KEY) return false;
+    const repairs = [
+      { moduleCode: 'staff_management', source: 'core_staff_repair' },
+      { moduleCode: 'staff', source: 'core_staff_repair' }
+    ];
+
+    var attempted = false;
+    for (var i = 0; i < repairs.length; i++) {
+      attempted = true;
+      try {
+        const result = await this._raw('startTrial', repairs[i]);
+        if (result && result.success) return true;
+        var msg = String((result && result.error) || '').toLowerCase();
+        if (msg.indexOf('already') !== -1 || msg.indexOf('active') !== -1) return true;
+      } catch(e) {}
+    }
+    return attempted;
   },
 
   _isExpired(msg) {
