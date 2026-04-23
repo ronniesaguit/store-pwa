@@ -140,6 +140,29 @@ function _moduleSyncPayload(planId, selectedAddOns) {
   };
 }
 
+function _applyModulePatchFields(patch, modulePayload) {
+  var enabled = _uniqueModuleCodes((modulePayload && modulePayload.enabledModuleCodes) || []);
+  var core = _uniqueModuleCodes((modulePayload && modulePayload.coreModuleCodes) || []);
+  var enabledJson = JSON.stringify(enabled);
+  var coreJson = JSON.stringify(core);
+
+  // The upstream Worker source is separate, so write the common field variants.
+  // adminUpdateStore ignores unknown columns but persists recognized module fields.
+  patch.Enabled_Modules = enabledJson;
+  patch.enabled_modules = enabledJson;
+  patch.Modules = enabledJson;
+  patch.modules = enabledJson;
+  patch.Plan_Modules = enabledJson;
+  patch.plan_modules = enabledJson;
+  patch.Initial_Module_Codes = enabledJson;
+  patch.initial_module_codes = enabledJson;
+  patch.Core_Modules = coreJson;
+  patch.core_modules = coreJson;
+  patch.Staff_Management_Enabled = 'TRUE';
+  patch.staff_management_enabled = 'true';
+  return patch;
+}
+
 function _planAddOnCatalog(planId, catalog) {
   if (HUB && HUB.getAddOnCatalog) return HUB.getAddOnCatalog(planId, catalog || _featureCatalog());
   return catalog || _featureCatalog();
@@ -488,6 +511,8 @@ function renderStoreDetail(idx) {
     '</select></div>' +
     '<div class="hint" style="margin-bottom:8px;">All new and reassigned Hub plans are paired with add-ons separately. Owners can later add more modules from their dashboard.</div>' +
     '<button class="btn btn-primary" style="margin-top:8px;" onclick="_changePlan(\'' + st.Store_ID + '\')">Save Plan</button>' +
+    '<button class="btn btn-secondary" style="margin-top:8px;" onclick="_repairStaffAccess(\'' + st.Store_ID + '\',\'' + plan + '\')">Repair Staff Access</button>' +
+    '<div class="hint" style="margin-top:6px;">Use repair if Owner Staff says the backend is still blocking Staff.</div>' +
     '</div>' +
 
     _renderPlanInclusionsCard(plan) +
@@ -560,6 +585,7 @@ async function _changePlan(storeId) {
   var plan = document.getElementById('chg-plan').value;
   var patch = { Plan: plan };
   var modulePayload = _moduleSyncPayload(plan, []);
+  _applyModulePatchFields(patch, modulePayload);
   if (plan === 'CUSTOM') {
     patch.Max_Users             = document.getElementById('chg-users').value;
     patch.Max_Products          = document.getElementById('chg-products').value;
@@ -583,6 +609,28 @@ async function _changePlan(storeId) {
     await _refreshStores();
     renderDashboard();
   } catch(e) { _toast(e.message, true); }
+}
+
+async function _repairStaffAccess(storeId, planId) {
+  var plan = planId || (document.getElementById('chg-plan') && document.getElementById('chg-plan').value) || 'NEGOSYO_HUB';
+  var modulePayload = _moduleSyncPayload(plan, []);
+  var patch = _applyModulePatchFields({ Plan: plan }, modulePayload);
+  try {
+    await ADMIN_API.call('adminUpdateStore', Object.assign({ storeId: storeId, patch: patch }, modulePayload));
+    var repairCalls = [
+      ['adminSyncStoreModules', { storeId: storeId, plan: plan, moduleCodes: modulePayload.enabledModuleCodes }],
+      ['adminRepairStoreModules', { storeId: storeId, plan: plan, moduleCodes: modulePayload.enabledModuleCodes }],
+      ['adminEnableStoreModule', { storeId: storeId, moduleCode: 'staff_management' }]
+    ];
+    for (var i = 0; i < repairCalls.length; i++) {
+      try { await ADMIN_API.call(repairCalls[i][0], repairCalls[i][1]); } catch(e) {}
+    }
+    _toast('Staff access repair sent. Ask the owner to log out and back in.');
+    await _refreshStores();
+    renderDashboard();
+  } catch(e) {
+    _toast(e.message, true);
+  }
 }
 
 async function _toggleStatus(storeId, newStatus) {
@@ -1205,6 +1253,9 @@ async function submitCreateStore() {
     notes: (document.getElementById('cs-notes').value || '').trim(),
     initialModuleCodes: _moduleSyncPayload(plan, _selectedModulesFromForm('cs-addons-card')).initialModuleCodes
   };
+  var createModulePayload = _moduleSyncPayload(plan, _selectedModulesFromForm('cs-addons-card'));
+  Object.assign(data, createModulePayload);
+  _applyModulePatchFields(data, createModulePayload);
   if (provider === 'libsql' && !data.tursoDbUrl) { _toast('Dedicated Turso DB URL is required', true); return; }
   if (provider === 'd1' && !data.d1Binding) { _toast('Dedicated D1 binding is required', true); return; }
 
@@ -1267,6 +1318,7 @@ async function _changePlan(storeId) {
   var plan = document.getElementById('chg-plan').value;
   var patch = { Plan: plan };
   var modulePayload = _moduleSyncPayload(plan, []);
+  _applyModulePatchFields(patch, modulePayload);
   var planDefs = _planDefs();
   var def = planDefs[plan];
   if (def) {
