@@ -173,6 +173,10 @@ const API = {
     // GitHub Pages can call the Worker directly, bypassing the Pages proxy repair.
     // Staff is now a core module, so repair legacy tenant access once and retry.
     if (!result.success && _isStaffManagementAction(action) && _isStaffModuleGateResult(result)) {
+      const refreshed = await this._silentReAuth();
+      if (refreshed) result = await this._raw(action, data);
+    }
+    if (!result.success && _isStaffManagementAction(action) && _isStaffModuleGateResult(result)) {
       const repaired = await this._repairCoreStaffAccess();
       if (repaired) result = await this._raw(action, data);
     }
@@ -203,17 +207,21 @@ const API = {
       { moduleCode: 'staff', source: 'core_staff_repair' }
     ];
 
-    var attempted = false;
     for (var i = 0; i < repairs.length; i++) {
-      attempted = true;
       try {
         const result = await this._raw('startTrial', repairs[i]);
-        if (result && result.success) return true;
+        if (result && result.success) {
+          await this._silentReAuth();
+          return true;
+        }
         var msg = String((result && result.error) || '').toLowerCase();
-        if (msg.indexOf('already') !== -1 || msg.indexOf('active') !== -1) return true;
+        if (msg.indexOf('already') !== -1 || msg.indexOf('active') !== -1) {
+          await this._silentReAuth();
+          return true;
+        }
       } catch(e) {}
     }
-    return attempted;
+    return false;
   },
 
   _isExpired(msg) {
