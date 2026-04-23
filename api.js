@@ -41,7 +41,9 @@ async function _postToApiTargets(body) {
 
   for (var i = 0; i < targets.length; i++) {
     try {
-      return await _postToApi(targets[i], body);
+      var result = await _postToApi(targets[i], body);
+      if (result && typeof result === 'object') result._apiTarget = targets[i];
+      return result;
     } catch(e) {
       lastErr = e;
       if (!e.canFallback || i === targets.length - 1) throw e;
@@ -188,6 +190,17 @@ const API = {
     if (!result.success) {
       const err = new Error(result.error || 'Server error');
       if (result.errorCode) err.code = result.errorCode;
+      err.action = action;
+      err.apiTarget = result._apiTarget || '';
+      try {
+        console.warn('[HubSuite API rejected]', {
+          action: action,
+          apiTarget: err.apiTarget || '(unknown)',
+          errorCode: result.errorCode || null,
+          error: result.error || null,
+          storeKeyPresent: !!STORE_KEY
+        });
+      } catch(e) {}
       throw err;
     }
     return result.data;

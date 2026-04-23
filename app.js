@@ -1304,7 +1304,19 @@ async function renderManageStaff() {
   var users;
   try {
     users = await API.call('getStoreUsers');
-  } catch(err) { _showToast('Error: ' + err.message, true); goHome(); return; }
+  } catch(err) {
+    try {
+      console.error('[Staff Trace] Staff click failed at getStoreUsers', {
+        action: err.action || 'getStoreUsers',
+        apiTarget: err.apiTarget || '(unknown)',
+        code: err.code || null,
+        message: err.message || String(err)
+      });
+    } catch(e) {}
+    _showToast('Error: ' + err.message, true);
+    goHome();
+    return;
+  }
 
   var staff = users.filter(function(u) { return u.Role !== 'OWNER'; });
 
