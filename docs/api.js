@@ -145,6 +145,24 @@ function _isStaffModuleGateResult(result) {
     msg.indexOf('current plan') !== -1;
 }
 
+function _staffRepairContext() {
+  var session = null;
+  try { session = JSON.parse(localStorage.getItem('store_session') || 'null'); } catch(e) {}
+  var plan = (session && (session.plan || session.Plan || (session.store && session.store.Plan))) || 'NEGOSYO_HUB';
+  var modules = ['staff_management', 'staff'];
+  try {
+    if (window.HUBSUITE && typeof window.HUBSUITE.getCoreModuleCodes === 'function') {
+      modules = window.HUBSUITE.getCoreModuleCodes(plan) || modules;
+    }
+  } catch(e) {}
+  return {
+    plan: plan,
+    moduleCodes: modules,
+    enabledModuleCodes: modules,
+    storeId: session && (session.storeId || session.Store_ID || (session.store && session.store.Store_ID) || (session.user && session.user.Store_ID))
+  };
+}
+
 // Store key for this store installation — set from URL ?k= param or localStorage
 const STORE_KEY = (function() {
   var fromUrl = new URLSearchParams(window.location.search).get('k');
@@ -207,22 +225,29 @@ const API = {
   },
 
   async _raw(action, data) {
+    const payloadData = _isStaffManagementAction(action)
+      ? Object.assign({}, _staffRepairContext(), data || {})
+      : (data || {});
     const body = JSON.stringify({
-      action, token: this.token, storeKey: STORE_KEY, data: data || {}
+      action, token: this.token, storeKey: STORE_KEY, data: payloadData
     });
     return _postToApiTargets(body);
   },
 
   async _repairCoreStaffAccess() {
     if (!this.token || !STORE_KEY) return false;
+    const context = _staffRepairContext();
     const moduleCodes = ['staff_management', 'staff'];
     const repairs = [];
     moduleCodes.forEach(function(moduleCode) {
-      repairs.push({ action: 'startTrial', data: { moduleCode: moduleCode, source: 'core_staff_repair' } });
-      repairs.push({ action: 'manageSubscription', data: { moduleCode: moduleCode, action: 'start_trial', source: 'core_staff_repair' } });
-      repairs.push({ action: 'manageSubscription', data: { moduleCode: moduleCode, action: 'activate', source: 'core_staff_repair' } });
-      repairs.push({ action: 'activateFeature', data: { moduleCode: moduleCode, source: 'core_staff_repair' } });
-      repairs.push({ action: 'enableFeature', data: { moduleCode: moduleCode, source: 'core_staff_repair' } });
+      repairs.push({ action: 'startTrial', data: Object.assign({}, context, { moduleCode: moduleCode, source: 'core_staff_repair' }) });
+      repairs.push({ action: 'manageSubscription', data: Object.assign({}, context, { moduleCode: moduleCode, action: 'start_trial', source: 'core_staff_repair' }) });
+      repairs.push({ action: 'manageSubscription', data: Object.assign({}, context, { moduleCode: moduleCode, action: 'activate', source: 'core_staff_repair' }) });
+      repairs.push({ action: 'activateFeature', data: Object.assign({}, context, { moduleCode: moduleCode, source: 'core_staff_repair' }) });
+      repairs.push({ action: 'enableFeature', data: Object.assign({}, context, { moduleCode: moduleCode, source: 'core_staff_repair' }) });
+      repairs.push({ action: 'enableModule', data: Object.assign({}, context, { moduleCode: moduleCode, source: 'core_staff_repair' }) });
+      repairs.push({ action: 'syncStoreModules', data: Object.assign({}, context, { moduleCode: moduleCode, source: 'core_staff_repair' }) });
+      repairs.push({ action: 'repairStoreModules', data: Object.assign({}, context, { moduleCode: moduleCode, source: 'core_staff_repair' }) });
     });
 
     for (var i = 0; i < repairs.length; i++) {

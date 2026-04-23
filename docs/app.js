@@ -1306,7 +1306,7 @@ function _isStaffAccessGateError(err) {
 
 function _friendlyStaffAccessMessage(err) {
   if (_isStaffAccessGateError(err)) {
-    return 'The backend is still blocking Staff for this store. Open Admin Panel, save this store plan again, then try adding staff.';
+    return 'The backend is still blocking Staff for this store. In Admin Panel, open this store and click Repair Staff Access, then have the owner log out and back in.';
   }
   return (err && err.message) || 'Staff service is temporarily unavailable.';
 }

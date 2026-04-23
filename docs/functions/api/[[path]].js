@@ -80,15 +80,30 @@ async function tryRepairCoreStaffAccess(upstreamBase, payload) {
   };
   if (!base.storeKey || !base.token) return false;
 
-  const repairAttempts = [
-    { action: 'startTrial', data: { moduleCode: 'staff_management', source: 'core_staff_repair' } },
-    { action: 'startTrial', data: { moduleCode: 'staff', source: 'core_staff_repair' } }
-  ];
+  const plan = normalizePlanId(payload && payload.data && payload.data.plan);
+  const context = {
+    plan,
+    moduleCodes: getCoreModuleCodesForPlan(plan),
+    enabledModuleCodes: getCoreModuleCodesForPlan(plan)
+  };
+  const repairAttempts = [];
+  ['staff_management', 'staff'].forEach((moduleCode) => {
+    repairAttempts.push({ action: 'startTrial', data: Object.assign({}, context, { moduleCode, source: 'core_staff_repair' }) });
+    repairAttempts.push({ action: 'manageSubscription', data: Object.assign({}, context, { moduleCode, action: 'start_trial', source: 'core_staff_repair' }) });
+    repairAttempts.push({ action: 'manageSubscription', data: Object.assign({}, context, { moduleCode, action: 'activate', source: 'core_staff_repair' }) });
+    repairAttempts.push({ action: 'activateFeature', data: Object.assign({}, context, { moduleCode, source: 'core_staff_repair' }) });
+    repairAttempts.push({ action: 'enableFeature', data: Object.assign({}, context, { moduleCode, source: 'core_staff_repair' }) });
+    repairAttempts.push({ action: 'enableModule', data: Object.assign({}, context, { moduleCode, source: 'core_staff_repair' }) });
+    repairAttempts.push({ action: 'syncStoreModules', data: Object.assign({}, context, { moduleCode, source: 'core_staff_repair' }) });
+    repairAttempts.push({ action: 'repairStoreModules', data: Object.assign({}, context, { moduleCode, source: 'core_staff_repair' }) });
+  });
 
   for (const attempt of repairAttempts) {
     try {
       const result = await callUpstreamRaw(upstreamBase, Object.assign({}, base, attempt));
       if (result.parsed && result.parsed.success === true) return true;
+      const message = String((result.parsed && result.parsed.error) || '').toLowerCase();
+      if (message.includes('already') || message.includes('active') || message.includes('enabled')) return true;
     } catch (error) {}
   }
   return false;
@@ -164,7 +179,7 @@ function getStaffPolicy(planId) {
   };
 }
 
-function isCoreModuleForPlan(planId, moduleCode) {
+function getCoreModuleCodesForPlan(planId) {
   const normalizedPlan = normalizePlanId(planId);
   const coreModules = {
     TRIAL: ['quick_sell', 'products', 'inventory', 'expenses', 'reports', 'staff_management', 'feature_marketplace', 'hardware_profiles', 'settings', 'support'],
@@ -172,7 +187,11 @@ function isCoreModuleForPlan(planId, moduleCode) {
     BUSINESS_HUB: ['quick_sell', 'products', 'inventory', 'expenses', 'reports', 'staff_management', 'feature_marketplace', 'hardware_profiles', 'settings', 'support', 'suppliers', 'purchase_orders', 'approvals', 'monitors', 'internal_chat', 'sandbox_mode'],
     NEXORA_HUB: ['quick_sell', 'products', 'inventory', 'expenses', 'reports', 'staff_management', 'feature_marketplace', 'hardware_profiles', 'settings', 'support', 'suppliers', 'purchase_orders', 'approvals', 'monitors', 'internal_chat', 'sandbox_mode', 'roi', 'branch_transfer', 'hq_control_center', 'custom_role_builder', 'automation_rules', 'data_import_tools']
   };
-  return (coreModules[normalizedPlan] || coreModules.NEGOSYO_HUB).includes(String(moduleCode || ''));
+  return coreModules[normalizedPlan] || coreModules.NEGOSYO_HUB;
+}
+
+function isCoreModuleForPlan(planId, moduleCode) {
+  return getCoreModuleCodesForPlan(planId).includes(String(moduleCode || ''));
 }
 
 function buildStaffSeatState(store, users) {
