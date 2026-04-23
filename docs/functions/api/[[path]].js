@@ -25,7 +25,7 @@ async function readActionPayload(request) {
   }
 }
 
-async function callUpstreamAction(upstreamBase, payload) {
+async function callUpstreamRaw(upstreamBase, payload) {
   const response = await fetch(new URL('/', upstreamBase + '/').toString(), {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -40,11 +40,69 @@ async function callUpstreamAction(upstreamBase, payload) {
     throw new Error('Upstream API returned invalid JSON.');
   }
 
+  return { status: response.status, parsed };
+}
+
+async function callUpstreamAction(upstreamBase, payload) {
+  const result = await callUpstreamRaw(upstreamBase, payload);
+  const parsed = result.parsed;
+
   if (!parsed || parsed.success !== true) {
-    throw new Error((parsed && parsed.error) || ('Upstream API error (HTTP ' + response.status + ').'));
+    throw new Error((parsed && parsed.error) || ('Upstream API error (HTTP ' + result.status + ').'));
   }
 
   return parsed.data;
+}
+
+const STAFF_MANAGEMENT_ACTIONS = new Set([
+  'getStoreUsers',
+  'createStoreUser',
+  'deleteStoreUser',
+  'resetStaffPassword',
+  'getStaff',
+  'getStaffById',
+  'createStaff',
+  'updateStaff',
+  'assignStaffRole',
+  'setStaffPassword',
+  'setStaffStatus'
+]);
+
+function isStaffModuleGate(parsed) {
+  const message = String((parsed && parsed.error) || '').toLowerCase();
+  return message.includes('staff_management') && message.includes('module') && message.includes('current plan');
+}
+
+async function tryRepairCoreStaffAccess(upstreamBase, payload) {
+  const base = {
+    storeKey: payload && payload.storeKey,
+    token: payload && payload.token
+  };
+  if (!base.storeKey || !base.token) return false;
+
+  const repairAttempts = [
+    { action: 'startTrial', data: { moduleCode: 'staff_management', source: 'core_staff_repair' } },
+    { action: 'startTrial', data: { moduleCode: 'staff', source: 'core_staff_repair' } }
+  ];
+
+  for (const attempt of repairAttempts) {
+    try {
+      const result = await callUpstreamRaw(upstreamBase, Object.assign({}, base, attempt));
+      if (result.parsed && result.parsed.success === true) return true;
+    } catch (error) {}
+  }
+  return false;
+}
+
+async function handleStaffManagementAction(upstreamBase, payload) {
+  const first = await callUpstreamRaw(upstreamBase, payload);
+  if (!isStaffModuleGate(first.parsed)) {
+    return jsonResponse(first.parsed || { success: false, error: 'Upstream API returned an empty response.' }, first.status || 200);
+  }
+
+  await tryRepairCoreStaffAccess(upstreamBase, payload);
+  const retry = await callUpstreamRaw(upstreamBase, payload);
+  return jsonResponse(retry.parsed || first.parsed || { success: false, error: 'Staff access is not available yet.' }, retry.status || first.status || 200);
 }
 
 function normalizeSubscription(feature) {
@@ -104,6 +162,17 @@ function getStaffPolicy(planId) {
     includedStaff: policy.includedUsers === null ? null : Math.max(0, policy.includedUsers - 1),
     extraStaffPrice: policy.extraStaffPrice
   };
+}
+
+function isCoreModuleForPlan(planId, moduleCode) {
+  const normalizedPlan = normalizePlanId(planId);
+  const coreModules = {
+    TRIAL: ['quick_sell', 'products', 'inventory', 'expenses', 'reports', 'staff_management', 'feature_marketplace', 'hardware_profiles', 'settings', 'support'],
+    NEGOSYO_HUB: ['quick_sell', 'products', 'inventory', 'expenses', 'reports', 'staff_management', 'feature_marketplace', 'hardware_profiles', 'settings', 'support'],
+    BUSINESS_HUB: ['quick_sell', 'products', 'inventory', 'expenses', 'reports', 'staff_management', 'feature_marketplace', 'hardware_profiles', 'settings', 'support', 'suppliers', 'purchase_orders', 'approvals', 'monitors', 'internal_chat', 'sandbox_mode'],
+    NEXORA_HUB: ['quick_sell', 'products', 'inventory', 'expenses', 'reports', 'staff_management', 'feature_marketplace', 'hardware_profiles', 'settings', 'support', 'suppliers', 'purchase_orders', 'approvals', 'monitors', 'internal_chat', 'sandbox_mode', 'roi', 'branch_transfer', 'hq_control_center', 'custom_role_builder', 'automation_rules', 'data_import_tools']
+  };
+  return (coreModules[normalizedPlan] || coreModules.NEGOSYO_HUB).includes(String(moduleCode || ''));
 }
 
 function buildStaffSeatState(store, users) {
@@ -167,7 +236,7 @@ async function handleAdminGetStoreCommercialState(upstreamBase, payload) {
 
   const subscriptions = (Array.isArray(marketplace) ? marketplace : [])
     .map(normalizeSubscription)
-    .filter((feature) => feature.module_code && feature.status !== 'locked');
+    .filter((feature) => feature.module_code && feature.status !== 'locked' && !isCoreModuleForPlan(store.Plan, feature.module_code));
 
   const revenueState = buildRevenueState(store, subscriptions);
   const staffSeatState = buildStaffSeatState(store, storeUsers);
@@ -204,6 +273,16 @@ export async function onRequest(context) {
         return jsonResponse({
           success: false,
           error: error instanceof Error ? error.message : 'Failed to load commercial state.'
+        }, 500);
+      }
+    }
+    if (payload && STAFF_MANAGEMENT_ACTIONS.has(payload.action)) {
+      try {
+        return await handleStaffManagementAction(upstreamBase, payload);
+      } catch (error) {
+        return jsonResponse({
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to load staff management.'
         }, 500);
       }
     }
