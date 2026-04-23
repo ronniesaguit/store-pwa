@@ -1299,31 +1299,61 @@ function renderWatcherDashboard(msg) { renderViewerDashboard(msg); }
 
 // ── Staff Management ─────────────────────────────────────────────────────────
 
+function _isStaffAccessGateError(err) {
+  var msg = String((err && err.message) || err || '').toLowerCase();
+  return msg.indexOf('staff_management') !== -1 && msg.indexOf('current plan') !== -1;
+}
+
+function _friendlyStaffAccessMessage(err) {
+  if (_isStaffAccessGateError(err)) {
+    return 'Staff access is being synced for this store. Staff is included in your plan; please try again after the backend module sync finishes.';
+  }
+  return (err && err.message) || 'Staff service is temporarily unavailable.';
+}
+
+function _normalizeManageStaffUsers(list) {
+  return (Array.isArray(list) ? list : []).map(function(u) {
+    var role = u.Role || u.role_code || u.role || 'STAFF';
+    return {
+      User_ID: u.User_ID || u.id || u.user_id || u.staff_id || '',
+      Full_Name: u.Full_Name || u.full_name || u.name || u.Username || u.username || 'Staff',
+      Username: u.Username || u.username || '',
+      Role: String(role || 'STAFF').toUpperCase()
+    };
+  });
+}
+
+async function _loadManageStaffUsers() {
+  var errors = [];
+  try {
+    return { users: _normalizeManageStaffUsers(await API.getStaff()), source: 'getStaff' };
+  } catch(err) {
+    errors.push(err);
+  }
+  try {
+    return { users: _normalizeManageStaffUsers(await API.call('getStoreUsers')), source: 'getStoreUsers' };
+  } catch(err2) {
+    errors.push(err2);
+  }
+  try {
+    console.warn('[Staff Trace] Staff list fallback opened without backend staff list', errors.map(function(e) {
+      return { action: e.action || null, apiTarget: e.apiTarget || null, code: e.code || null, message: e.message || String(e) };
+    }));
+  } catch(e) {}
+  return { users: [], source: 'fallback', error: errors[0] || errors[1] || new Error('Staff service is temporarily unavailable.') };
+}
+
 async function renderManageStaff() {
   showLoading('Loading staff…');
-  var users;
-  try {
-    users = await API.call('getStoreUsers');
-  } catch(err) {
-    try {
-      console.error('[Staff Trace] Staff click failed at getStoreUsers', {
-        action: err.action || 'getStoreUsers',
-        apiTarget: err.apiTarget || '(unknown)',
-        code: err.code || null,
-        message: err.message || String(err)
-      });
-    } catch(e) {}
-    _showToast('Error: ' + err.message, true);
-    goHome();
-    return;
-  }
+  var staffLoad = await _loadManageStaffUsers();
+  var users = staffLoad.users;
 
   var staff = users.filter(function(u) { return u.Role !== 'OWNER'; });
 
   var staffCards = staff.map(function(u) {
-    var initials = (u.Full_Name || u.Username).split(' ').map(function(w){ return w[0]; }).join('').toUpperCase().substr(0,2);
+    var initials = (u.Full_Name || u.Username || 'S').split(' ').map(function(w){ return w[0]; }).join('').toUpperCase().substr(0,2);
     var colors   = ['#3498db','#9b59b6','#e67e22','#27ae60','#e74c3c','#1abc9c'];
-    var color    = colors[(u.Username.charCodeAt(0) || 0) % colors.length];
+    var color    = colors[((u.Username || 'S').charCodeAt(0) || 0) % colors.length];
     return '<div style="padding:12px 0;border-bottom:1px solid #f1f3f5;">' +
       '<div style="display:flex;align-items:center;gap:12px;">' +
       '<div style="width:44px;height:44px;border-radius:50%;background:' + color + ';display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:1rem;flex-shrink:0;">' + initials + '</div>' +
@@ -1342,6 +1372,10 @@ async function renderManageStaff() {
       '</div>';
   }).join('');
 
+  var staffLoadNotice = staffLoad.error
+    ? '<div class="message message-offline" style="margin-bottom:12px;">' + _escAttr(_friendlyStaffAccessMessage(staffLoad.error)) + '</div>'
+    : '';
+
   var staffSection = staff.length
     ? '<div style="padding:0 4px;">' + staffCards + '</div>'
     : '<div style="text-align:center;padding:24px 16px;">' +
@@ -1354,6 +1388,7 @@ async function renderManageStaff() {
     '<div class="screen">' +
     '<div class="topbar"><div class="title" style="margin:0;">👥 Manage Staff</div>' +
     '<button class="small-btn" onclick="goHome()">← Back</button></div>' +
+    staffLoadNotice +
     _renderStaffAllowanceCard(staff.length) +
 
     // Staff list card
@@ -1404,7 +1439,7 @@ async function submitAddStaff() {
   if (!password || password.length < 4) { _showToast('Password must be at least 4 characters.', true); return; }
   var staffCount = 0;
   try {
-    staffCount = (await API.call('getStoreUsers')).filter(function(u) { return u.Role !== 'OWNER'; }).length;
+    staffCount = (await _loadManageStaffUsers()).users.filter(function(u) { return u.Role !== 'OWNER'; }).length;
   } catch(e) {}
   var nextBilling = _staffBillingState(staffCount + 1);
   var currentBilling = _staffBillingState(staffCount);
@@ -1415,10 +1450,23 @@ async function submitAddStaff() {
   }
   showLoading('Creating account…');
   try {
-    await API.call('createStoreUser', { fullName: fullName, username: username, password: password });
+    try {
+      await API.call('createStoreUser', { fullName: fullName, username: username, password: password });
+    } catch(firstErr) {
+      await API.createStaff({
+        full_name: fullName,
+        username: username,
+        password: password,
+        role: 'CASHIER',
+        role_code: 'CASHIER',
+        is_active: true
+      }).catch(function(secondErr) {
+        throw firstErr || secondErr;
+      });
+    }
     renderManageStaff();
     _showToast('Staff account created!');
-  } catch(err) { _showToast('Error: ' + err.message, true); renderManageStaff(); }
+  } catch(err) { _showToast('Error: ' + _friendlyStaffAccessMessage(err), true); renderManageStaff(); }
 }
 
 async function removeStaffUser(userId, name) {
