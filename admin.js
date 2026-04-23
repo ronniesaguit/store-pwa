@@ -112,6 +112,34 @@ function _planCoreModuleCatalog(planId) {
   return [];
 }
 
+function _planCoreModuleCodes(planId) {
+  if (HUB && HUB.getCoreModuleCodes) return HUB.getCoreModuleCodes(planId) || [];
+  return _planCoreModuleCatalog(planId).map(function(feature) {
+    return feature.module_code || feature.code;
+  }).filter(Boolean);
+}
+
+function _uniqueModuleCodes(codes) {
+  var seen = {};
+  return (codes || []).filter(function(code) {
+    code = String(code || '').trim();
+    if (!code || seen[code]) return false;
+    seen[code] = true;
+    return true;
+  });
+}
+
+function _moduleSyncPayload(planId, selectedAddOns) {
+  var core = _planCoreModuleCodes(planId);
+  var enabled = _uniqueModuleCodes(core.concat(selectedAddOns || []));
+  return {
+    coreModuleCodes: core,
+    enabledModuleCodes: enabled,
+    initialModuleCodes: enabled,
+    planModuleCodes: enabled
+  };
+}
+
 function _planAddOnCatalog(planId, catalog) {
   if (HUB && HUB.getAddOnCatalog) return HUB.getAddOnCatalog(planId, catalog || _featureCatalog());
   return catalog || _featureCatalog();
@@ -531,6 +559,7 @@ async function _recordPayment(storeId) {
 async function _changePlan(storeId) {
   var plan = document.getElementById('chg-plan').value;
   var patch = { Plan: plan };
+  var modulePayload = _moduleSyncPayload(plan, []);
   if (plan === 'CUSTOM') {
     patch.Max_Users             = document.getElementById('chg-users').value;
     patch.Max_Products          = document.getElementById('chg-products').value;
@@ -549,7 +578,7 @@ async function _changePlan(storeId) {
     }
   }
   try {
-    await ADMIN_API.call('adminUpdateStore', { storeId: storeId, patch: patch });
+    await ADMIN_API.call('adminUpdateStore', Object.assign({ storeId: storeId, patch: patch }, modulePayload));
     _toast('Plan updated to ' + _planLabel(plan));
     await _refreshStores();
     renderDashboard();
@@ -1174,7 +1203,7 @@ async function submitCreateStore() {
     d1Binding: (document.getElementById('cs-d1-binding').value || '').trim(),
     tursoDbUrl: (document.getElementById('cs-turso-url').value || '').trim(),
     notes: (document.getElementById('cs-notes').value || '').trim(),
-    initialModuleCodes: _selectedModulesFromForm('cs-addons-card')
+    initialModuleCodes: _moduleSyncPayload(plan, _selectedModulesFromForm('cs-addons-card')).initialModuleCodes
   };
   if (provider === 'libsql' && !data.tursoDbUrl) { _toast('Dedicated Turso DB URL is required', true); return; }
   if (provider === 'd1' && !data.d1Binding) { _toast('Dedicated D1 binding is required', true); return; }
@@ -1237,6 +1266,7 @@ function renderProvisionSuccess(r) {
 async function _changePlan(storeId) {
   var plan = document.getElementById('chg-plan').value;
   var patch = { Plan: plan };
+  var modulePayload = _moduleSyncPayload(plan, []);
   var planDefs = _planDefs();
   var def = planDefs[plan];
   if (def) {
@@ -1247,7 +1277,7 @@ async function _changePlan(storeId) {
     patch.Monthly_Fee = def.fee;
   }
   try {
-    await ADMIN_API.call('adminUpdateStore', { storeId: storeId, patch: patch });
+    await ADMIN_API.call('adminUpdateStore', Object.assign({ storeId: storeId, patch: patch }, modulePayload));
     _toast('Plan updated to ' + _planLabel(plan));
     await _refreshStores();
     renderDashboard();

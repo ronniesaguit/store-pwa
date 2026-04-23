@@ -215,20 +215,25 @@ const API = {
 
   async _repairCoreStaffAccess() {
     if (!this.token || !STORE_KEY) return false;
-    const repairs = [
-      { moduleCode: 'staff_management', source: 'core_staff_repair' },
-      { moduleCode: 'staff', source: 'core_staff_repair' }
-    ];
+    const moduleCodes = ['staff_management', 'staff'];
+    const repairs = [];
+    moduleCodes.forEach(function(moduleCode) {
+      repairs.push({ action: 'startTrial', data: { moduleCode: moduleCode, source: 'core_staff_repair' } });
+      repairs.push({ action: 'manageSubscription', data: { moduleCode: moduleCode, action: 'start_trial', source: 'core_staff_repair' } });
+      repairs.push({ action: 'manageSubscription', data: { moduleCode: moduleCode, action: 'activate', source: 'core_staff_repair' } });
+      repairs.push({ action: 'activateFeature', data: { moduleCode: moduleCode, source: 'core_staff_repair' } });
+      repairs.push({ action: 'enableFeature', data: { moduleCode: moduleCode, source: 'core_staff_repair' } });
+    });
 
     for (var i = 0; i < repairs.length; i++) {
       try {
-        const result = await this._raw('startTrial', repairs[i]);
+        const result = await this._raw(repairs[i].action, repairs[i].data);
         if (result && result.success) {
           await this._silentReAuth();
           return true;
         }
         var msg = String((result && result.error) || '').toLowerCase();
-        if (msg.indexOf('already') !== -1 || msg.indexOf('active') !== -1) {
+        if (msg.indexOf('already') !== -1 || msg.indexOf('active') !== -1 || msg.indexOf('enabled') !== -1) {
           await this._silentReAuth();
           return true;
         }
