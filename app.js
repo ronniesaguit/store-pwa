@@ -20,12 +20,17 @@ var state = {
   todayExpenses: null,  // cached null = not loaded yet; [] = loaded but empty
   lastReceipt:   null,
   lastReport:    null,
-  lastBIRData:   null
+  lastBIRData:   null,
+  ownerAddOns:   [],
+  ownerAddOnsLoaded: false,
+  ownerAddOnsLoading: false,
+  ownerAddOnsFetchedAt: 0
 };
 
 // Executive dashboard state
 var execCurrentPeriod = 'last_month';
 var HUB = window.HUBSUITE || null;
+var OWNER_ADDONS_CACHE_KEY = 'owner_addons_cache_v1';
 
 // ── Boot ─────────────────────────────────────────────────────────────────────
 
@@ -53,6 +58,7 @@ async function boot() {
       state.storeProfile = cachedSP ? JSON.parse(cachedSP) : {
         storeName: state.session.storeName || '', ownerName: state.session.ownerName || ''
       };
+      _restoreOwnerAddOnsFromCache();
       state.isOffline = !navigator.onLine;
       routeToDashboard();  // show dashboard immediately — no spinner
     } catch(e) {}
@@ -69,6 +75,7 @@ async function boot() {
       state.storeProfile = { storeName: session.storeName || '', ownerName: session.ownerName || '' };
       state.products   = boot.products   || [];
       state.categories = boot.categories || [];
+      _restoreOwnerAddOnsFromCache();
       state.isOffline  = false;
       localStorage.setItem('store_session', JSON.stringify(session));
       localStorage.setItem('store_profile', JSON.stringify(state.storeProfile));
@@ -152,6 +159,32 @@ function _showToast(msg, isError) {
 
 function goHome() {
   routeToDashboard();
+}
+
+function _isOwnerSession() {
+  if (!state.session || !state.session.user) return false;
+  var dashType = state.session.manifest && state.session.manifest.dashboard_type;
+  return dashType === 'store_owner_dashboard' || String(state.session.user.Role || '').toUpperCase() === 'OWNER';
+}
+
+function _restoreOwnerAddOnsFromCache() {
+  try {
+    var cached = JSON.parse(localStorage.getItem(OWNER_ADDONS_CACHE_KEY) || 'null');
+    if (!cached || cached.storeKey !== STORE_KEY || !Array.isArray(cached.features)) return;
+    state.ownerAddOns = cached.features;
+    state.ownerAddOnsLoaded = true;
+    state.ownerAddOnsFetchedAt = Number(cached.fetchedAt || 0) || 0;
+  } catch(e) {}
+}
+
+function _cacheOwnerAddOns(features) {
+  try {
+    localStorage.setItem(OWNER_ADDONS_CACHE_KEY, JSON.stringify({
+      storeKey: STORE_KEY,
+      fetchedAt: Date.now(),
+      features: features || []
+    }));
+  } catch(e) {}
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
@@ -272,8 +305,12 @@ function logout() {
   state.cart         = [];
   state.todayExpenses = null;
   state.storeProfile = null;
+  state.ownerAddOns = [];
+  state.ownerAddOnsLoaded = false;
+  state.ownerAddOnsFetchedAt = 0;
   localStorage.removeItem('store_session');
   localStorage.removeItem('store_profile');
+  localStorage.removeItem(OWNER_ADDONS_CACHE_KEY);
   // Clear per-role dashboard caches so next user starts fresh
   localStorage.removeItem('mgr_dash');
   localStorage.removeItem('exec_dash_cache');
@@ -288,9 +325,19 @@ function logout() {
 
 function _planModules() {
   var plan = state.session && state.session.plan;
-  if (plan && Array.isArray(plan.modules) && plan.modules.length) return plan.modules;
-  if (HUB && HUB.getCoreModuleCodes && plan && plan.id) return HUB.getCoreModuleCodes(plan.id);
-  return null;
+  var base = null;
+  if (plan && Array.isArray(plan.modules) && plan.modules.length) base = plan.modules;
+  else if (HUB && HUB.getCoreModuleCodes && plan && plan.id) base = HUB.getCoreModuleCodes(plan.id);
+  if (!base) return null;
+
+  var seen = {};
+  return base.concat(_ownerActiveAddOnModules()).map(function(moduleId) {
+    return _resolveModuleId(moduleId);
+  }).filter(function(moduleId) {
+    if (!moduleId || seen[moduleId]) return false;
+    seen[moduleId] = true;
+    return true;
+  });
 }
 
 function _planTier(planId) {
@@ -313,6 +360,53 @@ function _planAddOnPrice() {
 function _resolveModuleId(moduleId) {
   if (HUB && HUB.resolveModuleId) return HUB.resolveModuleId(moduleId);
   return moduleId;
+}
+
+function _isActiveAddOnStatus(status) {
+  return ['active_paid', 'trial_active', 'trial_expiring'].indexOf(String(status || '')) !== -1;
+}
+
+function _ownerActiveAddOnModules() {
+  return (state.ownerAddOns || []).filter(function(feature) {
+    return _isActiveAddOnStatus(feature.tenant_status || feature.status);
+  }).map(function(feature) {
+    return feature.module_code || feature.code;
+  }).filter(Boolean);
+}
+
+function _normalizeOwnerAddOnCatalog(features) {
+  var planId = state.session && state.session.plan && state.session.plan.id;
+  return (HUB && HUB.getAddOnCatalog) ? HUB.getAddOnCatalog(planId, features || []) : (features || []);
+}
+
+async function _refreshOwnerAddOns(options) {
+  options = options || {};
+  if (!API.token || !navigator.onLine || !_isOwnerSession()) return state.ownerAddOns || [];
+  if (state.ownerAddOnsLoading && !options.force) return state.ownerAddOns || [];
+
+  state.ownerAddOnsLoading = true;
+  try {
+    var features = await API.call('getFeatureMarketplace', {});
+    var catalog = _normalizeOwnerAddOnCatalog(features || []);
+    state.ownerAddOns = catalog;
+    state.ownerAddOnsLoaded = true;
+    state.ownerAddOnsFetchedAt = Date.now();
+    _cacheOwnerAddOns(catalog);
+    if (options.rerender && _isOwnerSession()) renderOwnerDashboard();
+    return catalog;
+  } catch(e) {
+    console.warn('Owner add-ons refresh failed:', e.message);
+    return state.ownerAddOns || [];
+  } finally {
+    state.ownerAddOnsLoading = false;
+  }
+}
+
+function _refreshOwnerAddOnsInBackground() {
+  if (!navigator.onLine || !API.token || !_isOwnerSession()) return;
+  var ageMs = Date.now() - (state.ownerAddOnsFetchedAt || 0);
+  if (state.ownerAddOnsLoading || (state.ownerAddOnsLoaded && ageMs < 60000)) return;
+  _refreshOwnerAddOns({ rerender: true });
 }
 
 function _hasModule(moduleId) {
@@ -349,6 +443,7 @@ function _dashboardHeader_(storeName, subLabel, onlineLabel, isOffline) {
 }
 
 function renderOwnerDashboard(msg) {
+  _refreshOwnerAddOnsInBackground();
   var storeName = (state.storeProfile && (state.storeProfile.storeName || state.storeProfile.Store_Name)) || '';
   var ownerName = (state.storeProfile && (state.storeProfile.ownerName || state.storeProfile.Owner_Name)) || state.session.user.Full_Name;
   var plan = state.session && state.session.plan;
@@ -398,9 +493,9 @@ function renderOwnerDashboard(msg) {
     addOnCatalog.forEach(function(feature) {
       var moduleCode = feature.module_code || feature.code;
       if (!_hasModule(moduleCode)) {
-        lockedBtns += '<button class="big-btn" disabled style="opacity:0.45;cursor:default;position:relative;" title="Upgrade to unlock">' +
+        lockedBtns += '<button class="big-btn" onclick="renderFeatureMarketplace()" style="opacity:0.72;cursor:pointer;position:relative;" title="Open Hub Add-ons">' +
           '<span style="position:absolute;top:4px;right:6px;font-size:0.6rem;background:#f59e0b;color:#fff;padding:1px 5px;border-radius:8px;font-weight:700;">ADD-ON</span>' +
-          _escAttr(feature.icon || '🧩') + ' ' + _escAttr(feature.feature_name || feature.name || moduleCode) + '<br><span style="font-size:0.65rem;opacity:0.7;">Activate in Hub Add-ons</span></button>';
+          _escAttr(feature.icon || '🧩') + ' ' + _escAttr(feature.feature_name || feature.name || moduleCode) + '<br><span style="font-size:0.65rem;opacity:0.7;">Tap to add this feature</span></button>';
       }
     });
   }
@@ -5670,6 +5765,12 @@ function _renderMarketplaceUI(features, error) {
   if (HUB && HUB.getAddOnCatalog) {
     features = HUB.getAddOnCatalog(tier.id, features || []);
   }
+  if (!error) {
+    state.ownerAddOns = features || [];
+    state.ownerAddOnsLoaded = true;
+    state.ownerAddOnsFetchedAt = Date.now();
+    _cacheOwnerAddOns(state.ownerAddOns);
+  }
 
   var cards = features.length ? features.map(function(f) {
     var statusColor = STATUS_COLOR[f.tenant_status] || '#6b7280';
@@ -5708,6 +5809,7 @@ async function doStartTrial(moduleCode) {
   showLoading('Starting trial…');
   try {
     var result = await API.call('startTrial', { moduleCode: moduleCode });
+    await _refreshOwnerAddOns({ force: true });
     _showToast('✓ Trial started! Ends ' + String(result.trial_ends_at).slice(0,10));
     renderFeatureMarketplace();
   } catch(e) { _showToast(e.message, true); }
@@ -5718,6 +5820,7 @@ async function doCancelFeature(moduleCode) {
   showLoading('Cancelling…');
   try {
     await API.call('manageSubscription', { moduleCode: moduleCode, action: 'cancel' });
+    await _refreshOwnerAddOns({ force: true });
     _showToast('Subscription cancelled');
     renderFeatureMarketplace();
   } catch(e) { _showToast(e.message, true); }
