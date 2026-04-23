@@ -1323,6 +1323,78 @@ function _normalizeManageStaffUsers(list) {
   });
 }
 
+var STAFF_ROLE_DEFS = [
+  {
+    code: 'CASHIER',
+    label: 'Cashier / Tindira',
+    plan: 'NEGOSYO_HUB',
+    hint: 'Shows Quick Sell, Products, Expenses, Support and enabled chat.'
+  },
+  {
+    code: 'INVENTORY_STAFF',
+    label: 'Inventory Staff / Stock Watcher',
+    plan: 'NEGOSYO_HUB',
+    hint: 'Shows Products and Inventory tools for stock checking and updates.'
+  },
+  {
+    code: 'VIEWER',
+    label: 'Viewer / Store Watcher',
+    plan: 'NEGOSYO_HUB',
+    hint: 'Read-only dashboard for reports, monitors when available, chat and support.'
+  },
+  {
+    code: 'MANAGER',
+    label: 'Manager',
+    plan: 'BUSINESS_HUB',
+    hint: 'Business operations cockpit: sales, inventory, expenses, reports, staff and approvals when enabled.'
+  },
+  {
+    code: 'EXECUTIVE',
+    label: 'Executive / HQ Viewer',
+    plan: 'NEXORA_HUB',
+    hint: 'Nexora analytics dashboard for reports, ROI, monitors and multi-store oversight.'
+  }
+];
+
+function _planRank(planId) {
+  var normalized = HUB && HUB.normalizePlanId ? HUB.normalizePlanId(planId) : String(planId || '').toUpperCase();
+  var ranks = { TRIAL: 1, NEGOSYO_HUB: 1, BUSINESS_HUB: 2, NEXORA_HUB: 3, CUSTOM: 99 };
+  return ranks[normalized] || 1;
+}
+
+function _currentPlanRank() {
+  return _planRank(_currentPlanId());
+}
+
+function _availableStaffRoles() {
+  var rank = _currentPlanRank();
+  return STAFF_ROLE_DEFS.filter(function(role) {
+    return rank >= _planRank(role.plan);
+  });
+}
+
+function _roleLabel(roleCode) {
+  var code = String(roleCode || '').toUpperCase();
+  var match = STAFF_ROLE_DEFS.filter(function(role) { return role.code === code; })[0];
+  return match ? match.label : code.replace(/_/g, ' ');
+}
+
+function _renderStaffRoleOptions(selectedRole) {
+  var selected = String(selectedRole || 'CASHIER').toUpperCase();
+  return _availableStaffRoles().map(function(role) {
+    return '<option value="' + role.code + '"' + (role.code === selected ? ' selected' : '') + '>' + _escAttr(role.label) + '</option>';
+  }).join('');
+}
+
+function _renderStaffRoleGuide() {
+  return '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin-bottom:12px;">' +
+    '<div style="font-weight:700;color:#1a1a2e;margin-bottom:6px;">Role access for this bundle</div>' +
+    _availableStaffRoles().map(function(role) {
+      return '<div style="font-size:0.78rem;color:#475569;margin-bottom:6px;"><strong>' + _escAttr(role.label) + ':</strong> ' + _escAttr(role.hint) + '</div>';
+    }).join('') +
+    '</div>';
+}
+
 async function _loadManageStaffUsers() {
   var errors = [];
   try {
@@ -1360,6 +1432,7 @@ async function renderManageStaff() {
       '<div style="flex:1;min-width:0;">' +
       '<div style="font-weight:600;font-size:0.95rem;color:#1a1a2e;">' + _escAttr(u.Full_Name || u.Username) + '</div>' +
       '<div style="font-size:0.78rem;color:#6b7280;margin-top:1px;">@' + _escAttr(u.Username) + '</div>' +
+      '<div style="font-size:0.72rem;color:#475569;margin-top:3px;">Role: ' + _escAttr(_roleLabel(u.Role)) + '</div>' +
       '</div>' +
       '<span style="background:#e8f4fd;color:#2980b9;font-size:0.7rem;font-weight:600;padding:3px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.3px;flex-shrink:0;">Staff</span>' +
       '</div>' +
@@ -1390,6 +1463,7 @@ async function renderManageStaff() {
     '<button class="small-btn" onclick="goHome()">← Back</button></div>' +
     staffLoadNotice +
     _renderStaffAllowanceCard(staff.length) +
+    _renderStaffRoleGuide() +
 
     // Staff list card
     '<div class="card" style="margin-bottom:12px;">' +
@@ -1421,6 +1495,11 @@ async function renderManageStaff() {
     '<span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:1rem;">@</span>' +
     '<input id="staff-username" class="input" style="padding-left:36px;" placeholder="Username (e.g. maria)" autocomplete="off">' +
     '</div>' +
+    '<div class="field" style="margin-bottom:10px;">' +
+    '<label style="display:block;font-weight:700;margin-bottom:5px;color:#374151;">Role / Dashboard Access</label>' +
+    '<select id="staff-role" class="input">' + _renderStaffRoleOptions('CASHIER') + '</select>' +
+    '<div style="font-size:0.74rem;color:#6b7280;margin-top:4px;">Role controls which dashboard and features this staff member sees.</div>' +
+    '</div>' +
     '<div style="position:relative;margin-bottom:16px;">' +
     '<span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:1rem;">🔒</span>' +
     '<input id="staff-password" class="input" style="padding-left:36px;" type="password" placeholder="Password (min. 4 characters)" autocomplete="new-password">' +
@@ -1428,45 +1507,6 @@ async function renderManageStaff() {
     '<button class="btn" style="width:100%;font-size:1rem;padding:14px;border-radius:12px;font-weight:700;letter-spacing:.3px;" onclick="submitAddStaff()">Create Staff Account</button>' +
     '</div>' +
     '</div>';
-}
-
-async function submitAddStaff() {
-  var fullName = document.getElementById('staff-fullname').value.trim();
-  var username = document.getElementById('staff-username').value.trim();
-  var password = document.getElementById('staff-password').value;
-  if (!fullName) { _showToast('Full name is required.', true); return; }
-  if (!username) { _showToast('Username is required.', true); return; }
-  if (!password || password.length < 4) { _showToast('Password must be at least 4 characters.', true); return; }
-  var staffCount = 0;
-  try {
-    staffCount = (await _loadManageStaffUsers()).users.filter(function(u) { return u.Role !== 'OWNER'; }).length;
-  } catch(e) {}
-  var nextBilling = _staffBillingState(staffCount + 1);
-  var currentBilling = _staffBillingState(staffCount);
-  if (nextBilling.extraAmount > currentBilling.extraAmount) {
-    var extraMsg = 'This staff member is beyond your included allowance and will add ₱' +
-      nextBilling.policy.extraStaffPrice + '/month. Continue?';
-    if (!confirm(extraMsg)) return;
-  }
-  showLoading('Creating account…');
-  try {
-    try {
-      await API.call('createStoreUser', { fullName: fullName, username: username, password: password });
-    } catch(firstErr) {
-      await API.createStaff({
-        full_name: fullName,
-        username: username,
-        password: password,
-        role: 'CASHIER',
-        role_code: 'CASHIER',
-        is_active: true
-      }).catch(function(secondErr) {
-        throw firstErr || secondErr;
-      });
-    }
-    renderManageStaff();
-    _showToast('Staff account created!');
-  } catch(err) { _showToast('Error: ' + _friendlyStaffAccessMessage(err), true); renderManageStaff(); }
 }
 
 async function removeStaffUser(userId, name) {
@@ -2564,15 +2604,11 @@ function renderAddStaffForm() {
   var header = '<div class="topbar"><div class="title" style="margin:0;">➕ Add Staff</div><button class="small-btn" onclick="renderStaffList()">← Back</button></div>';
 
   var content = '<div class="card">' +
+    _renderStaffRoleGuide() +
     '<div class="field"><label>Full Name *</label><input id="staff-fullname" placeholder="Enter full name"></div>' +
     '<div class="field"><label>Username *</label><input id="staff-username" placeholder="Enter username"></div>' +
     '<div class="field"><label>Password *</label><input id="staff-password" type="password" placeholder="Enter password"></div>' +
-    '<div class="field"><label>Role *</label><select id="staff-role">' +
-      '<option value="CASHIER">Cashier</option>' +
-      '<option value="INVENTORY_STAFF">Inventory Staff</option>' +
-      '<option value="VIEWER">Viewer</option>' +
-      '<option value="MANAGER">Manager</option>' +
-    '</select></div>' +
+    '<div class="field"><label>Role *</label><select id="staff-role">' + _renderStaffRoleOptions('CASHIER') + '</select></div>' +
     '<div class="field"><label>Phone</label><input id="staff-phone" placeholder="Enter phone number"></div>' +
     '<div class="field"><label>Email</label><input id="staff-email" type="email" placeholder="Enter email"></div>' +
     '<div class="field"><label>Notes</label><textarea id="staff-notes" placeholder="Optional notes"></textarea></div>' +
@@ -2584,27 +2620,79 @@ function renderAddStaffForm() {
 }
 
 async function submitAddStaff() {
+  var phoneEl = document.getElementById('staff-phone');
+  var emailEl = document.getElementById('staff-email');
+  var notesEl = document.getElementById('staff-notes');
+  var roleEl = document.getElementById('staff-role');
   var data = {
     fullName: document.getElementById('staff-fullname').value.trim(),
     username: document.getElementById('staff-username').value.trim(),
     password: document.getElementById('staff-password').value.trim(),
-    role: document.getElementById('staff-role').value,
-    phone: document.getElementById('staff-phone').value.trim(),
-    email: document.getElementById('staff-email').value.trim(),
-    notes: document.getElementById('staff-notes').value.trim()
+    role: roleEl ? roleEl.value : 'CASHIER',
+    phone: phoneEl ? phoneEl.value.trim() : '',
+    email: emailEl ? emailEl.value.trim() : '',
+    notes: notesEl ? notesEl.value.trim() : ''
   };
 
   if (!data.fullName || !data.username || !data.password || !data.role) {
     _showToast('Please fill all required fields', true);
     return;
   }
+  if (data.password.length < 4) {
+    _showToast('Password must be at least 4 characters.', true);
+    return;
+  }
+  var allowedRoles = _availableStaffRoles().map(function(role) { return role.code; });
+  if (allowedRoles.indexOf(data.role) === -1) {
+    _showToast('That role is not included in your current bundle.', true);
+    return;
+  }
 
+  var staffCount = 0;
   try {
-    await API.createStaff(data);
+    staffCount = (await _loadManageStaffUsers()).users.filter(function(u) { return u.Role !== 'OWNER'; }).length;
+  } catch(e) {}
+  var nextBilling = _staffBillingState(staffCount + 1);
+  var currentBilling = _staffBillingState(staffCount);
+  if (nextBilling.extraAmount > currentBilling.extraAmount) {
+    var extraMsg = 'This staff member is beyond your included allowance and will add ₱' +
+      nextBilling.policy.extraStaffPrice + '/month. Continue?';
+    if (!confirm(extraMsg)) return;
+  }
+
+  showLoading('Creating account…');
+  try {
+    try {
+      await API.call('createStoreUser', {
+        fullName: data.fullName,
+        username: data.username,
+        password: data.password,
+        role: data.role,
+        roleCode: data.role,
+        role_code: data.role
+      });
+    } catch(firstErr) {
+      await API.createStaff({
+        full_name: data.fullName,
+        fullName: data.fullName,
+        username: data.username,
+        password: data.password,
+        role: data.role,
+        role_code: data.role,
+        roleCode: data.role,
+        phone: data.phone,
+        email: data.email,
+        notes: data.notes,
+        is_active: true
+      }).catch(function(secondErr) {
+        throw firstErr || secondErr;
+      });
+    }
     _showToast('Staff member created successfully!', false);
-    renderStaffList();
+    renderManageStaff();
   } catch(err) {
-    _showToast(err.message || 'Failed to create staff', true);
+    _showToast(_friendlyStaffAccessMessage(err) || 'Failed to create staff', true);
+    renderManageStaff();
   }
 }
 
@@ -2667,12 +2755,8 @@ function renderAssignRoleForm(staffId, currentRole) {
   var header = '<div class="topbar"><div class="title" style="margin:0;">Change Role</div><button class="small-btn" onclick="goHome()">← Back</button></div>';
 
   var content = '<div class="card">' +
-    '<div class="field"><label>New Role</label><select id="new-role">' +
-      '<option value="CASHIER"' + (currentRole === 'CASHIER' ? ' selected' : '') + '>Cashier</option>' +
-      '<option value="INVENTORY_STAFF"' + (currentRole === 'INVENTORY_STAFF' ? ' selected' : '') + '>Inventory Staff</option>' +
-      '<option value="VIEWER"' + (currentRole === 'VIEWER' ? ' selected' : '') + '>Viewer</option>' +
-      '<option value="MANAGER"' + (currentRole === 'MANAGER' ? ' selected' : '') + '>Manager</option>' +
-    '</select></div>' +
+    _renderStaffRoleGuide() +
+    '<div class="field"><label>New Role</label><select id="new-role">' + _renderStaffRoleOptions(currentRole || 'CASHIER') + '</select></div>' +
     '<button class="btn btn-primary" onclick="submitAssignRole(\'' + staffId + '\')">Update Role</button>' +
     '<button class="btn btn-secondary" onclick="renderStaffDetail(\'' + staffId + '\')">Cancel</button>' +
     '</div>';
