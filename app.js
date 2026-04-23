@@ -31,6 +31,8 @@ var state = {
 var execCurrentPeriod = 'last_month';
 var HUB = window.HUBSUITE || null;
 var OWNER_ADDONS_CACHE_KEY = 'owner_addons_cache_v1';
+var HUB_GCASH_NUMBER = '09163561251';
+var HUB_GCASH_NAME = 'HubSuite';
 
 // ── Boot ─────────────────────────────────────────────────────────────────────
 
@@ -325,7 +327,7 @@ function logout() {
 
 function _planModules() {
   var plan = state.session && state.session.plan;
-  var planId = plan && (plan.id || plan.name || plan.Plan || plan.plan);
+  var planId = _currentPlanId();
   var base = [];
   if (HUB && HUB.getCoreModuleCodes && planId) {
     var core = HUB.getCoreModuleCodes(planId);
@@ -359,7 +361,7 @@ function _planLabel(planId) {
 
 function _planAddOnPrice() {
   var plan = state.session && state.session.plan;
-  var planId = plan && (plan.id || plan.name || plan.Plan || plan.plan);
+  var planId = _currentPlanId();
   if (HUB && HUB.getAddOnPrice) return HUB.getAddOnPrice(planId);
   var fallback = plan && plan.addon_price;
   return Number.isFinite(Number(fallback)) ? Number(fallback) : null;
@@ -368,6 +370,59 @@ function _planAddOnPrice() {
 function _resolveModuleId(moduleId) {
   if (HUB && HUB.resolveModuleId) return HUB.resolveModuleId(moduleId);
   return moduleId;
+}
+
+function _currentPlanId() {
+  var plan = state.session && state.session.plan;
+  return plan && (plan.id || plan.name || plan.Plan || plan.plan);
+}
+
+function _staffPolicy() {
+  if (HUB && HUB.getStaffPolicy) return HUB.getStaffPolicy(_currentPlanId());
+  return { includedUsers: 2, includedStaff: 1, extraStaffPrice: 10 };
+}
+
+function _staffBillingState(staffCount) {
+  var policy = _staffPolicy();
+  if (policy.includedStaff === null) {
+    return { policy: policy, extraStaff: 0, extraAmount: 0, isOverLimit: false };
+  }
+  var extraStaff = Math.max(0, Number(staffCount || 0) - Number(policy.includedStaff || 0));
+  return {
+    policy: policy,
+    extraStaff: extraStaff,
+    extraAmount: extraStaff * (Number(policy.extraStaffPrice) || 0),
+    isOverLimit: extraStaff > 0
+  };
+}
+
+function _renderStaffAllowanceCard(staffCount) {
+  var billing = _staffBillingState(staffCount);
+  var policy = billing.policy;
+  if (policy.includedStaff === null) {
+    return '<div class="card" style="background:#f8fafc;border:1px solid #e2e8f0;margin-bottom:12px;">' +
+      '<div style="font-weight:700;color:#1a1a2e;margin-bottom:4px;">Staff Allowance</div>' +
+      '<div class="muted" style="font-size:12px;">Custom plan staff allowance is managed by admin.</div>' +
+      '</div>';
+  }
+  return '<div class="card" style="background:#f8fafc;border:1px solid #e2e8f0;margin-bottom:12px;">' +
+    '<div style="font-weight:700;color:#1a1a2e;margin-bottom:6px;">Staff Allowance</div>' +
+    '<div style="font-size:13px;line-height:1.7;">' +
+    '<div>Included: <strong>' + policy.includedUsers + ' total users</strong> (owner + ' + policy.includedStaff + ' staff)</div>' +
+    '<div>Current staff: <strong>' + Number(staffCount || 0) + '</strong></div>' +
+    '<div>Extra staff: <strong>' + billing.extraStaff + '</strong> × ₱' + policy.extraStaffPrice + '/month</div>' +
+    '<div>Staff overage: <strong>₱' + billing.extraAmount + '/month</strong></div>' +
+    '</div>' +
+    '</div>';
+}
+
+function openGcashPayment() {
+  try { navigator.clipboard && navigator.clipboard.writeText(HUB_GCASH_NUMBER); } catch(e) {}
+  _showToast('GCash number copied: ' + HUB_GCASH_NUMBER, false);
+  try { window.location.href = 'gcash://'; } catch(e) {}
+  setTimeout(function() {
+    try { window.open('https://m.gcash.com/gcash-login-web/index.html', '_blank'); } catch(e) {}
+  }, 700);
 }
 
 function _isActiveAddOnStatus(status) {
@@ -383,8 +438,7 @@ function _ownerActiveAddOnModules() {
 }
 
 function _normalizeOwnerAddOnCatalog(features) {
-  var plan = state.session && state.session.plan;
-  var planId = plan && (plan.id || plan.name || plan.Plan || plan.plan);
+  var planId = _currentPlanId();
   return (HUB && HUB.getAddOnCatalog) ? HUB.getAddOnCatalog(planId, features || []) : (features || []);
 }
 
@@ -478,7 +532,7 @@ function renderOwnerDashboard(msg) {
   if (_hasModule('branch_transfer')) btns += '<button class="big-btn" onclick="renderBranchTransfers()">🔄 Branch Transfers</button>';
   if (_hasModule('hq_control_center')) btns += '<button class="big-btn" onclick="renderHQControlCenter()">🏢 HQ Control</button>';
   if (_hasModule('internal_chat'))   btns += '<button class="big-btn" onclick="renderChat()">💬 Chat</button>';
-  if (_hasModule('staff_management') || _hasModule('staff')) btns += '<button class="big-btn" onclick="renderStaffList()">👥 Staff</button>';
+  if (_hasModule('staff_management') || _hasModule('staff')) btns += '<button class="big-btn" onclick="renderManageStaff()">👥 Staff</button>';
   if (_hasModule('custom_role_builder')) btns += '<button class="big-btn" onclick="renderCustomRoles()">🎭 Custom Roles</button>';
   if (_hasModule('approvals'))       btns += '<button class="big-btn" onclick="renderApprovalsQueue()">✅ Approvals</button>';
   if (_hasModule('roi'))             btns += '<button class="big-btn" onclick="renderROIMonitor()">📈 ROI</button>';
@@ -512,6 +566,12 @@ function renderOwnerDashboard(msg) {
   var quickActions = '';
   if (_hasModule('products')) quickActions += '<button class="btn btn-secondary" onclick="renderAddProductForm()">+ Add New Product</button>';
   if (_hasModule('expenses')) quickActions += '<button class="btn btn-secondary" style="margin-top:8px;" onclick="renderAddExpenseForm()">+ Record Expense</button>';
+  var paymentCard =
+    '<div class="card" style="background:#ecfdf5;border:1px solid #86efac;">' +
+    '<div class="subtitle" style="color:#166534;">Subscription Payment</div>' +
+    '<div style="font-size:13px;color:#14532d;margin-bottom:10px;">Pay directly to GCash <strong>' + HUB_GCASH_NUMBER + '</strong> (' + HUB_GCASH_NAME + ').</div>' +
+    '<button class="btn btn-primary" style="background:#16a34a;" onclick="openGcashPayment()">Pay via GCash</button>' +
+    '</div>';
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
@@ -520,6 +580,7 @@ function renderOwnerDashboard(msg) {
     (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
     '<div class="grid-buttons">' + btns + lockedBtns + '</div>' +
     (quickActions ? '<div class="card"><div class="subtitle">Quick Actions</div>' + quickActions + '</div>' : '') +
+    paymentCard +
     '</div>';
 }
 
@@ -1281,6 +1342,7 @@ async function renderManageStaff() {
     '<div class="screen">' +
     '<div class="topbar"><div class="title" style="margin:0;">👥 Manage Staff</div>' +
     '<button class="small-btn" onclick="goHome()">← Back</button></div>' +
+    _renderStaffAllowanceCard(staff.length) +
 
     // Staff list card
     '<div class="card" style="margin-bottom:12px;">' +
@@ -1328,6 +1390,17 @@ async function submitAddStaff() {
   if (!fullName) { _showToast('Full name is required.', true); return; }
   if (!username) { _showToast('Username is required.', true); return; }
   if (!password || password.length < 4) { _showToast('Password must be at least 4 characters.', true); return; }
+  var staffCount = 0;
+  try {
+    staffCount = (await API.call('getStoreUsers')).filter(function(u) { return u.Role !== 'OWNER'; }).length;
+  } catch(e) {}
+  var nextBilling = _staffBillingState(staffCount + 1);
+  var currentBilling = _staffBillingState(staffCount);
+  if (nextBilling.extraAmount > currentBilling.extraAmount) {
+    var extraMsg = 'This staff member is beyond your included allowance and will add ₱' +
+      nextBilling.policy.extraStaffPrice + '/month. Continue?';
+    if (!confirm(extraMsg)) return;
+  }
   showLoading('Creating account…');
   try {
     await API.call('createStoreUser', { fullName: fullName, username: username, password: password });

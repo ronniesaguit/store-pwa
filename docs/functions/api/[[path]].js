@@ -72,6 +72,55 @@ function buildRevenueState(store, subscriptions) {
   };
 }
 
+function normalizePlanId(planId) {
+  const raw = String(planId || '').trim().toUpperCase().replace(/[\s-]+/g, '_');
+  const aliases = {
+    STARTER: 'NEGOSYO_HUB',
+    BASIC: 'NEGOSYO_HUB',
+    NEGOSYO: 'NEGOSYO_HUB',
+    STANDARD: 'BUSINESS_HUB',
+    GROWTH: 'BUSINESS_HUB',
+    PRO: 'BUSINESS_HUB',
+    BUSINESS: 'BUSINESS_HUB',
+    ELITE: 'NEXORA_HUB',
+    NEXORA: 'NEXORA_HUB'
+  };
+  return aliases[raw] || raw || 'NEGOSYO_HUB';
+}
+
+function getStaffPolicy(planId) {
+  const policies = {
+    TRIAL: { includedUsers: 2, extraStaffPrice: 10 },
+    NEGOSYO_HUB: { includedUsers: 2, extraStaffPrice: 10 },
+    BUSINESS_HUB: { includedUsers: 4, extraStaffPrice: 15 },
+    NEXORA_HUB: { includedUsers: 11, extraStaffPrice: 20 },
+    CUSTOM: { includedUsers: null, extraStaffPrice: null }
+  };
+  const normalized = normalizePlanId(planId);
+  const policy = policies[normalized] || policies.NEGOSYO_HUB;
+  return {
+    planId: normalized,
+    includedUsers: policy.includedUsers,
+    includedStaff: policy.includedUsers === null ? null : Math.max(0, policy.includedUsers - 1),
+    extraStaffPrice: policy.extraStaffPrice
+  };
+}
+
+function buildStaffSeatState(store, users) {
+  const policy = getStaffPolicy(store && store.Plan);
+  const staffCount = (Array.isArray(users) ? users : []).filter((user) => String(user && user.Role || '').toUpperCase() !== 'OWNER').length;
+  const extraStaff = policy.includedStaff === null ? 0 : Math.max(0, staffCount - policy.includedStaff);
+  return {
+    policy,
+    staff_count: staffCount,
+    included_users: policy.includedUsers,
+    included_staff: policy.includedStaff,
+    extra_staff_count: extraStaff,
+    extra_staff_price: policy.extraStaffPrice,
+    extra_staff_amount: extraStaff * (Number(policy.extraStaffPrice) || 0)
+  };
+}
+
 async function handleAdminGetStoreCommercialState(upstreamBase, payload) {
   const adminToken = payload && payload.adminToken;
   const storeId = payload && payload.data && payload.data.storeId;
@@ -97,27 +146,43 @@ async function handleAdminGetStoreCommercialState(upstreamBase, payload) {
       data: {
         featureCatalog: Array.isArray(featureCatalog) ? featureCatalog : [],
         subscriptions: [],
-        revenueState: buildRevenueState(store, [])
+        revenueState: buildRevenueState(store, []),
+        staffSeatState: buildStaffSeatState(store, [])
       }
     });
   }
 
-  const marketplace = await callUpstreamAction(upstreamBase, {
-    action: 'getFeatureMarketplace',
-    storeKey: String(store.API_Key),
-    data: {}
-  });
+  const [marketplace, storeUsers] = await Promise.all([
+    callUpstreamAction(upstreamBase, {
+      action: 'getFeatureMarketplace',
+      storeKey: String(store.API_Key),
+      data: {}
+    }),
+    callUpstreamAction(upstreamBase, {
+      action: 'getStoreUsers',
+      storeKey: String(store.API_Key),
+      data: {}
+    }).catch(() => [])
+  ]);
 
   const subscriptions = (Array.isArray(marketplace) ? marketplace : [])
     .map(normalizeSubscription)
     .filter((feature) => feature.module_code && feature.status !== 'locked');
+
+  const revenueState = buildRevenueState(store, subscriptions);
+  const staffSeatState = buildStaffSeatState(store, storeUsers);
+  if (staffSeatState.extra_staff_amount) {
+    revenueState.staff_overage_amount = staffSeatState.extra_staff_amount;
+    revenueState.total_recurring_amount += staffSeatState.extra_staff_amount;
+  }
 
   return jsonResponse({
     success: true,
     data: {
       featureCatalog: Array.isArray(featureCatalog) ? featureCatalog : [],
       subscriptions,
-      revenueState: buildRevenueState(store, subscriptions)
+      revenueState,
+      staffSeatState
     }
   });
 }

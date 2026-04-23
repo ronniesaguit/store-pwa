@@ -117,6 +117,11 @@ function _planAddOnCatalog(planId, catalog) {
   return catalog || _featureCatalog();
 }
 
+function _staffPolicy(planId) {
+  if (HUB && HUB.getStaffPolicy) return HUB.getStaffPolicy(planId);
+  return { includedUsers: 2, includedStaff: 1, extraStaffPrice: 10 };
+}
+
 async function _ensureFeatureCatalog() {
   if (_featureCatalog().length) return adminState.featureCatalog;
   adminState.featureCatalog = await ADMIN_API.call('adminGetFeatureCatalog');
@@ -179,6 +184,7 @@ function _renderCommercialStateFallback(planId, errMsg) {
 }
 
 function _renderPlanInclusionsCard(planId) {
+  var staffPolicy = _staffPolicy(planId);
   var rows = _planCoreModuleCatalog(planId).map(function(feature) {
     return '<div style="padding:6px 0;border-bottom:1px solid #f3f4f6;font-size:12px;">' +
       '<strong>' + _esc(feature.icon || '•') + ' ' + _esc(feature.name || feature.code) + '</strong>' +
@@ -188,6 +194,7 @@ function _renderPlanInclusionsCard(planId) {
 
   return '<div class="card">' +
     '<div class="section-title">Included In ' + _esc(_planLabel(planId)) + '</div>' +
+    (staffPolicy.includedUsers !== null ? '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px;margin-bottom:8px;font-size:12px;">Staff included: <strong>' + staffPolicy.includedUsers + ' total users</strong> (owner + ' + staffPolicy.includedStaff + ' staff). Extra staff: <strong>' + _money(staffPolicy.extraStaffPrice) + '/month each</strong>.</div>' : '') +
     (rows || '<div class="muted">No core feature summary available.</div>') +
     '</div>';
 }
@@ -201,6 +208,7 @@ async function _loadStoreCommercialState(storeId, planId) {
     if (data.featureCatalog && data.featureCatalog.length) adminState.featureCatalog = data.featureCatalog;
     var subs = data.subscriptions || [];
     var revenue = data.revenueState;
+    var staffSeats = data.staffSeatState;
     var addOnPrice = _addOnPriceForPlan(planId);
     var rows = subs.map(function(sub) {
       var label = sub.status === 'active_paid' ? 'Active' : (sub.status === 'trial_active' ? 'Trial' : sub.status);
@@ -213,13 +221,22 @@ async function _loadStoreCommercialState(storeId, planId) {
         '</div>' +
         '</div>';
     }).join('');
+    var staffSeatHtml = staffSeats ? '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px;margin-bottom:10px;font-size:12px;">' +
+      '<strong>Staff allowance</strong><br>' +
+      'Included: <strong>' + _esc(staffSeats.included_users == null ? 'Custom' : staffSeats.included_users + ' total users') + '</strong>' +
+      (staffSeats.included_staff == null ? '' : ' (owner + ' + staffSeats.included_staff + ' staff)') + '<br>' +
+      'Current staff: <strong>' + _esc(staffSeats.staff_count || 0) + '</strong> · Extra staff: <strong>' + _esc(staffSeats.extra_staff_count || 0) + '</strong>' +
+      (staffSeats.extra_staff_price ? ' × ' + _money(staffSeats.extra_staff_price) + '/month' : '') + '<br>' +
+      'Staff overage: <strong>' + _money(staffSeats.extra_staff_amount || 0) + '/month</strong>' +
+      '</div>' : '';
     host.innerHTML =
       '<div class="card">' +
       '<div class="section-title">Add-ons</div>' +
       '<div class="hint" style="margin-bottom:10px;">Owner-selected add-ons from the marketplace will show here automatically.' +
       (addOnPrice !== null ? ' Current Hub add-ons are ₱' + addOnPrice + '/month each after trial.' : '') +
       '</div>' +
-      (revenue ? '<div style="background:#f9fafb;border-radius:8px;padding:10px;margin-bottom:10px;font-size:12px;">Base: <strong>' + _money(revenue.base_recurring_amount || 0) + '</strong> · Add-ons: <strong>' + _money(revenue.addons_recurring_amount || 0) + '</strong> · Total: <strong>' + _money(revenue.total_recurring_amount || 0) + '</strong></div>' : '') +
+      (revenue ? '<div style="background:#f9fafb;border-radius:8px;padding:10px;margin-bottom:10px;font-size:12px;">Base: <strong>' + _money(revenue.base_recurring_amount || 0) + '</strong> · Add-ons: <strong>' + _money(revenue.addons_recurring_amount || 0) + '</strong> · Staff overage: <strong>' + _money(revenue.staff_overage_amount || 0) + '</strong> · Total: <strong>' + _money(revenue.total_recurring_amount || 0) + '</strong></div>' : '') +
+      staffSeatHtml +
       (rows || '<div class="muted">No add-ons selected yet.</div>') +
       '</div>';
   } catch(e) {

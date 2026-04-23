@@ -75,18 +75,25 @@ var MODULE_ALIASES = {
   PLAN_CORE_MODULES[PLAN_IDS.BUSINESS_HUB] = PLAN_CORE_MODULES[PLAN_IDS.NEGOSYO_HUB].concat(['suppliers','purchase_orders','approvals','monitors','internal_chat','sandbox_mode']);
   PLAN_CORE_MODULES[PLAN_IDS.NEXORA_HUB] = PLAN_CORE_MODULES[PLAN_IDS.BUSINESS_HUB].concat(['roi','branch_transfer','hq_control_center','custom_role_builder','automation_rules','data_import_tools']);
 
-  var BASIC_FEATURES = {
-    NEGOSYO_HUB: ['Quick Sell', 'Products', 'Inventory', 'Expenses', 'Reports', 'Staff Management', 'Feature Marketplace', 'Hardware Setup'],
-    BUSINESS_HUB: ['Everything in Negosyo Hub', 'Suppliers', 'Purchase Orders', 'Approvals', 'Monitors', 'Internal Chat', 'Sandbox Mode'],
-    NEXORA_HUB: ['Everything in Business Hub', 'ROI Monitor', 'HQ Control', 'Branch Transfers', 'Custom Roles', 'Automation', 'Import & Migration']
-  };
+var BASIC_FEATURES = {
+  NEGOSYO_HUB: ['Quick Sell', 'Products', 'Inventory', 'Expenses', 'Reports', 'Staff Management', 'Feature Marketplace', 'Hardware Setup'],
+  BUSINESS_HUB: ['Everything in Negosyo Hub', 'Suppliers', 'Purchase Orders', 'Approvals', 'Monitors', 'Internal Chat', 'Sandbox Mode'],
+  NEXORA_HUB: ['Everything in Business Hub', 'ROI Monitor', 'HQ Control', 'Branch Transfers', 'Custom Roles', 'Automation', 'Import & Migration']
+};
+
+var STAFF_POLICIES = {};
+STAFF_POLICIES[PLAN_IDS.TRIAL] = { includedUsers: 2, extraStaffPrice: 10 };
+STAFF_POLICIES[PLAN_IDS.NEGOSYO_HUB] = { includedUsers: 2, extraStaffPrice: 10 };
+STAFF_POLICIES[PLAN_IDS.BUSINESS_HUB] = { includedUsers: 4, extraStaffPrice: 15 };
+STAFF_POLICIES[PLAN_IDS.NEXORA_HUB] = { includedUsers: 11, extraStaffPrice: 20 };
+STAFF_POLICIES[PLAN_IDS.CUSTOM] = { includedUsers: null, extraStaffPrice: null };
 
   function _titleizeModule(moduleId) {
     return String(moduleId || '').replace(/[_-]+/g, ' ').replace(/\b\w/g, function(ch) { return ch.toUpperCase(); });
   }
 
-  function normalizePlanId(planId) {
-    var normalized = String(planId || '').trim().toUpperCase();
+function normalizePlanId(planId) {
+  var normalized = String(planId || '').trim().toUpperCase().replace(/[\s-]+/g, '_');
     if (!normalized) return PLAN_IDS.TRIAL;
     return PLAN_ALIASES[normalized] || normalized;
   }
@@ -191,7 +198,7 @@ function getAddOnCatalog(planId, featureCatalog) {
   }).filter(Boolean);
 }
 
-  function getPlanOptions(includeCustom) {
+function getPlanOptions(includeCustom) {
     var options = [
       { value: PLAN_IDS.TRIAL, label: 'Free Trial' },
       { value: PLAN_IDS.NEGOSYO_HUB, label: 'Negosyo Hub - PHP 200/mo' },
@@ -200,7 +207,13 @@ function getAddOnCatalog(planId, featureCatalog) {
     ];
     if (includeCustom) options.push({ value: PLAN_IDS.CUSTOM, label: 'Custom / Flexible' });
     return options;
-  }
+}
+
+function getStaffPolicy(planId) {
+  var normalizedPlan = normalizePlanId(planId);
+  var policy = STAFF_POLICIES[normalizedPlan] || STAFF_POLICIES[PLAN_IDS.NEGOSYO_HUB];
+  return Object.assign({ planId: normalizedPlan, includedStaff: policy.includedUsers === null ? null : Math.max(0, policy.includedUsers - 1) }, policy);
+}
 
   function logoMarkup(planId, fallbackText) {
     var tier = getTier(planId);
@@ -215,8 +228,9 @@ function getAddOnCatalog(planId, featureCatalog) {
     umbrellaName: 'HubSuite',
     planIds: PLAN_IDS,
     tiers: TIERS,
-    moduleCatalog: MODULE_CATALOG,
-    planCoreModules: PLAN_CORE_MODULES,
+  moduleCatalog: MODULE_CATALOG,
+  planCoreModules: PLAN_CORE_MODULES,
+  staffPolicies: STAFF_POLICIES,
     basicFeatures: BASIC_FEATURES,
     normalizePlanId: normalizePlanId,
     getTier: getTier,
@@ -227,9 +241,10 @@ function getAddOnCatalog(planId, featureCatalog) {
     getCoreModuleCodes: getCoreModuleCodes,
     getCoreModuleCatalog: getCoreModuleCatalog,
     isCoreModule: isCoreModule,
-    isAddOnEligible: isAddOnEligible,
-    getAddOnCatalog: getAddOnCatalog,
-    getPlanOptions: getPlanOptions,
-    logoMarkup: logoMarkup
-  };
+  isAddOnEligible: isAddOnEligible,
+  getAddOnCatalog: getAddOnCatalog,
+  getPlanOptions: getPlanOptions,
+  getStaffPolicy: getStaffPolicy,
+  logoMarkup: logoMarkup
+};
 })(window);

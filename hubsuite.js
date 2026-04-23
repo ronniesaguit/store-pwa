@@ -277,6 +277,13 @@
     NEXORA_HUB: ['Everything in Business Hub', 'ROI Monitor', 'HQ Control', 'Branch Transfers', 'Custom Roles', 'Automation', 'Import & Migration']
   };
 
+  var STAFF_POLICIES = {};
+  STAFF_POLICIES[PLAN_IDS.TRIAL] = { includedUsers: 2, extraStaffPrice: 10 };
+  STAFF_POLICIES[PLAN_IDS.NEGOSYO_HUB] = { includedUsers: 2, extraStaffPrice: 10 };
+  STAFF_POLICIES[PLAN_IDS.BUSINESS_HUB] = { includedUsers: 4, extraStaffPrice: 15 };
+  STAFF_POLICIES[PLAN_IDS.NEXORA_HUB] = { includedUsers: 11, extraStaffPrice: 20 };
+  STAFF_POLICIES[PLAN_IDS.CUSTOM] = { includedUsers: null, extraStaffPrice: null };
+
   function _titleizeModule(moduleId) {
     return String(moduleId || '')
       .replace(/[_-]+/g, ' ')
@@ -284,7 +291,7 @@
   }
 
   function normalizePlanId(planId) {
-    var normalized = String(planId || '').trim().toUpperCase();
+    var normalized = String(planId || '').trim().toUpperCase().replace(/[\s-]+/g, '_');
     if (!normalized) return PLAN_IDS.TRIAL;
     return PLAN_ALIASES[normalized] || normalized;
   }
@@ -415,6 +422,15 @@
     return options;
   }
 
+  function getStaffPolicy(planId) {
+    var normalizedPlan = normalizePlanId(planId);
+    var policy = STAFF_POLICIES[normalizedPlan] || STAFF_POLICIES[PLAN_IDS.NEGOSYO_HUB];
+    return Object.assign({
+      planId: normalizedPlan,
+      includedStaff: policy.includedUsers === null ? null : Math.max(0, policy.includedUsers - 1)
+    }, policy);
+  }
+
   function logoMarkup(planId, fallbackText) {
     var tier = getTier(planId);
     var text = fallbackText || tier.shortName || tier.name;
@@ -430,6 +446,7 @@
     tiers: TIERS,
     moduleCatalog: MODULE_CATALOG,
     planCoreModules: PLAN_CORE_MODULES,
+    staffPolicies: STAFF_POLICIES,
     basicFeatures: BASIC_FEATURES,
     normalizePlanId: normalizePlanId,
     getTier: getTier,
@@ -443,6 +460,7 @@
     isAddOnEligible: isAddOnEligible,
     getAddOnCatalog: getAddOnCatalog,
     getPlanOptions: getPlanOptions,
+    getStaffPolicy: getStaffPolicy,
     logoMarkup: logoMarkup
   };
 })(window);
