@@ -1396,14 +1396,22 @@ function _renderStaffRoleGuide() {
 }
 
 async function _loadManageStaffUsers() {
+  function withTimeout(promise, label) {
+    return Promise.race([
+      promise,
+      new Promise(function(_, reject) {
+        setTimeout(function() { reject(new Error(label + ' timed out.')); }, 12000);
+      })
+    ]);
+  }
   var errors = [];
   try {
-    return { users: _normalizeManageStaffUsers(await API.getStaff()), source: 'getStaff' };
+    return { users: _normalizeManageStaffUsers(await withTimeout(API.getStaff(), 'Staff service')), source: 'getStaff' };
   } catch(err) {
     errors.push(err);
   }
   try {
-    return { users: _normalizeManageStaffUsers(await API.call('getStoreUsers')), source: 'getStoreUsers' };
+    return { users: _normalizeManageStaffUsers(await withTimeout(API.call('getStoreUsers'), 'Store users service')), source: 'getStoreUsers' };
   } catch(err2) {
     errors.push(err2);
   }

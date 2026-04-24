@@ -598,21 +598,14 @@ async function _changePlan(storeId) {
 async function _repairStaffAccess(storeId, planId) {
   var plan = planId || (document.getElementById('chg-plan') && document.getElementById('chg-plan').value) || 'NEGOSYO_HUB';
   var modulePayload = _moduleSyncPayload(plan, []);
-  var patch = _applyModulePatchFields({ Plan: plan }, modulePayload);
-  var updateErr = null;
   var lastRepairErr = null;
   var didSendRepair = false;
-  try {
-    await ADMIN_API.call('adminUpdateStore', Object.assign({ storeId: storeId, patch: patch }, modulePayload));
-    didSendRepair = true;
-  } catch(e) {
-    updateErr = e;
-  }
   try {
     var repairCalls = [
       ['adminSyncStoreModules', { storeId: storeId, plan: plan, moduleCodes: modulePayload.enabledModuleCodes }],
       ['adminRepairStoreModules', { storeId: storeId, plan: plan, moduleCodes: modulePayload.enabledModuleCodes }],
-      ['adminEnableStoreModule', { storeId: storeId, moduleCode: 'staff_management' }]
+      ['adminEnableStoreModule', { storeId: storeId, moduleCode: 'staff_management' }],
+      ['adminEnableStoreModule', { storeId: storeId, moduleCode: 'staff' }]
     ];
     for (var i = 0; i < repairCalls.length; i++) {
       try {
@@ -622,7 +615,7 @@ async function _repairStaffAccess(storeId, planId) {
         lastRepairErr = e;
       }
     }
-    if (!didSendRepair) throw (lastRepairErr || updateErr || new Error('Staff access repair could not be sent.'));
+    if (!didSendRepair) throw (lastRepairErr || new Error('Staff access repair could not be sent.'));
     _toast('Staff access repair sent. Ask the owner to log out and back in.');
     await _refreshStores();
     renderDashboard();
