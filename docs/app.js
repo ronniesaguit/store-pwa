@@ -1,6 +1,14 @@
 // app.js — Store Management PWA main logic
 
-var SCANNER_URL = 'https://ronniesaguit.github.io/store-pwa/scanner.html';
+var SCANNER_URL = (function() {
+  try { return new URL('./scanner.html', window.location.href).toString(); }
+  catch(e) { return './scanner.html'; }
+})();
+
+var HTML5_QRCODE_ASSET_URL = (function() {
+  try { return new URL('./vendor/html5-qrcode.min.js', window.location.href).toString(); }
+  catch(e) { return './vendor/html5-qrcode.min.js'; }
+})();
 
 var state = {
   session:       null,
@@ -17,6 +25,7 @@ var state = {
 
 // Executive dashboard state
 var execCurrentPeriod = 'last_month';
+var HUB = window.HUBSUITE || null;
 
 // ── Boot ─────────────────────────────────────────────────────────────────────
 
@@ -82,6 +91,9 @@ async function boot() {
 function routeToDashboard() {
   if (!state.session || !state.session.user) { renderLogin(); return; }
   var dashType = state.session.manifest && state.session.manifest.dashboard_type;
+  var role = (state.session.user.Role || '').toUpperCase();
+  // Custom role users always get the dynamic staff dashboard
+  if (dashType === 'staff_dashboard' || role.startsWith('CUSTOM:')) { renderStaffDashboard(); return; }
   if (dashType === 'store_owner_dashboard')  { renderOwnerDashboard(); return; }
   if (dashType === 'executive_dashboard')    { renderExecutiveDashboard(); return; }
   if (dashType === 'manager_dashboard')      { renderManagerDashboard(); return; }
@@ -89,7 +101,6 @@ function routeToDashboard() {
   if (dashType === 'inventory_dashboard')    { renderInventoryDashboard(); return; }
   if (dashType === 'viewer_dashboard')       { renderViewerDashboard(); return; }
   // fallback to role-based routing (cached session without manifest)
-  var role = (state.session.user.Role || '').toUpperCase();
   if (role === 'OWNER')                renderOwnerDashboard();
   else if (role === 'EXECUTIVE')       renderExecutiveDashboard();
   else if (role === 'MANAGER')         renderManagerDashboard();
@@ -150,8 +161,9 @@ function goHome() {
 function renderLogin(msg) {
   document.getElementById('app').innerHTML =
     '<div class="screen"><div class="card">' +
-    '<h1 class="title">🏪 Store Login</h1>' +
-    '<div class="subtitle">Sign in to continue</div>' +
+    '<div style="margin-bottom:12px;">' + (HUB && HUB.logoMarkup ? HUB.logoMarkup('NEGOSYO_HUB', 'HubSuite') : '<strong>HubSuite</strong>') + '</div>' +
+    '<h1 class="title">HubSuite Login</h1>' +
+    '<div class="subtitle">Sign in to continue to your store workspace</div>' +
     (msg ? showError(msg) : '') +
     '<div class="field"><label>Username</label><input id="login-username" placeholder="Enter username" autocomplete="username"></div>' +
     '<div class="field"><label>Password</label><input id="login-password" type="password" placeholder="Enter password" autocomplete="current-password"></div>' +
@@ -280,10 +292,32 @@ function _planModules() {
   return (state.session && state.session.plan && state.session.plan.modules) || null;
 }
 
+function _planTier(planId) {
+  if (HUB && HUB.getTier) return HUB.getTier(planId);
+  return { id: String(planId || 'TRIAL').toUpperCase(), name: String(planId || 'TRIAL').toUpperCase(), addOnPrice: null };
+}
+
+function _planLabel(planId) {
+  if (HUB && HUB.getPlanLabel) return HUB.getPlanLabel(planId);
+  return String(planId || 'TRIAL').toUpperCase();
+}
+
+function _planAddOnPrice() {
+  var planId = state.session && state.session.plan && state.session.plan.id;
+  if (HUB && HUB.getAddOnPrice) return HUB.getAddOnPrice(planId);
+  var fallback = state.session && state.session.plan && state.session.plan.addon_price;
+  return Number.isFinite(Number(fallback)) ? Number(fallback) : null;
+}
+
+function _resolveModuleId(moduleId) {
+  if (HUB && HUB.resolveModuleId) return HUB.resolveModuleId(moduleId);
+  return moduleId;
+}
+
 function _hasModule(moduleId) {
   var mods = _planModules();
   if (!mods) return true; // CUSTOM plan or no plan info — allow all
-  return mods.indexOf(moduleId) !== -1;
+  return mods.indexOf(_resolveModuleId(moduleId)) !== -1 || mods.indexOf(moduleId) !== -1;
 }
 
 function _hasPerm(permCode) {
@@ -317,7 +351,14 @@ function renderOwnerDashboard(msg) {
   var storeName = (state.storeProfile && (state.storeProfile.storeName || state.storeProfile.Store_Name)) || '';
   var ownerName = (state.storeProfile && (state.storeProfile.ownerName || state.storeProfile.Owner_Name)) || state.session.user.Full_Name;
   var plan = state.session && state.session.plan;
-  var planLine = plan ? '<div style="font-size:0.7rem;color:rgba(255,255,255,0.55);margin-top:1px;">' + _escAttr(plan.name || plan.id || '') + (state.session.inTrial ? ' · Trial' : '') + '</div>' : '';
+  var addOnPrice = _planAddOnPrice();
+  var planLine = plan
+    ? '<div style="font-size:0.7rem;color:rgba(255,255,255,0.55);margin-top:1px;">' +
+      _escAttr(_planLabel(plan.id || plan.name || '')) +
+      (state.session.inTrial ? ' · Trial' : '') +
+      (addOnPrice !== null ? ' · Add-ons ₱' + addOnPrice + '/feature' : '') +
+      '</div>'
+    : '';
 
   var btns = '';
   if (_hasModule('products'))        btns += '<button class="big-btn" onclick="loadProducts()">📦 Products</button>';
@@ -329,22 +370,23 @@ function renderOwnerDashboard(msg) {
   if (_hasModule('reports'))         btns += '<button class="big-btn" onclick="renderAdvancedReportsHome()">📊 Advanced Reports</button>';
   if (_hasModule('suppliers'))       btns += '<button class="big-btn" onclick="renderSuppliers()">🏭 Suppliers</button>';
   if (_hasModule('purchase_orders')) btns += '<button class="big-btn" onclick="renderPurchaseOrders()">📋 Purchase Orders</button>';
-  if (_hasModule('branch_transfers'))btns += '<button class="big-btn" onclick="renderBranchTransfers()">🔄 Branch Transfers</button>';
-  if (_hasModule('multi_branch'))    btns += '<button class="big-btn" onclick="renderHQControlCenter()">🏢 HQ Control</button>';
+  if (_hasModule('branch_transfer')) btns += '<button class="big-btn" onclick="renderBranchTransfers()">🔄 Branch Transfers</button>';
+  if (_hasModule('hq_control_center')) btns += '<button class="big-btn" onclick="renderHQControlCenter()">🏢 HQ Control</button>';
   if (_hasModule('internal_chat'))   btns += '<button class="big-btn" onclick="renderChat()">💬 Chat</button>';
   if (_hasModule('staff_management') || _hasModule('staff')) btns += '<button class="big-btn" onclick="renderStaffList()">👥 Staff</button>';
-  if (_hasModule('custom_roles'))    btns += '<button class="big-btn" onclick="renderCustomRoles()">🎭 Custom Roles</button>';
+  if (_hasModule('custom_role_builder')) btns += '<button class="big-btn" onclick="renderCustomRoles()">🎭 Custom Roles</button>';
   if (_hasModule('approvals'))       btns += '<button class="big-btn" onclick="renderApprovalsQueue()">✅ Approvals</button>';
   if (_hasModule('roi'))             btns += '<button class="big-btn" onclick="renderROIMonitor()">📈 ROI</button>';
   if (_hasModule('monitors'))        btns += '<button class="big-btn" onclick="renderMonitors()">📡 Monitors</button>';
   if (_hasModule('automation_rules'))btns += '<button class="big-btn" onclick="renderAutomationRules()">⚡ Automation</button>';
-  if (_hasModule('data_import'))     btns += '<button class="big-btn" onclick="renderDataImport()">📥 Import Data</button>';
+  if (_hasModule('data_import_tools')) btns += '<button class="big-btn" onclick="renderDataImport()">📥 Import Data</button>';
   if (_hasModule('settings'))        btns += '<button class="big-btn" onclick="renderFullSettings()">⚙️ Settings</button>';
   btns += '<button class="big-btn" onclick="renderNotificationsCenter()">🔔 Notifications</button>';
   btns += '<button class="big-btn" onclick="renderAlertsCenter()">🚨 Alerts</button>';
-  btns += '<button class="big-btn" onclick="renderFeatureMarketplace()">🛒 Feature Store</button>';
-  btns += '<button class="big-btn" onclick="renderHardwareSetup()">🖨️ Hardware</button>';
-  btns += '<button class="big-btn" onclick="renderSandboxMode()">🧪 Sandbox</button>';
+  btns += '<button class="big-btn" onclick="renderActivityLog()">📜 Staff Activity</button>';
+  if (_hasModule('feature_marketplace')) btns += '<button class="big-btn" onclick="renderFeatureMarketplace()">🛒 Hub Add-ons</button>';
+  if (_hasModule('hardware_profiles')) btns += '<button class="big-btn" onclick="renderHardwareSetup()">🖨️ Hardware</button>';
+  if (_hasModule('sandbox_mode')) btns += '<button class="big-btn" onclick="renderSandboxMode()">🧪 Sandbox</button>';
   if (_hasModule('support'))         btns += '<button class="big-btn" onclick="renderSupport()">📞 Help</button>';
 
   // Locked / upsell tiles for modules not in current plan
@@ -370,10 +412,10 @@ function renderOwnerDashboard(msg) {
   var mods = _planModules();
   if (mods) {
     Object.keys(UPSELL_META).forEach(function(m) {
-      if (mods.indexOf(m) === -1) {
+      if (!_hasModule(m)) {
         var meta = UPSELL_META[m];
         lockedBtns += '<button class="big-btn" disabled style="opacity:0.45;cursor:default;position:relative;" title="Upgrade to unlock">' +
-          '<span style="position:absolute;top:4px;right:6px;font-size:0.6rem;background:#f59e0b;color:#fff;padding:1px 5px;border-radius:8px;font-weight:700;">PRO</span>' +
+          '<span style="position:absolute;top:4px;right:6px;font-size:0.6rem;background:#f59e0b;color:#fff;padding:1px 5px;border-radius:8px;font-weight:700;">ADD-ON</span>' +
           meta.icon + ' ' + meta.label + '<br><span style="font-size:0.65rem;opacity:0.7;">🔒 Upgrade</span></button>';
       }
     });
@@ -702,6 +744,43 @@ function renderViewerDashboard(msg) {
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
     _dashboardHeader_(storeName, userName + ' · Viewer', '', state.isOffline) +
+    (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
+    '<div class="grid-buttons">' + btns + '</div></div>';
+}
+
+// CUSTOM ROLE — dynamic dashboard driven by manifest.enabled_modules
+function renderStaffDashboard(msg) {
+  var storeName = (state.storeProfile && (state.storeProfile.storeName || state.storeProfile.Store_Name)) || '';
+  var userName  = state.session.user.Full_Name;
+  var manifest  = (state.session && state.session.manifest) || {};
+  var roleLabel = manifest.role_display_name || state.session.user.Role || 'Staff';
+  var modules   = manifest.enabled_modules || [];
+  var has = function(m) { return modules.indexOf(m) !== -1; };
+
+  var btns = '';
+  if (has('quick_sell'))      btns += '<button class="big-btn" onclick="renderQuickSell()">💰 Quick Sell</button>';
+  if (has('quick_sell'))      btns += '<button class="big-btn" onclick="renderSalesHistory()">🧾 Sales History</button>';
+  if (has('products'))        btns += '<button class="big-btn" onclick="loadProducts()">📦 Products</button>';
+  if (has('inventory'))       btns += '<button class="big-btn" onclick="renderInventoryMenu()">📋 Inventory</button>';
+  if (has('expenses'))        btns += '<button class="big-btn" onclick="renderExpenses()">💸 Expenses</button>';
+  if (has('reports'))         btns += '<button class="big-btn" onclick="renderReports()">📊 Reports</button>';
+  if (has('reports'))         btns += '<button class="big-btn" onclick="renderAdvancedReportsHome()">📊 Advanced Reports</button>';
+  if (has('suppliers'))       btns += '<button class="big-btn" onclick="renderSuppliers()">🏭 Suppliers</button>';
+  if (has('purchase_orders')) btns += '<button class="big-btn" onclick="renderPurchaseOrders()">📋 Purchase Orders</button>';
+  if (has('branch_transfer')) btns += '<button class="big-btn" onclick="renderBranchTransfers()">🔄 Branch Transfers</button>';
+  if (has('hq_control_center')) btns += '<button class="big-btn" onclick="renderHQControlCenter()">🏢 HQ Control</button>';
+  if (has('staff_management') || has('staff')) btns += '<button class="big-btn" onclick="renderStaffList()">👥 Staff</button>';
+  if (has('approvals'))       btns += '<button class="big-btn" onclick="renderApprovalsQueue()">✅ Approvals</button>';
+  if (has('roi'))             btns += '<button class="big-btn" onclick="renderROIMonitor()">📈 ROI</button>';
+  if (has('monitors'))        btns += '<button class="big-btn" onclick="renderMonitors()">📡 Monitors</button>';
+  if (has('automation_rules')) btns += '<button class="big-btn" onclick="renderAutomationRules()">⚡ Automation</button>';
+  if (has('internal_chat'))   btns += '<button class="big-btn" onclick="renderChat()">💬 Chat</button>';
+  if (has('alert_rules_engine')) btns += '<button class="big-btn" onclick="renderAlertsCenter()">🔔 Alerts</button>';
+  if (has('support'))         btns += '<button class="big-btn" onclick="renderSupport()">📞 Help</button>';
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    _dashboardHeader_(storeName, userName + ' · ' + _esc(roleLabel), '', state.isOffline) +
     (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
     '<div class="grid-buttons">' + btns + '</div></div>';
 }
@@ -3620,7 +3699,7 @@ function printBIRData(d) {
     '</tbody></table>' +
 
     '<div style="margin-top:24px;font-size:10px;color:#999;border-top:1px solid #ddd;padding-top:8px;">' +
-    'DISCLAIMER: This is a computer-generated summary from Tindahan Hub POS. ' +
+    'DISCLAIMER: This is a computer-generated summary from HubSuite POS. ' +
     'This is NOT a BIR-registered document. Please consult a CPA or BIR-accredited tax preparer before filing. ' +
     'Data accuracy depends on complete recording of all sales and expenses in the system.' +
     '</div>';
@@ -3988,7 +4067,7 @@ function _renderMonitorLocked() {
     '<div style="font-size:2.5rem;margin-bottom:12px;">🔒</div>' +
     '<div style="font-weight:700;font-size:1.1rem;color:#111827;margin-bottom:8px;">Business Monitors</div>' +
     '<div style="font-size:0.85rem;color:#6b7280;max-width:260px;margin:0 auto 20px;">See sales trends, expense alerts, and business insights.<br>Available on Growth plan and above.</div>' +
-    '<button class="btn btn-primary" onclick="_showToast(\'Contact your Business Hub support to upgrade your plan.\', false)">Upgrade to Unlock</button>' +
+    '<button class="btn btn-primary" onclick="_showToast(\'Contact your HubSuite admin to upgrade your plan.\', false)">Upgrade to Unlock</button>' +
     '</div></div>';
 }
 
@@ -4221,6 +4300,17 @@ function _renderMonitorPage(data, period, fromCache) {
 var _supportPollTimer = null;
 
 async function renderSupport() {
+  var isOwner = state.session && state.session.user && (state.session.user.Role || '').toUpperCase() === 'OWNER';
+  if (!isOwner) {
+    document.getElementById('app').innerHTML =
+      '<div class="screen"><div class="topbar"><div class="title" style="margin:0;">📞 Help</div><button class="small-btn" onclick="goHome()">← Home</button></div>' +
+      '<div class="card" style="text-align:center;padding:24px;">' +
+      '<div style="font-size:2rem;margin-bottom:12px;">📋</div>' +
+      '<div style="font-weight:700;font-size:15px;margin-bottom:8px;">Need Help?</div>' +
+      '<div style="font-size:13px;color:#6b7280;">Please contact your store owner for assistance. Only the store owner can reach developer support.</div>' +
+      '</div></div>';
+    return;
+  }
   showLoading('Loading support messages…');
   var msgs = [];
   try { msgs = await API.call('getSupportMessages'); } catch(e) {}
@@ -4236,7 +4326,7 @@ function _renderSupportScreen(msgs) {
         'border-radius:' + (isAdmin ? '4px 14px 14px 14px' : '14px 4px 14px 14px') + ';' +
         'padding:10px 14px;font-size:14px;">' + _escHtml(m.Message) + '</div>' +
       '<div style="font-size:10px;color:#9ca3af;margin-top:2px;">' +
-        (isAdmin ? '🏪 Tindahan Hub Admin' : '👤 ' + _escHtml(m.From_Name || 'You')) +
+        (isAdmin ? '🏪 HubSuite Admin' : '👤 ' + _escHtml(m.From_Name || 'You')) +
         ' · ' + time + '</div></div>';
   }).join('');
 
@@ -4246,7 +4336,7 @@ function _renderSupportScreen(msgs) {
     '<button class="small-btn" onclick="_stopSupportPoll();goHome();">← Back</button></div>' +
 
     '<div style="background:#fff;border-radius:0;padding:12px;margin-bottom:0;">' +
-    '<div style="font-size:12px;color:#6b7280;text-align:center;margin-bottom:8px;">Chat with Tindahan Hub Admin · ' +
+    '<div style="font-size:12px;color:#6b7280;text-align:center;margin-bottom:8px;">Chat with HubSuite Admin · ' +
     '<strong>09163561251</strong> (GCash/Viber)</div>' +
     '</div>' +
 
@@ -4284,7 +4374,7 @@ function _renderSupportScreen(msgs) {
             'border-radius:' + (isAdmin ? '4px 14px 14px 14px' : '14px 4px 14px 14px') + ';' +
             'padding:10px 14px;font-size:14px;">' + _escHtml(m.Message) + '</div>' +
           '<div style="font-size:10px;color:#9ca3af;margin-top:2px;">' +
-            (isAdmin ? '🏪 Tindahan Hub Admin' : '👤 ' + _escHtml(m.From_Name || 'You')) +
+            (isAdmin ? '🏪 HubSuite Admin' : '👤 ' + _escHtml(m.From_Name || 'You')) +
             ' · ' + time + '</div></div>';
       }).join('');
       el.innerHTML = newBubbles || el.innerHTML;
@@ -4323,14 +4413,14 @@ function showNoStoreKey() {
   document.getElementById('app').innerHTML =
     '<div class="screen"><div class="card" style="text-align:center;padding:32px 20px;">' +
     '<div style="font-size:48px;margin-bottom:12px;">🏪</div>' +
-    '<h2 style="margin:0 0 8px;">Tindahan Hub</h2>' +
+    '<h2 style="margin:0 0 8px;">HubSuite</h2>' +
     '<div class="muted" style="margin-bottom:24px;">This app is not linked to any store yet.</div>' +
     '<div class="subtitle" style="margin-bottom:8px;">Enter your Store Key</div>' +
     '<input id="sk-input" placeholder="sk_xxxxxxxxxxxxxxxxxxxxxxxx" ' +
       'style="width:100%;padding:12px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;' +
       'margin-bottom:12px;box-sizing:border-box;">' +
     '<button class="btn btn-primary" onclick="_applyStoreKey()">Connect Store</button>' +
-    '<div class="muted" style="margin-top:16px;font-size:12px;">Your store key was provided by Tindahan Hub when your store was created.<br>' +
+    '<div class="muted" style="margin-top:16px;font-size:12px;">Your store key was provided by HubSuite when your store was created.<br>' +
     'Contact <strong>09163561251</strong> (GCash/Viber) for assistance.</div>' +
     '</div></div>';
 }
@@ -4345,7 +4435,7 @@ function _applyStoreKey() {
 function showSubscriptionExpired(paymentInfo) {
   paymentInfo = paymentInfo || {};
   var gcash    = paymentInfo.gcashNumber  || '09163561251';
-  var gcashName= paymentInfo.gcashName    || 'Tindahan Hub';
+  var gcashName= paymentInfo.gcashName    || 'HubSuite';
   var qr       = paymentInfo.gcashQrUrl   || '';
 
   document.getElementById('app').innerHTML =
@@ -4486,7 +4576,7 @@ async function _startBarcodeCamera() {
   if (typeof Html5Qrcode === 'undefined') {
     await new Promise(function(res, rej) {
       var s = document.createElement('script');
-      s.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+      s.src = HTML5_QRCODE_ASSET_URL;
       s.onload = res; s.onerror = rej;
       document.head.appendChild(s);
     });
@@ -5248,14 +5338,28 @@ async function renderCreateCustomRole() {
   } catch(e) { _showToast(e.message, true); renderCustomRoles(); }
 }
 
+var _MODULE_LABELS = {
+  quick_sell: 'Quick Sell / POS', products: 'Products', inventory: 'Inventory',
+  expenses: 'Expenses', reports: 'Reports', monitors: 'Monitors', roi: 'ROI Monitor',
+  staff_management: 'Staff Management', approvals: 'Approvals', suppliers: 'Suppliers',
+  purchase_orders: 'Purchase Orders', stock_receiving: 'Stock Receiving',
+  branch_transfer: 'Branch Transfers', hq_control_center: 'HQ Control',
+  internal_chat: 'Internal Chat', support: 'Help & Support',
+  alert_rules_engine: 'Alerts', automation_rules: 'Automation Rules',
+  data_import_tools: 'Data Import', custom_role_builder: 'Custom Roles',
+  activity_log: 'Activity Log', settings: 'Settings', tax_reports: 'BIR / Tax Reports',
+  sandbox_mode: 'Sandbox', feature_marketplace: 'Feature Marketplace', hardware_profiles: 'Hardware Setup'
+};
+
 function _renderCreateRoleForm(catalog) {
-  var moduleCheckboxes = Object.keys(catalog).map(function(module) {
-    var actions = catalog[module];
-    return '<div style="margin-bottom:8px;">' +
-      '<div style="font-weight:bold;font-size:13px;margin-bottom:4px;">' + module + '</div>' +
+  var moduleCheckboxes = Object.keys(catalog).map(function(mod) {
+    var actions = catalog[mod];
+    var label = _MODULE_LABELS[mod] || mod;
+    return '<div style="margin-bottom:12px;padding:8px 10px;background:#f9fafb;border-radius:8px;">' +
+      '<div style="font-weight:700;font-size:12px;color:#111827;margin-bottom:6px;text-transform:uppercase;letter-spacing:.3px;">' + label + '</div>' +
       actions.map(function(action) {
-        var key = module + '.' + action;
-        return '<label style="display:inline-flex;align-items:center;gap:4px;margin-right:8px;font-size:12px;"><input type="checkbox" name="perm" value="' + key + '"> ' + action + '</label>';
+        var key = mod + ':' + action;
+        return '<label style="display:inline-flex;align-items:center;gap:4px;margin-right:10px;margin-bottom:4px;font-size:12px;color:#374151;cursor:pointer;"><input type="checkbox" name="perm" value="' + key + '" style="cursor:pointer;"> ' + action.replace(/_/g,' ') + '</label>';
       }).join('') + '</div>';
   }).join('');
 
@@ -5639,6 +5743,8 @@ async function renderFeatureMarketplace() {
 function _renderMarketplaceUI(features, error) {
   var STATUS_LABEL = { active_paid: '✓ Active', trial_active: '⏱ Trial', trial_expiring: '⚠ Expiring', trial_expired: '✗ Expired', locked: 'Locked', cancelled: 'Cancelled' };
   var STATUS_COLOR = { active_paid: '#16a34a', trial_active: '#2563eb', trial_expiring: '#d97706', trial_expired: '#dc2626', locked: '#6b7280', cancelled: '#dc2626' };
+  var tier = _planTier(state.session && state.session.plan && state.session.plan.id);
+  var addonPrice = _planAddOnPrice();
 
   var cards = features.length ? features.map(function(f) {
     var statusColor = STATUS_COLOR[f.tenant_status] || '#6b7280';
@@ -5656,15 +5762,19 @@ function _renderMarketplaceUI(features, error) {
       '<span style="font-size:11px;color:' + statusColor + ';font-weight:bold;">' + statusLabel + '</span>' +
       '</div>' +
       '<div style="font-size:12px;color:#374151;margin-bottom:6px;">' + _escHtml(f.short_description||'') + '</div>' +
-      (f.monthly_price ? '<div class="muted" style="font-size:11px;margin-bottom:6px;">₱' + Number(f.monthly_price).toFixed(0) + '/month after trial</div>' : '') +
+      (f.display_monthly_price ? '<div class="muted" style="font-size:11px;margin-bottom:4px;">₱' + Number(f.display_monthly_price).toFixed(0) + '/month after trial</div>' : '') +
+      (f.display_price_note ? '<div class="muted" style="font-size:11px;margin-bottom:6px;">' + _escHtml(f.display_price_note) + '</div>' : '') +
       trialInfo + actionBtn +
       '</div>';
   }).join('') : '<div class="muted" style="padding:8px;">' + (error||'No features available.') + '</div>';
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">🏪 Feature Marketplace</div><button class="small-btn" onclick="goHome()">← Home</button></div>' +
-    '<div class="muted" style="font-size:12px;margin-bottom:12px;">Try premium features free, then subscribe if you find them valuable.</div>' +
+    '<div class="topbar"><div class="title" style="margin:0;">🏪 HubSuite Add-ons</div><button class="small-btn" onclick="goHome()">← Home</button></div>' +
+    '<div class="muted" style="font-size:12px;margin-bottom:12px;">' +
+      _escHtml(tier.name || 'HubSuite') +
+      (addonPrice !== null ? ' add-ons are ₱' + addonPrice + '/month each after the trial period.' : ' add-ons use feature-based pricing after trial.') +
+    '</div>' +
     cards + '</div>';
 }
 
@@ -5903,6 +6013,61 @@ async function changePasswordFromSettings() {
     _showToast('✓ Password changed');
     renderFullSettings();
   } catch(e) { _showToast(e.message, true); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ACTIVITY LOG — Phase 1C
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function renderActivityLog(filterUser) {
+  showLoading('Loading activity log…');
+  try {
+    var params = { limit: 100 };
+    if (filterUser) params.user_id = filterUser;
+    var entries = await API.call('getActivityLog', params);
+    _renderActivityLogUI(entries, filterUser);
+  } catch(e) {
+    _renderActivityLogUI([], filterUser, e.message);
+  }
+}
+
+function _renderActivityLogUI(entries, filterUser, error) {
+  var ACTION_LABELS = {
+    login_success: 'Logged In', logout: 'Logged Out',
+    login_failed: 'Failed Login Attempt',
+    sale_created: 'Created Sale', sale_voided: 'Voided Sale',
+    expense_created: 'Recorded Expense', expense_deleted: 'Deleted Expense',
+    product_created: 'Added Product', product_updated: 'Updated Product',
+    stock_adjusted: 'Adjusted Stock', stock_restocked: 'Restocked Product',
+    staff_created: 'Added Staff', staff_updated: 'Updated Staff', staff_removed: 'Removed Staff',
+    custom_role_created: 'Created Role', custom_role_updated: 'Updated Role', custom_role_assigned: 'Assigned Role',
+    approval_approved: 'Approved Request', approval_rejected: 'Rejected Request',
+    tenant_settings_business_updated: 'Updated Business Profile'
+  };
+  var rows = entries.length ? entries.map(function(e) {
+    var label = ACTION_LABELS[e.action] || e.action.replace(/_/g, ' ');
+    var color = e.module === 'auth' ? (e.action === 'login_failed' ? '#dc2626' : '#6b7280')
+      : e.module === 'quick_sell' ? '#059669'
+      : e.module === 'expenses' ? '#d97706'
+      : e.module === 'staff_management' || e.module === 'custom_role_builder' ? '#7c3aed'
+      : '#2563eb';
+    return '<div style="padding:10px 12px;border-bottom:1px solid #f3f4f6;display:flex;gap:10px;align-items:flex-start;">' +
+      '<div style="width:8px;height:8px;border-radius:50%;background:' + color + ';margin-top:5px;flex-shrink:0;"></div>' +
+      '<div style="flex:1;min-width:0;">' +
+      '<div style="font-size:13px;font-weight:600;color:#111827;">' + _escHtml(label) + '</div>' +
+      '<div style="font-size:12px;color:#6b7280;">' + _escHtml(e.summary || '') + '</div>' +
+      '<div style="font-size:11px;color:#9ca3af;margin-top:3px;">' +
+        _escHtml(e.full_name || e.user_id || 'System') + ' · ' + _escHtml(e.role || '') +
+        ' · ' + (e.created_at || '').slice(0, 16).replace('T', ' ') +
+      '</div></div></div>';
+  }).join('') : '<div class="muted" style="padding:16px;text-align:center;">No activity recorded yet.</div>';
+
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">📜 Staff Activity</div><button class="small-btn" onclick="goHome()">← Home</button></div>' +
+    (error ? '<div class="message message-error">' + error + '</div>' : '') +
+    '<div style="background:#fff;border-radius:12px;margin:12px;box-shadow:0 1px 4px rgba(0,0,0,0.08);overflow:hidden;">' + rows + '</div>' +
+    '</div>';
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
