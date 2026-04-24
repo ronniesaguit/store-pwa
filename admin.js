@@ -141,25 +141,9 @@ function _moduleSyncPayload(planId, selectedAddOns) {
 }
 
 function _applyModulePatchFields(patch, modulePayload) {
-  var enabled = _uniqueModuleCodes((modulePayload && modulePayload.enabledModuleCodes) || []);
-  var core = _uniqueModuleCodes((modulePayload && modulePayload.coreModuleCodes) || []);
-  var enabledJson = JSON.stringify(enabled);
-  var coreJson = JSON.stringify(core);
-
-  // The upstream Worker source is separate, so write the common field variants.
-  // adminUpdateStore ignores unknown columns but persists recognized module fields.
-  patch.Enabled_Modules = enabledJson;
-  patch.enabled_modules = enabledJson;
-  patch.Modules = enabledJson;
-  patch.modules = enabledJson;
-  patch.Plan_Modules = enabledJson;
-  patch.plan_modules = enabledJson;
-  patch.Initial_Module_Codes = enabledJson;
-  patch.initial_module_codes = enabledJson;
-  patch.Core_Modules = coreJson;
-  patch.core_modules = coreJson;
-  patch.Staff_Management_Enabled = 'TRUE';
-  patch.staff_management_enabled = 'true';
+  // Do not write guessed module columns into store.patch.
+  // D1-backed stores reject unknown columns like Enabled_Modules.
+  // Module sync is handled by top-level payload fields and repair actions.
   return patch;
 }
 
@@ -615,16 +599,30 @@ async function _repairStaffAccess(storeId, planId) {
   var plan = planId || (document.getElementById('chg-plan') && document.getElementById('chg-plan').value) || 'NEGOSYO_HUB';
   var modulePayload = _moduleSyncPayload(plan, []);
   var patch = _applyModulePatchFields({ Plan: plan }, modulePayload);
+  var updateErr = null;
+  var lastRepairErr = null;
+  var didSendRepair = false;
   try {
     await ADMIN_API.call('adminUpdateStore', Object.assign({ storeId: storeId, patch: patch }, modulePayload));
+    didSendRepair = true;
+  } catch(e) {
+    updateErr = e;
+  }
+  try {
     var repairCalls = [
       ['adminSyncStoreModules', { storeId: storeId, plan: plan, moduleCodes: modulePayload.enabledModuleCodes }],
       ['adminRepairStoreModules', { storeId: storeId, plan: plan, moduleCodes: modulePayload.enabledModuleCodes }],
       ['adminEnableStoreModule', { storeId: storeId, moduleCode: 'staff_management' }]
     ];
     for (var i = 0; i < repairCalls.length; i++) {
-      try { await ADMIN_API.call(repairCalls[i][0], repairCalls[i][1]); } catch(e) {}
+      try {
+        await ADMIN_API.call(repairCalls[i][0], repairCalls[i][1]);
+        didSendRepair = true;
+      } catch(e) {
+        lastRepairErr = e;
+      }
     }
+    if (!didSendRepair) throw (lastRepairErr || updateErr || new Error('Staff access repair could not be sent.'));
     _toast('Staff access repair sent. Ask the owner to log out and back in.');
     await _refreshStores();
     renderDashboard();

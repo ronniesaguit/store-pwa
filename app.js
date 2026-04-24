@@ -1416,6 +1416,7 @@ async function _loadManageStaffUsers() {
 }
 
 async function renderManageStaff() {
+  try {
   showLoading('Loading staff…');
   var staffLoad = await _loadManageStaffUsers();
   var users = staffLoad.users;
@@ -1507,6 +1508,15 @@ async function renderManageStaff() {
     '<button class="btn" style="width:100%;font-size:1rem;padding:14px;border-radius:12px;font-weight:700;letter-spacing:.3px;" onclick="submitAddStaff()">Create Staff Account</button>' +
     '</div>' +
     '</div>';
+  } catch(err) {
+    try { console.error('[Staff Screen Error]', err); } catch(e) {}
+    document.getElementById('app').innerHTML =
+      '<div class="screen">' +
+      '<div class="topbar"><div class="title" style="margin:0;">👥 Manage Staff</div>' +
+      '<button class="small-btn" onclick="goHome()">← Back</button></div>' +
+      '<div class="card"><div class="message message-error">' + _escAttr(_friendlyStaffAccessMessage(err)) + '</div></div>' +
+      '</div>';
+  }
 }
 
 async function removeStaffUser(userId, name) {
