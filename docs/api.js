@@ -145,6 +145,17 @@ const API = {
       if (ok) result = await this._raw(action, data);
     }
 
+    // GitHub Pages can call the Worker directly, bypassing the Pages proxy repair.
+    // Staff is now a core module, so repair legacy tenant access once and retry.
+    if (!result.success && _isStaffManagementAction(action) && _isStaffModuleGateResult(result)) {
+      const refreshed = await this._silentReAuth();
+      if (refreshed) result = await this._raw(action, data);
+    }
+    if (!result.success && _isStaffManagementAction(action) && _isStaffModuleGateResult(result) && !_isStaffReadAction(action)) {
+      const repaired = await this._repairCoreStaffAccess();
+      if (repaired) result = await this._raw(action, data);
+    }
+
     if (!result.success && result.errorCode === 'SUBSCRIPTION_EXPIRED') {
       showSubscriptionExpired(result.paymentInfo || {});
       throw new Error('SUBSCRIPTION_EXPIRED');
@@ -152,14 +163,28 @@ const API = {
     if (!result.success) {
       const err = new Error(result.error || 'Server error');
       if (result.errorCode) err.code = result.errorCode;
+      err.action = action;
+      err.apiTarget = result._apiTarget || '';
+      try {
+        console.warn('[HubSuite API rejected]', {
+          action: action,
+          apiTarget: err.apiTarget || '(unknown)',
+          errorCode: result.errorCode || null,
+          error: result.error || null,
+          storeKeyPresent: !!STORE_KEY
+        });
+      } catch(e) {}
       throw err;
     }
     return result.data;
   },
 
   async _raw(action, data) {
+    const payloadData = _isStaffManagementAction(action)
+      ? Object.assign({}, _staffRepairContext(), data || {})
+      : (data || {});
     const body = JSON.stringify({
-      action, token: this.token, storeKey: STORE_KEY, data: data || {}
+      action, token: this.token, storeKey: STORE_KEY, data: payloadData
     });
     return _postToApiTargets(body);
   },
@@ -183,6 +208,25 @@ const API = {
       if (!result.success) return false;
       this.setToken(result.data.token);
       // Update cached session and data silently
+      try {
+        if (window.state && result.data.user) {
+          state.session = {
+            loggedIn: true,
+            user: result.data.user,
+            plan: result.data.plan || null,
+            inTrial: result.data.inTrial || false,
+            manifest: result.data.manifest || null
+          };
+          localStorage.setItem('store_session', JSON.stringify(state.session));
+        }
+        if (window.state && (result.data.storeName || result.data.ownerName)) {
+          state.storeProfile = {
+            storeName: result.data.storeName || ((state.storeProfile || {}).storeName) || '',
+            ownerName: result.data.ownerName || ((state.storeProfile || {}).ownerName) || ''
+          };
+          localStorage.setItem('store_profile', JSON.stringify(state.storeProfile));
+        }
+      } catch(e) {}
       if (result.data.products)   { try { window.state && (state.products   = result.data.products);   } catch(e){} }
       if (result.data.categories) { try { window.state && (state.categories = result.data.categories); } catch(e){} }
       return true;

@@ -394,6 +394,8 @@ function renderStoreDetail(idx) {
     '</select></div>' +
     '<div class="hint" style="margin-bottom:8px;">All new and reassigned Hub plans are paired with add-ons separately. Owners can later add more modules from their dashboard.</div>' +
     '<button class="btn btn-primary" style="margin-top:8px;" onclick="_changePlan(\'' + st.Store_ID + '\')">Save Plan</button>' +
+    '<button class="btn btn-secondary" style="margin-top:8px;" onclick="_repairStaffAccess(\'' + st.Store_ID + '\',\'' + plan + '\')">Repair Staff Access</button>' +
+    '<div class="hint" style="margin-top:6px;">Use repair if Owner Staff says the backend is still blocking Staff.</div>' +
     '</div>' +
 
     '<div id="store-commercial-state"></div>' +
@@ -463,6 +465,8 @@ async function _recordPayment(storeId) {
 async function _changePlan(storeId) {
   var plan = document.getElementById('chg-plan').value;
   var patch = { Plan: plan };
+  var modulePayload = _moduleSyncPayload(plan, []);
+  _applyModulePatchFields(patch, modulePayload);
   if (plan === 'CUSTOM') {
     patch.Max_Users             = document.getElementById('chg-users').value;
     patch.Max_Products          = document.getElementById('chg-products').value;
@@ -486,6 +490,39 @@ async function _changePlan(storeId) {
     await _refreshStores();
     renderDashboard();
   } catch(e) { _toast(e.message, true); }
+}
+
+async function _repairStaffAccess(storeId, planId) {
+  var plan = planId || (document.getElementById('chg-plan') && document.getElementById('chg-plan').value) || 'NEGOSYO_HUB';
+  var patch = { Plan: plan };
+  var modulePayload = _moduleSyncPayload(plan, []);
+  _applyModulePatchFields(patch, modulePayload);
+  if (plan === 'CUSTOM') {
+    patch.Max_Users             = document.getElementById('chg-users').value;
+    patch.Max_Products          = document.getElementById('chg-products').value;
+    patch.Reports_Level         = document.getElementById('chg-reports').value;
+    patch.Has_Health_Indicators = String(document.getElementById('chg-health').checked);
+    patch.Monthly_Fee           = document.getElementById('chg-fee').value;
+  } else {
+    var planDefs = _planDefs();
+    var def = planDefs[plan];
+    if (def) {
+      patch.Max_Users             = def.max_users;
+      patch.Max_Products          = def.max_products;
+      patch.Reports_Level         = def.reports;
+      patch.Has_Health_Indicators = String(def.health);
+      patch.Monthly_Fee           = def.fee;
+    }
+  }
+  try {
+    await ADMIN_API.call('adminUpdateStore', { storeId: storeId, patch: patch });
+    try { await ADMIN_API.call('adminMigrateStore', { storeId: storeId }); } catch(migErr) {}
+    _toast('Staff access repair saved and migration triggered. Ask the owner to log out and back in.');
+    await _refreshStores();
+    renderDashboard();
+  } catch(e) {
+    _toast(e.message, true);
+  }
 }
 
 async function _toggleStatus(storeId, newStatus) {

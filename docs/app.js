@@ -20,7 +20,11 @@ var state = {
   todayExpenses: null,  // cached null = not loaded yet; [] = loaded but empty
   lastReceipt:   null,
   lastReport:    null,
-  lastBIRData:   null
+  lastBIRData:   null,
+  ownerAddOns:   [],
+  ownerAddOnsLoaded: false,
+  ownerAddOnsLoading: false,
+  ownerAddOnsFetchedAt: 0
 };
 
 // Executive dashboard state
@@ -53,6 +57,7 @@ async function boot() {
       state.storeProfile = cachedSP ? JSON.parse(cachedSP) : {
         storeName: state.session.storeName || '', ownerName: state.session.ownerName || ''
       };
+      _restoreOwnerAddOnsFromCache();
       state.isOffline = !navigator.onLine;
       routeToDashboard();  // show dashboard immediately — no spinner
     } catch(e) {}
@@ -69,6 +74,7 @@ async function boot() {
       state.storeProfile = { storeName: session.storeName || '', ownerName: session.ownerName || '' };
       state.products   = boot.products   || [];
       state.categories = boot.categories || [];
+      _restoreOwnerAddOnsFromCache();
       state.isOffline  = false;
       localStorage.setItem('store_session', JSON.stringify(session));
       localStorage.setItem('store_profile', JSON.stringify(state.storeProfile));
@@ -154,6 +160,32 @@ function _showToast(msg, isError) {
 
 function goHome() {
   routeToDashboard();
+}
+
+function _isOwnerSession() {
+  if (!state.session || !state.session.user) return false;
+  var dashType = state.session.manifest && state.session.manifest.dashboard_type;
+  return dashType === 'store_owner_dashboard' || String(state.session.user.Role || '').toUpperCase() === 'OWNER';
+}
+
+function _restoreOwnerAddOnsFromCache() {
+  try {
+    var cached = JSON.parse(localStorage.getItem(OWNER_ADDONS_CACHE_KEY) || 'null');
+    if (!cached || cached.storeKey !== STORE_KEY || !Array.isArray(cached.features)) return;
+    state.ownerAddOns = cached.features;
+    state.ownerAddOnsLoaded = true;
+    state.ownerAddOnsFetchedAt = Number(cached.fetchedAt || 0) || 0;
+  } catch(e) {}
+}
+
+function _cacheOwnerAddOns(features) {
+  try {
+    localStorage.setItem(OWNER_ADDONS_CACHE_KEY, JSON.stringify({
+      storeKey: STORE_KEY,
+      fetchedAt: Date.now(),
+      features: features || []
+    }));
+  } catch(e) {}
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
@@ -274,8 +306,12 @@ function logout() {
   state.cart         = [];
   state.todayExpenses = null;
   state.storeProfile = null;
+  state.ownerAddOns = [];
+  state.ownerAddOnsLoaded = false;
+  state.ownerAddOnsFetchedAt = 0;
   localStorage.removeItem('store_session');
   localStorage.removeItem('store_profile');
+  localStorage.removeItem(OWNER_ADDONS_CACHE_KEY);
   // Clear per-role dashboard caches so next user starts fresh
   localStorage.removeItem('mgr_dash');
   localStorage.removeItem('exec_dash_cache');
@@ -289,7 +325,183 @@ function logout() {
 // ── Module helpers ────────────────────────────────────────────────────────────
 
 function _planModules() {
-  return (state.session && state.session.plan && state.session.plan.modules) || null;
+  var plan = state.session && state.session.plan;
+  var planId = _currentPlanId();
+  var base = [];
+  if (HUB && HUB.getCoreModuleCodes && planId) {
+    var core = HUB.getCoreModuleCodes(planId);
+    if (!core) return null;
+    base = base.concat(core);
+  }
+  if (plan && Array.isArray(plan.modules) && plan.modules.length) {
+    base = base.concat(plan.modules);
+  }
+  if (!base.length) return null;
+
+  var seen = {};
+  return base.concat(_ownerActiveAddOnModules()).map(function(moduleId) {
+    return _resolveModuleId(moduleId);
+  }).filter(function(moduleId) {
+    if (!moduleId || seen[moduleId]) return false;
+    seen[moduleId] = true;
+    return true;
+  });
+}
+
+function _planTier(planId) {
+  if (HUB && HUB.getTier) return HUB.getTier(planId);
+  return { id: String(planId || 'TRIAL').toUpperCase(), name: String(planId || 'TRIAL').toUpperCase(), addOnPrice: null };
+}
+
+function _planLabel(planId) {
+  if (HUB && HUB.getPlanLabel) return HUB.getPlanLabel(planId);
+  return String(planId || 'TRIAL').toUpperCase();
+}
+
+function _planAddOnPrice() {
+  var plan = state.session && state.session.plan;
+  var planId = _currentPlanId();
+  if (HUB && HUB.getAddOnPrice) return HUB.getAddOnPrice(planId);
+  var fallback = plan && plan.addon_price;
+  return Number.isFinite(Number(fallback)) ? Number(fallback) : null;
+}
+
+function _resolveModuleId(moduleId) {
+  if (HUB && HUB.resolveModuleId) return HUB.resolveModuleId(moduleId);
+  return moduleId;
+}
+
+function _currentPlanId() {
+  var plan = state.session && state.session.plan;
+  return plan && (plan.id || plan.name || plan.Plan || plan.plan);
+}
+
+function _planRepairPatch(planId) {
+  var normalized = HUB && HUB.normalizePlanId ? HUB.normalizePlanId(planId) : String(planId || 'NEGOSYO_HUB').toUpperCase();
+  var defs = {
+    TRIAL: { max_users: 2, max_products: 50, reports: 'DAILY', health: false, fee: 0 },
+    NEGOSYO_HUB: { max_users: 3, max_products: 500, reports: 'DAILY', health: false, fee: 200 },
+    BUSINESS_HUB: { max_users: 10, max_products: 5000, reports: 'ALL', health: true, fee: 500 },
+    NEXORA_HUB: { max_users: -1, max_products: -1, reports: 'ALL', health: true, fee: 1000 }
+  };
+  var patch = { Plan: normalized };
+  var def = defs[normalized];
+  if (!def) return patch;
+  patch.Max_Users = def.max_users;
+  patch.Max_Products = def.max_products;
+  patch.Reports_Level = def.reports;
+  patch.Has_Health_Indicators = String(def.health);
+  patch.Monthly_Fee = def.fee;
+  return patch;
+}
+
+async function _ownerAdminPlanResaveRepair() {
+  if (!window.ADMIN_API || !ADMIN_API.token) return false;
+  var storeId = state.session && (state.session.storeId || state.session.Store_ID || (state.session.user && state.session.user.Store_ID));
+  if (!storeId) return false;
+  try {
+    await ADMIN_API.call('adminUpdateStore', { storeId: storeId, patch: _planRepairPatch(_currentPlanId()) });
+    try { await ADMIN_API.call('adminMigrateStore', { storeId: storeId }); } catch(migErr) {}
+    await API._silentReAuth();
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
+
+function _staffPolicy() {
+  if (HUB && HUB.getStaffPolicy) return HUB.getStaffPolicy(_currentPlanId());
+  return { includedUsers: 2, includedStaff: 1, extraStaffPrice: 10 };
+}
+
+function _staffBillingState(staffCount) {
+  var policy = _staffPolicy();
+  if (policy.includedStaff === null) {
+    return { policy: policy, extraStaff: 0, extraAmount: 0, isOverLimit: false };
+  }
+  var extraStaff = Math.max(0, Number(staffCount || 0) - Number(policy.includedStaff || 0));
+  return {
+    policy: policy,
+    extraStaff: extraStaff,
+    extraAmount: extraStaff * (Number(policy.extraStaffPrice) || 0),
+    isOverLimit: extraStaff > 0
+  };
+}
+
+function _renderStaffAllowanceCard(staffCount) {
+  var billing = _staffBillingState(staffCount);
+  var policy = billing.policy;
+  if (policy.includedStaff === null) {
+    return '<div class="card" style="background:#f8fafc;border:1px solid #e2e8f0;margin-bottom:12px;">' +
+      '<div style="font-weight:700;color:#1a1a2e;margin-bottom:4px;">Staff Allowance</div>' +
+      '<div class="muted" style="font-size:12px;">Custom plan staff allowance is managed by admin.</div>' +
+      '</div>';
+  }
+  return '<div class="card" style="background:#f8fafc;border:1px solid #e2e8f0;margin-bottom:12px;">' +
+    '<div style="font-weight:700;color:#1a1a2e;margin-bottom:6px;">Staff Allowance</div>' +
+    '<div style="font-size:13px;line-height:1.7;">' +
+    '<div>Included: <strong>' + policy.includedUsers + ' total users</strong> (owner + ' + policy.includedStaff + ' staff)</div>' +
+    '<div>Current staff: <strong>' + Number(staffCount || 0) + '</strong></div>' +
+    '<div>Extra staff: <strong>' + billing.extraStaff + '</strong> × ₱' + policy.extraStaffPrice + '/month</div>' +
+    '<div>Staff overage: <strong>₱' + billing.extraAmount + '/month</strong></div>' +
+    '</div>' +
+    '</div>';
+}
+
+function openGcashPayment() {
+  try { navigator.clipboard && navigator.clipboard.writeText(HUB_GCASH_NUMBER); } catch(e) {}
+  _showToast('GCash number copied: ' + HUB_GCASH_NUMBER, false);
+  try { window.location.href = 'gcash://'; } catch(e) {}
+  setTimeout(function() {
+    try { window.open('https://m.gcash.com/gcash-login-web/index.html', '_blank'); } catch(e) {}
+  }, 700);
+}
+
+function _isActiveAddOnStatus(status) {
+  return ['active_paid', 'trial_active', 'trial_expiring'].indexOf(String(status || '')) !== -1;
+}
+
+function _ownerActiveAddOnModules() {
+  return (state.ownerAddOns || []).filter(function(feature) {
+    return _isActiveAddOnStatus(feature.tenant_status || feature.status);
+  }).map(function(feature) {
+    return feature.module_code || feature.code;
+  }).filter(Boolean);
+}
+
+function _normalizeOwnerAddOnCatalog(features) {
+  var planId = _currentPlanId();
+  return (HUB && HUB.getAddOnCatalog) ? HUB.getAddOnCatalog(planId, features || []) : (features || []);
+}
+
+async function _refreshOwnerAddOns(options) {
+  options = options || {};
+  if (!API.token || !navigator.onLine || !_isOwnerSession()) return state.ownerAddOns || [];
+  if (state.ownerAddOnsLoading && !options.force) return state.ownerAddOns || [];
+
+  state.ownerAddOnsLoading = true;
+  try {
+    var features = await API.call('getFeatureMarketplace', {});
+    var catalog = _normalizeOwnerAddOnCatalog(features || []);
+    state.ownerAddOns = catalog;
+    state.ownerAddOnsLoaded = true;
+    state.ownerAddOnsFetchedAt = Date.now();
+    _cacheOwnerAddOns(catalog);
+    if (options.rerender && _isOwnerSession()) renderOwnerDashboard();
+    return catalog;
+  } catch(e) {
+    console.warn('Owner add-ons refresh failed:', e.message);
+    return state.ownerAddOns || [];
+  } finally {
+    state.ownerAddOnsLoading = false;
+  }
+}
+
+function _refreshOwnerAddOnsInBackground() {
+  if (!navigator.onLine || !API.token || !_isOwnerSession()) return;
+  var ageMs = Date.now() - (state.ownerAddOnsFetchedAt || 0);
+  if (state.ownerAddOnsLoading || (state.ownerAddOnsLoaded && ageMs < 60000)) return;
+  _refreshOwnerAddOns({ rerender: true });
 }
 
 function _planTier(planId) {
@@ -348,6 +560,7 @@ function _dashboardHeader_(storeName, subLabel, onlineLabel, isOffline) {
 }
 
 function renderOwnerDashboard(msg) {
+  _refreshOwnerAddOnsInBackground();
   var storeName = (state.storeProfile && (state.storeProfile.storeName || state.storeProfile.Store_Name)) || '';
   var ownerName = (state.storeProfile && (state.storeProfile.ownerName || state.storeProfile.Owner_Name)) || state.session.user.Full_Name;
   var plan = state.session && state.session.plan;
@@ -390,24 +603,6 @@ function renderOwnerDashboard(msg) {
   if (_hasModule('support'))         btns += '<button class="big-btn" onclick="renderSupport()">📞 Help</button>';
 
   // Locked / upsell tiles for modules not in current plan
-  var UPSELL_META = {
-    monitors:        { icon: '📡', label: 'Monitors'         },
-    roi:             { icon: '📈', label: 'ROI'               },
-    inventory:       { icon: '📋', label: 'Inventory'         },
-    staff:           { icon: '👥', label: 'Staff'             },
-    reports:         { icon: '📊', label: 'Reports'           },
-    internal_chat:   { icon: '💬', label: 'Chat'              },
-    tax_reports:     { icon: '🧾', label: 'Tax Reports'       },
-    approvals:       { icon: '✅', label: 'Approvals'         },
-    activity_log:    { icon: '📜', label: 'Activity Log'      },
-    suppliers:       { icon: '🏭', label: 'Suppliers'         },
-    purchase_orders: { icon: '📋', label: 'Purchase Orders'   },
-    branch_transfers:{ icon: '🔄', label: 'Branch Transfers'  },
-    multi_branch:    { icon: '🏢', label: 'HQ Control'        },
-    custom_roles:    { icon: '🎭', label: 'Custom Roles'      },
-    automation_rules:{ icon: '⚡', label: 'Automation'        },
-    data_import:     { icon: '📥', label: 'Data Import'       },
-  };
   var lockedBtns = '';
   var mods = _planModules();
   if (mods) {
@@ -424,6 +619,12 @@ function renderOwnerDashboard(msg) {
   var quickActions = '';
   if (_hasModule('products')) quickActions += '<button class="btn btn-secondary" onclick="renderAddProductForm()">+ Add New Product</button>';
   if (_hasModule('expenses')) quickActions += '<button class="btn btn-secondary" style="margin-top:8px;" onclick="renderAddExpenseForm()">+ Record Expense</button>';
+  var paymentCard =
+    '<div class="card" style="background:#ecfdf5;border:1px solid #86efac;">' +
+    '<div class="subtitle" style="color:#166534;">Subscription Payment</div>' +
+    '<div style="font-size:13px;color:#14532d;margin-bottom:10px;">Pay directly to GCash <strong>' + HUB_GCASH_NUMBER + '</strong> (' + HUB_GCASH_NAME + ').</div>' +
+    '<button class="btn btn-primary" style="background:#16a34a;" onclick="openGcashPayment()">Pay via GCash</button>' +
+    '</div>';
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
@@ -432,6 +633,7 @@ function renderOwnerDashboard(msg) {
     (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
     '<div class="grid-buttons">' + btns + lockedBtns + '</div>' +
     (quickActions ? '<div class="card"><div class="subtitle">Quick Actions</div>' + quickActions + '</div>' : '') +
+    paymentCard +
     '</div>';
 }
 
@@ -612,7 +814,7 @@ function _renderMgrPage(data, fromCache) {
     (ss.top_staff
       ? _monRow('🏆 Top by Sales', _escAttr(ss.top_staff.name || '\u2014'), '\u20B1' + Number(ss.top_staff.total || 0).toLocaleString('en-PH', {minimumFractionDigits:0,maximumFractionDigits:0}) + ' today', 'good')
       : _monRow('Top by Sales', '\u2014', 'No sales recorded yet', 'no_data')) +
-    (_hasModule('staff') ? '<div style="margin-top:8px;"><button onclick="renderManageStaff()" style="background:#f0fdf4;border:1px solid #86efac;color:#16a34a;border-radius:8px;padding:8px 12px;font-size:0.75rem;font-weight:600;cursor:pointer;">👥 Manage Staff</button></div>' : '');
+    ((_hasModule('staff_management') || _hasModule('staff')) ? '<div style="margin-top:8px;"><button onclick="renderManageStaff()" style="background:#f0fdf4;border:1px solid #86efac;color:#16a34a;border-radius:8px;padding:8px 12px;font-size:0.75rem;font-weight:600;cursor:pointer;">👥 Manage Staff</button></div>' : '');
   var staffHtml = _monSection('👥', 'Staff Activity', staffContent);
 
   // ── Approvals ────────────────────────────────────────────────────────────────
@@ -689,7 +891,7 @@ function _renderMgrSimple(errMsg) {
   if (_hasModule('expenses'))      btns += '<button class="big-btn" onclick="renderExpenses()">💸 Expenses</button>';
   if (_hasModule('reports'))       btns += '<button class="big-btn" onclick="renderReports()">📊 Reports</button>';
   if (_hasModule('monitors'))      btns += '<button class="big-btn" onclick="renderMonitors()">📡 Monitors</button>';
-  if (_hasModule('staff'))         btns += '<button class="big-btn" onclick="renderManageStaff()">👥 Staff</button>';
+  if (_hasModule('staff_management') || _hasModule('staff')) btns += '<button class="big-btn" onclick="renderManageStaff()">👥 Staff</button>';
   if (_hasModule('internal_chat')) btns += '<button class="big-btn" onclick="renderChat()">💬 Chat</button>';
   if (_hasModule('support'))       btns += '<button class="big-btn" onclick="renderSupport()">📞 Help</button>';
   document.getElementById('app').innerHTML =
@@ -1187,25 +1389,171 @@ function renderWatcherDashboard(msg) { renderViewerDashboard(msg); }
 
 // ── Staff Management ─────────────────────────────────────────────────────────
 
-async function renderManageStaff() {
-  showLoading('Loading staff…');
-  var users;
+function _isStaffAccessGateError(err) {
+  var msg = String((err && err.message) || err || '').toLowerCase();
+  return msg.indexOf('staff_management') !== -1 && msg.indexOf('current plan') !== -1;
+}
+
+function _friendlyStaffAccessMessage(err) {
+  if (_isStaffAccessGateError(err)) {
+    return 'The backend is still blocking Staff for this store. In Admin Panel, open this store and click Repair Staff Access, then have the owner log out and back in.';
+  }
+  return (err && err.message) || 'Staff service is temporarily unavailable.';
+}
+
+function _normalizeManageStaffUsers(list) {
+  return (Array.isArray(list) ? list : []).map(function(u) {
+    var role = u.Role || u.role_code || u.role || 'STAFF';
+    return {
+      User_ID: u.User_ID || u.id || u.user_id || u.staff_id || '',
+      Full_Name: u.Full_Name || u.full_name || u.name || u.Username || u.username || 'Staff',
+      Username: u.Username || u.username || '',
+      Role: String(role || 'STAFF').toUpperCase()
+    };
+  });
+}
+
+var STAFF_ROLE_DEFS = [
+  {
+    code: 'CASHIER',
+    label: 'Cashier / Tindira',
+    plan: 'NEGOSYO_HUB',
+    hint: 'Shows Quick Sell, Products, Expenses, Support and enabled chat.'
+  },
+  {
+    code: 'INVENTORY_STAFF',
+    label: 'Inventory Staff / Stock Watcher',
+    plan: 'NEGOSYO_HUB',
+    hint: 'Shows Products and Inventory tools for stock checking and updates.'
+  },
+  {
+    code: 'VIEWER',
+    label: 'Viewer / Store Watcher',
+    plan: 'NEGOSYO_HUB',
+    hint: 'Read-only dashboard for reports, monitors when available, chat and support.'
+  },
+  {
+    code: 'MANAGER',
+    label: 'Manager',
+    plan: 'BUSINESS_HUB',
+    hint: 'Business operations cockpit: sales, inventory, expenses, reports, staff and approvals when enabled.'
+  },
+  {
+    code: 'EXECUTIVE',
+    label: 'Executive / HQ Viewer',
+    plan: 'NEXORA_HUB',
+    hint: 'Nexora analytics dashboard for reports, ROI, monitors and multi-store oversight.'
+  }
+];
+
+function _planRank(planId) {
+  var normalized = HUB && HUB.normalizePlanId ? HUB.normalizePlanId(planId) : String(planId || '').toUpperCase();
+  var ranks = { TRIAL: 1, NEGOSYO_HUB: 1, BUSINESS_HUB: 2, NEXORA_HUB: 3, CUSTOM: 99 };
+  return ranks[normalized] || 1;
+}
+
+function _currentPlanRank() {
+  return _planRank(_currentPlanId());
+}
+
+function _availableStaffRoles() {
+  var rank = _currentPlanRank();
+  return STAFF_ROLE_DEFS.filter(function(role) {
+    return rank >= _planRank(role.plan);
+  });
+}
+
+function _roleLabel(roleCode) {
+  var code = String(roleCode || '').toUpperCase();
+  var match = STAFF_ROLE_DEFS.filter(function(role) { return role.code === code; })[0];
+  return match ? match.label : code.replace(/_/g, ' ');
+}
+
+function _renderStaffRoleOptions(selectedRole) {
+  var selected = String(selectedRole || 'CASHIER').toUpperCase();
+  return _availableStaffRoles().map(function(role) {
+    return '<option value="' + role.code + '"' + (role.code === selected ? ' selected' : '') + '>' + _escAttr(role.label) + '</option>';
+  }).join('');
+}
+
+function _renderStaffRoleGuide() {
+  return '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin-bottom:12px;">' +
+    '<div style="font-weight:700;color:#1a1a2e;margin-bottom:6px;">Role access for this bundle</div>' +
+    _availableStaffRoles().map(function(role) {
+      return '<div style="font-size:0.78rem;color:#475569;margin-bottom:6px;"><strong>' + _escAttr(role.label) + ':</strong> ' + _escAttr(role.hint) + '</div>';
+    }).join('') +
+    '</div>';
+}
+
+async function _loadManageStaffUsers() {
+  function withTimeout(promise, label) {
+    return Promise.race([
+      promise,
+      new Promise(function(_, reject) {
+        setTimeout(function() { reject(new Error(label + ' timed out.')); }, 8000);
+      })
+    ]);
+  }
   try {
-    users = await API.call('getStoreUsers');
-  } catch(err) { _showToast('Error: ' + err.message, true); goHome(); return; }
+    if (API && typeof API._silentReAuth === 'function') {
+      await withTimeout(API._silentReAuth(), 'Session refresh');
+    }
+  } catch(e) {}
+  var errors = [];
+  try {
+    return { users: _normalizeManageStaffUsers(await withTimeout(API.call('getStoreUsers'), 'Store users service')), source: 'getStoreUsers' };
+  } catch(err) {
+    errors.push(err);
+    if (_isStaffAccessGateError(err)) {
+      try {
+        if (await withTimeout(_ownerAdminPlanResaveRepair(), 'Owner admin repair')) {
+          return { users: _normalizeManageStaffUsers(await withTimeout(API.call('getStoreUsers'), 'Store users service')), source: 'getStoreUsers' };
+        }
+      } catch(ownerRepairErr) {
+        errors.push(ownerRepairErr);
+      }
+      try {
+        if (API && typeof API._repairCoreStaffAccessQuick === 'function') {
+          await withTimeout(API._repairCoreStaffAccessQuick(), 'Staff quick repair');
+          return { users: _normalizeManageStaffUsers(await withTimeout(API.call('getStoreUsers'), 'Store users service')), source: 'getStoreUsers' };
+        }
+      } catch(repairErr) {
+        errors.push(repairErr);
+      }
+    }
+  }
+  try {
+    return { users: _normalizeManageStaffUsers(await withTimeout(API.getStaff(), 'Staff service')), source: 'getStaff' };
+  } catch(err2) {
+    errors.push(err2);
+  }
+  try {
+    console.warn('[Staff Trace] Staff list fallback opened without backend staff list', errors.map(function(e) {
+      return { action: e.action || null, apiTarget: e.apiTarget || null, code: e.code || null, message: e.message || String(e) };
+    }));
+  } catch(e) {}
+  return { users: [], source: 'fallback', error: errors[0] || errors[1] || new Error('Staff service is temporarily unavailable.') };
+}
+
+async function renderManageStaff() {
+  try {
+  showLoading('Loading staff…');
+  var staffLoad = await _loadManageStaffUsers();
+  var users = staffLoad.users;
 
   var staff = users.filter(function(u) { return u.Role !== 'OWNER'; });
 
   var staffCards = staff.map(function(u) {
-    var initials = (u.Full_Name || u.Username).split(' ').map(function(w){ return w[0]; }).join('').toUpperCase().substr(0,2);
+    var initials = (u.Full_Name || u.Username || 'S').split(' ').map(function(w){ return w[0]; }).join('').toUpperCase().substr(0,2);
     var colors   = ['#3498db','#9b59b6','#e67e22','#27ae60','#e74c3c','#1abc9c'];
-    var color    = colors[(u.Username.charCodeAt(0) || 0) % colors.length];
+    var color    = colors[((u.Username || 'S').charCodeAt(0) || 0) % colors.length];
     return '<div style="padding:12px 0;border-bottom:1px solid #f1f3f5;">' +
       '<div style="display:flex;align-items:center;gap:12px;">' +
       '<div style="width:44px;height:44px;border-radius:50%;background:' + color + ';display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:1rem;flex-shrink:0;">' + initials + '</div>' +
       '<div style="flex:1;min-width:0;">' +
       '<div style="font-weight:600;font-size:0.95rem;color:#1a1a2e;">' + _escAttr(u.Full_Name || u.Username) + '</div>' +
       '<div style="font-size:0.78rem;color:#6b7280;margin-top:1px;">@' + _escAttr(u.Username) + '</div>' +
+      '<div style="font-size:0.72rem;color:#475569;margin-top:3px;">Role: ' + _escAttr(_roleLabel(u.Role)) + '</div>' +
       '</div>' +
       '<span style="background:#e8f4fd;color:#2980b9;font-size:0.7rem;font-weight:600;padding:3px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.3px;flex-shrink:0;">Staff</span>' +
       '</div>' +
@@ -1217,6 +1565,10 @@ async function renderManageStaff() {
       '</div>' +
       '</div>';
   }).join('');
+
+  var staffLoadNotice = staffLoad.error
+    ? '<div class="message message-offline" style="margin-bottom:12px;">' + _escAttr(_friendlyStaffAccessMessage(staffLoad.error)) + '</div>'
+    : '';
 
   var staffSection = staff.length
     ? '<div style="padding:0 4px;">' + staffCards + '</div>'
@@ -1230,6 +1582,9 @@ async function renderManageStaff() {
     '<div class="screen">' +
     '<div class="topbar"><div class="title" style="margin:0;">👥 Manage Staff</div>' +
     '<button class="small-btn" onclick="goHome()">← Back</button></div>' +
+    staffLoadNotice +
+    _renderStaffAllowanceCard(staff.length) +
+    _renderStaffRoleGuide() +
 
     // Staff list card
     '<div class="card" style="margin-bottom:12px;">' +
@@ -1261,6 +1616,11 @@ async function renderManageStaff() {
     '<span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:1rem;">@</span>' +
     '<input id="staff-username" class="input" style="padding-left:36px;" placeholder="Username (e.g. maria)" autocomplete="off">' +
     '</div>' +
+    '<div class="field" style="margin-bottom:10px;">' +
+    '<label style="display:block;font-weight:700;margin-bottom:5px;color:#374151;">Role / Dashboard Access</label>' +
+    '<select id="staff-role" class="input">' + _renderStaffRoleOptions('CASHIER') + '</select>' +
+    '<div style="font-size:0.74rem;color:#6b7280;margin-top:4px;">Role controls which dashboard and features this staff member sees.</div>' +
+    '</div>' +
     '<div style="position:relative;margin-bottom:16px;">' +
     '<span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:1rem;">🔒</span>' +
     '<input id="staff-password" class="input" style="padding-left:36px;" type="password" placeholder="Password (min. 4 characters)" autocomplete="new-password">' +
@@ -1268,21 +1628,15 @@ async function renderManageStaff() {
     '<button class="btn" style="width:100%;font-size:1rem;padding:14px;border-radius:12px;font-weight:700;letter-spacing:.3px;" onclick="submitAddStaff()">Create Staff Account</button>' +
     '</div>' +
     '</div>';
-}
-
-async function submitAddStaff() {
-  var fullName = document.getElementById('staff-fullname').value.trim();
-  var username = document.getElementById('staff-username').value.trim();
-  var password = document.getElementById('staff-password').value;
-  if (!fullName) { _showToast('Full name is required.', true); return; }
-  if (!username) { _showToast('Username is required.', true); return; }
-  if (!password || password.length < 4) { _showToast('Password must be at least 4 characters.', true); return; }
-  showLoading('Creating account…');
-  try {
-    await API.call('createStoreUser', { fullName: fullName, username: username, password: password });
-    renderManageStaff();
-    _showToast('Staff account created!');
-  } catch(err) { _showToast('Error: ' + err.message, true); renderManageStaff(); }
+  } catch(err) {
+    try { console.error('[Staff Screen Error]', err); } catch(e) {}
+    document.getElementById('app').innerHTML =
+      '<div class="screen">' +
+      '<div class="topbar"><div class="title" style="margin:0;">👥 Manage Staff</div>' +
+      '<button class="small-btn" onclick="goHome()">← Back</button></div>' +
+      '<div class="card"><div class="message message-error">' + _escAttr(_friendlyStaffAccessMessage(err)) + '</div></div>' +
+      '</div>';
+  }
 }
 
 async function removeStaffUser(userId, name) {
@@ -2380,15 +2734,11 @@ function renderAddStaffForm() {
   var header = '<div class="topbar"><div class="title" style="margin:0;">➕ Add Staff</div><button class="small-btn" onclick="renderStaffList()">← Back</button></div>';
 
   var content = '<div class="card">' +
+    _renderStaffRoleGuide() +
     '<div class="field"><label>Full Name *</label><input id="staff-fullname" placeholder="Enter full name"></div>' +
     '<div class="field"><label>Username *</label><input id="staff-username" placeholder="Enter username"></div>' +
     '<div class="field"><label>Password *</label><input id="staff-password" type="password" placeholder="Enter password"></div>' +
-    '<div class="field"><label>Role *</label><select id="staff-role">' +
-      '<option value="CASHIER">Cashier</option>' +
-      '<option value="INVENTORY_STAFF">Inventory Staff</option>' +
-      '<option value="VIEWER">Viewer</option>' +
-      '<option value="MANAGER">Manager</option>' +
-    '</select></div>' +
+    '<div class="field"><label>Role *</label><select id="staff-role">' + _renderStaffRoleOptions('CASHIER') + '</select></div>' +
     '<div class="field"><label>Phone</label><input id="staff-phone" placeholder="Enter phone number"></div>' +
     '<div class="field"><label>Email</label><input id="staff-email" type="email" placeholder="Enter email"></div>' +
     '<div class="field"><label>Notes</label><textarea id="staff-notes" placeholder="Optional notes"></textarea></div>' +
@@ -2400,27 +2750,79 @@ function renderAddStaffForm() {
 }
 
 async function submitAddStaff() {
+  var phoneEl = document.getElementById('staff-phone');
+  var emailEl = document.getElementById('staff-email');
+  var notesEl = document.getElementById('staff-notes');
+  var roleEl = document.getElementById('staff-role');
   var data = {
     fullName: document.getElementById('staff-fullname').value.trim(),
     username: document.getElementById('staff-username').value.trim(),
     password: document.getElementById('staff-password').value.trim(),
-    role: document.getElementById('staff-role').value,
-    phone: document.getElementById('staff-phone').value.trim(),
-    email: document.getElementById('staff-email').value.trim(),
-    notes: document.getElementById('staff-notes').value.trim()
+    role: roleEl ? roleEl.value : 'CASHIER',
+    phone: phoneEl ? phoneEl.value.trim() : '',
+    email: emailEl ? emailEl.value.trim() : '',
+    notes: notesEl ? notesEl.value.trim() : ''
   };
 
   if (!data.fullName || !data.username || !data.password || !data.role) {
     _showToast('Please fill all required fields', true);
     return;
   }
+  if (data.password.length < 4) {
+    _showToast('Password must be at least 4 characters.', true);
+    return;
+  }
+  var allowedRoles = _availableStaffRoles().map(function(role) { return role.code; });
+  if (allowedRoles.indexOf(data.role) === -1) {
+    _showToast('That role is not included in your current bundle.', true);
+    return;
+  }
 
+  var staffCount = 0;
   try {
-    await API.createStaff(data);
+    staffCount = (await _loadManageStaffUsers()).users.filter(function(u) { return u.Role !== 'OWNER'; }).length;
+  } catch(e) {}
+  var nextBilling = _staffBillingState(staffCount + 1);
+  var currentBilling = _staffBillingState(staffCount);
+  if (nextBilling.extraAmount > currentBilling.extraAmount) {
+    var extraMsg = 'This staff member is beyond your included allowance and will add ₱' +
+      nextBilling.policy.extraStaffPrice + '/month. Continue?';
+    if (!confirm(extraMsg)) return;
+  }
+
+  showLoading('Creating account…');
+  try {
+    try {
+      await API.call('createStoreUser', {
+        fullName: data.fullName,
+        username: data.username,
+        password: data.password,
+        role: data.role,
+        roleCode: data.role,
+        role_code: data.role
+      });
+    } catch(firstErr) {
+      await API.createStaff({
+        full_name: data.fullName,
+        fullName: data.fullName,
+        username: data.username,
+        password: data.password,
+        role: data.role,
+        role_code: data.role,
+        roleCode: data.role,
+        phone: data.phone,
+        email: data.email,
+        notes: data.notes,
+        is_active: true
+      }).catch(function(secondErr) {
+        throw firstErr || secondErr;
+      });
+    }
     _showToast('Staff member created successfully!', false);
-    renderStaffList();
+    renderManageStaff();
   } catch(err) {
-    _showToast(err.message || 'Failed to create staff', true);
+    _showToast(_friendlyStaffAccessMessage(err) || 'Failed to create staff', true);
+    renderManageStaff();
   }
 }
 
@@ -2483,12 +2885,8 @@ function renderAssignRoleForm(staffId, currentRole) {
   var header = '<div class="topbar"><div class="title" style="margin:0;">Change Role</div><button class="small-btn" onclick="goHome()">← Back</button></div>';
 
   var content = '<div class="card">' +
-    '<div class="field"><label>New Role</label><select id="new-role">' +
-      '<option value="CASHIER"' + (currentRole === 'CASHIER' ? ' selected' : '') + '>Cashier</option>' +
-      '<option value="INVENTORY_STAFF"' + (currentRole === 'INVENTORY_STAFF' ? ' selected' : '') + '>Inventory Staff</option>' +
-      '<option value="VIEWER"' + (currentRole === 'VIEWER' ? ' selected' : '') + '>Viewer</option>' +
-      '<option value="MANAGER"' + (currentRole === 'MANAGER' ? ' selected' : '') + '>Manager</option>' +
-    '</select></div>' +
+    _renderStaffRoleGuide() +
+    '<div class="field"><label>New Role</label><select id="new-role">' + _renderStaffRoleOptions(currentRole || 'CASHIER') + '</select></div>' +
     '<button class="btn btn-primary" onclick="submitAssignRole(\'' + staffId + '\')">Update Role</button>' +
     '<button class="btn btn-secondary" onclick="renderStaffDetail(\'' + staffId + '\')">Cancel</button>' +
     '</div>';
@@ -5782,6 +6180,7 @@ async function doStartTrial(moduleCode) {
   showLoading('Starting trial…');
   try {
     var result = await API.call('startTrial', { moduleCode: moduleCode });
+    await _refreshOwnerAddOns({ force: true });
     _showToast('✓ Trial started! Ends ' + String(result.trial_ends_at).slice(0,10));
     renderFeatureMarketplace();
   } catch(e) { _showToast(e.message, true); }
@@ -5792,6 +6191,7 @@ async function doCancelFeature(moduleCode) {
   showLoading('Cancelling…');
   try {
     await API.call('manageSubscription', { moduleCode: moduleCode, action: 'cancel' });
+    await _refreshOwnerAddOns({ force: true });
     _showToast('Subscription cancelled');
     renderFeatureMarketplace();
   } catch(e) { _showToast(e.message, true); }
