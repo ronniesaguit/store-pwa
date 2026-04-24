@@ -1414,6 +1414,16 @@ async function _loadManageStaffUsers() {
     return { users: _normalizeManageStaffUsers(await withTimeout(API.call('getStoreUsers'), 'Store users service')), source: 'getStoreUsers' };
   } catch(err) {
     errors.push(err);
+    if (_isStaffAccessGateError(err)) {
+      try {
+        if (API && typeof API._repairCoreStaffAccessQuick === 'function') {
+          await withTimeout(API._repairCoreStaffAccessQuick(), 'Staff quick repair');
+          return { users: _normalizeManageStaffUsers(await withTimeout(API.call('getStoreUsers'), 'Store users service')), source: 'getStoreUsers' };
+        }
+      } catch(repairErr) {
+        errors.push(repairErr);
+      }
+    }
   }
   try {
     return { users: _normalizeManageStaffUsers(await withTimeout(API.getStaff(), 'Staff service')), source: 'getStaff' };

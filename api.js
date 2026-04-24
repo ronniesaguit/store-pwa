@@ -277,6 +277,34 @@ const API = {
     return false;
   },
 
+  async _repairCoreStaffAccessQuick() {
+    if (!this.token || !STORE_KEY) return false;
+    const context = _staffRepairContext();
+    const repairs = [
+      { action: 'syncStoreModules', data: Object.assign({}, context, { source: 'core_staff_quick_repair' }) },
+      { action: 'repairStoreModules', data: Object.assign({}, context, { source: 'core_staff_quick_repair' }) },
+      { action: 'enableModule', data: Object.assign({}, context, { moduleCode: 'staff_management', source: 'core_staff_quick_repair' }) },
+      { action: 'enableModule', data: Object.assign({}, context, { moduleCode: 'staff', source: 'core_staff_quick_repair' }) },
+      { action: 'enableFeature', data: Object.assign({}, context, { moduleCode: 'staff_management', source: 'core_staff_quick_repair' }) },
+      { action: 'enableFeature', data: Object.assign({}, context, { moduleCode: 'staff', source: 'core_staff_quick_repair' }) }
+    ];
+    for (var i = 0; i < repairs.length; i++) {
+      try {
+        const result = await this._raw(repairs[i].action, repairs[i].data);
+        if (result && result.success) {
+          await this._silentReAuth();
+          return true;
+        }
+        var msg = String((result && result.error) || '').toLowerCase();
+        if (msg.indexOf('already') !== -1 || msg.indexOf('active') !== -1 || msg.indexOf('enabled') !== -1) {
+          await this._silentReAuth();
+          return true;
+        }
+      } catch(e) {}
+    }
+    return false;
+  },
+
   _isExpired(msg) {
     if (!msg) return false;
     const m = msg.toLowerCase();
@@ -296,6 +324,25 @@ const API = {
       if (!result.success) return false;
       this.setToken(result.data.token);
       // Update cached session and data silently
+      try {
+        if (window.state && result.data.user) {
+          state.session = {
+            loggedIn: true,
+            user: result.data.user,
+            plan: result.data.plan || null,
+            inTrial: result.data.inTrial || false,
+            manifest: result.data.manifest || null
+          };
+          localStorage.setItem('store_session', JSON.stringify(state.session));
+        }
+        if (window.state && (result.data.storeName || result.data.ownerName)) {
+          state.storeProfile = {
+            storeName: result.data.storeName || ((state.storeProfile || {}).storeName) || '',
+            ownerName: result.data.ownerName || ((state.storeProfile || {}).ownerName) || ''
+          };
+          localStorage.setItem('store_profile', JSON.stringify(state.storeProfile));
+        }
+      } catch(e) {}
       if (result.data.products)   { try { window.state && (state.products   = result.data.products);   } catch(e){} }
       if (result.data.categories) { try { window.state && (state.categories = result.data.categories); } catch(e){} }
       return true;
