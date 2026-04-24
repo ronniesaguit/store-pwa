@@ -597,26 +597,29 @@ async function _changePlan(storeId) {
 
 async function _repairStaffAccess(storeId, planId) {
   var plan = planId || (document.getElementById('chg-plan') && document.getElementById('chg-plan').value) || 'NEGOSYO_HUB';
+  var patch = { Plan: plan };
   var modulePayload = _moduleSyncPayload(plan, []);
-  var lastRepairErr = null;
-  var didSendRepair = false;
-  try {
-    var repairCalls = [
-      ['adminSyncStoreModules', { storeId: storeId, plan: plan, moduleCodes: modulePayload.enabledModuleCodes }],
-      ['adminRepairStoreModules', { storeId: storeId, plan: plan, moduleCodes: modulePayload.enabledModuleCodes }],
-      ['adminEnableStoreModule', { storeId: storeId, moduleCode: 'staff_management' }],
-      ['adminEnableStoreModule', { storeId: storeId, moduleCode: 'staff' }]
-    ];
-    for (var i = 0; i < repairCalls.length; i++) {
-      try {
-        await ADMIN_API.call(repairCalls[i][0], repairCalls[i][1]);
-        didSendRepair = true;
-      } catch(e) {
-        lastRepairErr = e;
-      }
+  _applyModulePatchFields(patch, modulePayload);
+  if (plan === 'CUSTOM') {
+    patch.Max_Users             = document.getElementById('chg-users').value;
+    patch.Max_Products          = document.getElementById('chg-products').value;
+    patch.Reports_Level         = document.getElementById('chg-reports').value;
+    patch.Has_Health_Indicators = String(document.getElementById('chg-health').checked);
+    patch.Monthly_Fee           = document.getElementById('chg-fee').value;
+  } else {
+    var planDefs = _planDefs();
+    var def = planDefs[plan];
+    if (def) {
+      patch.Max_Users             = def.max_users;
+      patch.Max_Products          = def.max_products;
+      patch.Reports_Level         = def.reports;
+      patch.Has_Health_Indicators = String(def.health);
+      patch.Monthly_Fee           = def.fee;
     }
-    if (!didSendRepair) throw (lastRepairErr || new Error('Staff access repair could not be sent.'));
-    _toast('Staff access repair sent. Ask the owner to log out and back in.');
+  }
+  try {
+    await ADMIN_API.call('adminUpdateStore', Object.assign({ storeId: storeId, patch: patch }, modulePayload));
+    _toast('Staff access repair saved. Ask the owner to log out and back in.');
     await _refreshStores();
     renderDashboard();
   } catch(e) {
