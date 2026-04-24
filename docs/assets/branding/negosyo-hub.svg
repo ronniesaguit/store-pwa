@@ -1,0 +1,43 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" role="img" aria-labelledby="title desc">
+  <title id="title">Negosyo Hub</title>
+  <desc id="desc">Negosyo Hub brand logo with a store marker icon.</desc>
+  <defs>
+    <linearGradient id="pinGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22c55e"/>
+      <stop offset="100%" stop-color="#047857"/>
+    </linearGradient>
+    <linearGradient id="wordGrad" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#f97316"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#052e16" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#softShadow)" transform="translate(46 28)">
+    <path d="M104 0C53 0 12 41 12 92c0 60 65 118 92 140 27-22 92-80 92-140C196 41 155 0 104 0Z" fill="url(#pinGrad)"/>
+    <circle cx="104" cy="92" r="70" fill="#ffffff"/>
+    <path d="M43 58h122c12 0 22 10 22 22v7c0 8-6 14-14 14H35c-8 0-14-6-14-14v-7c0-12 10-22 22-22Z" fill="#f97316"/>
+    <path d="M46 58h118c-9-14-31-25-59-25s-50 11-59 25Z" fill="#16a34a"/>
+    <path d="M35 101h138v13c0 30-31 54-69 54s-69-24-69-54v-13Z" fill="#fff7ed"/>
+    <path d="M48 58h28l-8 43H41l7-29c2-8 5-14 10-14Z" fill="#ef4444"/>
+    <path d="M76 58h29l-4 43H68l3-43Z" fill="#fbbf24"/>
+    <path d="M105 58h29l4 43h-33V58Z" fill="#f97316"/>
+    <path d="M134 58h28c5 0 8 6 10 14l7 29h-27l-4-43Z" fill="#ef4444"/>
+    <rect x="56" y="117" width="18" height="32" rx="3" fill="#22c55e"/>
+    <rect x="79" y="117" width="16" height="32" rx="3" fill="#f59e0b"/>
+    <rect x="100" y="126" width="34" height="23" rx="3" fill="#f97316"/>
+    <rect x="138" y="117" width="12" height="12" rx="2" fill="#f97316"/>
+    <rect x="154" y="117" width="12" height="12" rx="2" fill="#f97316"/>
+    <rect x="138" y="133" width="12" height="12" rx="2" fill="#f59e0b"/>
+    <rect x="154" y="133" width="12" height="12" rx="2" fill="#f59e0b"/>
+    <path d="M53 160h102c-12 8-30 13-51 13s-39-5-51-13Z" fill="#d97706" opacity=".95"/>
+  </g>
+
+  <g transform="translate(280 86)">
+    <text x="0" y="98" font-family="Segoe UI, Arial, sans-serif" font-size="102" font-weight="800" fill="url(#wordGrad)">Negosyo<tspan fill="#059669">Hub</tspan></text>
+    <text x="4" y="152" font-family="Georgia, Times New Roman, serif" font-size="34" font-style="italic" fill="#374151">Simple tools for everyday negosyo.</text>
+  </g>
+</svg>
+

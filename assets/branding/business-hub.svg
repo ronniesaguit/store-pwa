@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" role="img" aria-labelledby="title desc">
+  <title id="title">Business Hub</title>
+  <desc id="desc">Business Hub brand logo with a briefcase marker icon.</desc>
+  <defs>
+    <linearGradient id="pinBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+    <linearGradient id="wordBlue" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#1e3a8a"/>
+      <stop offset="100%" stop-color="#16a34a"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#0f172a" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#shadow)" transform="translate(48 28)">
+    <path d="M104 0C53 0 12 41 12 92c0 60 65 118 92 140 27-22 92-80 92-140C196 41 155 0 104 0Z" fill="url(#pinBlue)"/>
+    <circle cx="104" cy="92" r="70" fill="#e0f2fe"/>
+    <rect x="48" y="52" width="112" height="44" rx="8" fill="#ffffff" stroke="#93c5fd" stroke-width="4"/>
+    <path d="M86 52v-10c0-10 8-18 18-18h16c10 0 18 8 18 18v10" fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round"/>
+    <path d="M52 98h104v14c0 8-7 15-15 15H67c-8 0-15-7-15-15V98Z" fill="#ffffff"/>
+    <rect x="98" y="88" width="12" height="26" rx="4" fill="#0284c7"/>
+    <rect x="73" y="126" width="24" height="44" rx="4" fill="#84cc16"/>
+    <rect x="103" y="112" width="24" height="58" rx="4" fill="#facc15"/>
+    <rect x="133" y="102" width="24" height="68" rx="4" fill="#f59e0b"/>
+    <path d="M46 157c14 10 35 16 58 16 23 0 44-6 58-16" fill="none" stroke="#1d4ed8" stroke-width="6" stroke-linecap="round"/>
+  </g>
+
+  <g transform="translate(290 88)">
+    <text x="0" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="98" font-weight="800" fill="url(#wordBlue)">Business<tspan fill="#16a34a">Hub</tspan></text>
+    <text x="2" y="150" font-family="Georgia, Times New Roman, serif" font-size="34" font-style="italic" fill="#374151">Smart tools for organized business operations.</text>
+  </g>
+</svg>

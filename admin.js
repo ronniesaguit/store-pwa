@@ -228,12 +228,12 @@ function renderAdminLogin(msg) {
     '<div style="margin-bottom:10px;">' + _planLogoHtml('NEGOSYO_HUB') + '</div>' +
     '<h2 style="color:#1e3a5f;margin-top:8px;">' + (localStorage.getItem('admin_platform_name') || 'HubSuite') + '</h2>' +
     '<div class="muted">HubSuite Admin Panel</div></div>' +
-    '<div class="card">' +
+    '<form class="card" onsubmit="submitAdminLogin(); return false;">' +
     (msg ? '<div class="msg-err">' + msg + '</div>' : '') +
     '<div class="field"><label>Username</label><input id="a-user" placeholder="Admin username"></div>' +
     '<div class="field"><label>Password</label><input id="a-pass" type="password" placeholder="Password"></div>' +
-    '<button class="btn btn-primary" onclick="submitAdminLogin()">Login</button>' +
-    '</div></div>');
+    '<button class="btn btn-primary" type="submit">Login</button>' +
+    '</form></div>');
   document.getElementById('a-pass').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') submitAdminLogin();
   });
@@ -1189,6 +1189,3 @@ async function _changePlan(storeId) {
 function _esc(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-/ /   T r i g g e r   r e d e p l o y  
- / /   T r i g g e r   r e d e p l o y  
- 
