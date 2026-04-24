@@ -1400,18 +1400,23 @@ async function _loadManageStaffUsers() {
     return Promise.race([
       promise,
       new Promise(function(_, reject) {
-        setTimeout(function() { reject(new Error(label + ' timed out.')); }, 12000);
+        setTimeout(function() { reject(new Error(label + ' timed out.')); }, 8000);
       })
     ]);
   }
+  try {
+    if (API && typeof API._silentReAuth === 'function') {
+      await withTimeout(API._silentReAuth(), 'Session refresh');
+    }
+  } catch(e) {}
   var errors = [];
   try {
-    return { users: _normalizeManageStaffUsers(await withTimeout(API.getStaff(), 'Staff service')), source: 'getStaff' };
+    return { users: _normalizeManageStaffUsers(await withTimeout(API.call('getStoreUsers'), 'Store users service')), source: 'getStoreUsers' };
   } catch(err) {
     errors.push(err);
   }
   try {
-    return { users: _normalizeManageStaffUsers(await withTimeout(API.call('getStoreUsers'), 'Store users service')), source: 'getStoreUsers' };
+    return { users: _normalizeManageStaffUsers(await withTimeout(API.getStaff(), 'Staff service')), source: 'getStaff' };
   } catch(err2) {
     errors.push(err2);
   }

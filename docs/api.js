@@ -134,8 +134,18 @@ const STAFF_MANAGEMENT_ACTIONS = [
   'setStaffStatus'
 ];
 
+const STAFF_READ_ACTIONS = [
+  'getStoreUsers',
+  'getStaff',
+  'getStaffById'
+];
+
 function _isStaffManagementAction(action) {
   return STAFF_MANAGEMENT_ACTIONS.indexOf(action) !== -1;
+}
+
+function _isStaffReadAction(action) {
+  return STAFF_READ_ACTIONS.indexOf(action) !== -1;
 }
 
 function _isStaffModuleGateResult(result) {
@@ -196,7 +206,7 @@ const API = {
       const refreshed = await this._silentReAuth();
       if (refreshed) result = await this._raw(action, data);
     }
-    if (!result.success && _isStaffManagementAction(action) && _isStaffModuleGateResult(result)) {
+    if (!result.success && _isStaffManagementAction(action) && _isStaffModuleGateResult(result) && !_isStaffReadAction(action)) {
       const repaired = await this._repairCoreStaffAccess();
       if (repaired) result = await this._raw(action, data);
     }
