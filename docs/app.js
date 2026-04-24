@@ -377,6 +377,38 @@ function _currentPlanId() {
   return plan && (plan.id || plan.name || plan.Plan || plan.plan);
 }
 
+function _planRepairPatch(planId) {
+  var normalized = HUB && HUB.normalizePlanId ? HUB.normalizePlanId(planId) : String(planId || 'NEGOSYO_HUB').toUpperCase();
+  var defs = {
+    TRIAL: { max_users: 2, max_products: 50, reports: 'DAILY', health: false, fee: 0 },
+    NEGOSYO_HUB: { max_users: 3, max_products: 500, reports: 'DAILY', health: false, fee: 200 },
+    BUSINESS_HUB: { max_users: 10, max_products: 5000, reports: 'ALL', health: true, fee: 500 },
+    NEXORA_HUB: { max_users: -1, max_products: -1, reports: 'ALL', health: true, fee: 1000 }
+  };
+  var patch = { Plan: normalized };
+  var def = defs[normalized];
+  if (!def) return patch;
+  patch.Max_Users = def.max_users;
+  patch.Max_Products = def.max_products;
+  patch.Reports_Level = def.reports;
+  patch.Has_Health_Indicators = String(def.health);
+  patch.Monthly_Fee = def.fee;
+  return patch;
+}
+
+async function _ownerAdminPlanResaveRepair() {
+  if (!window.ADMIN_API || !ADMIN_API.token) return false;
+  var storeId = state.session && (state.session.storeId || state.session.Store_ID || (state.session.user && state.session.user.Store_ID));
+  if (!storeId) return false;
+  try {
+    await ADMIN_API.call('adminUpdateStore', { storeId: storeId, patch: _planRepairPatch(_currentPlanId()) });
+    await API._silentReAuth();
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
+
 function _staffPolicy() {
   if (HUB && HUB.getStaffPolicy) return HUB.getStaffPolicy(_currentPlanId());
   return { includedUsers: 2, includedStaff: 1, extraStaffPrice: 10 };
@@ -1415,6 +1447,13 @@ async function _loadManageStaffUsers() {
   } catch(err) {
     errors.push(err);
     if (_isStaffAccessGateError(err)) {
+      try {
+        if (await withTimeout(_ownerAdminPlanResaveRepair(), 'Owner admin repair')) {
+          return { users: _normalizeManageStaffUsers(await withTimeout(API.call('getStoreUsers'), 'Store users service')), source: 'getStoreUsers' };
+        }
+      } catch(ownerRepairErr) {
+        errors.push(ownerRepairErr);
+      }
       try {
         if (API && typeof API._repairCoreStaffAccessQuick === 'function') {
           await withTimeout(API._repairCoreStaffAccessQuick(), 'Staff quick repair');

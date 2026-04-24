@@ -588,7 +588,7 @@ async function _changePlan(storeId) {
     }
   }
   try {
-    await ADMIN_API.call('adminUpdateStore', Object.assign({ storeId: storeId, patch: patch }, modulePayload));
+    await ADMIN_API.call('adminUpdateStore', { storeId: storeId, patch: patch });
     _toast('Plan updated to ' + _planLabel(plan));
     await _refreshStores();
     renderDashboard();
@@ -618,7 +618,7 @@ async function _repairStaffAccess(storeId, planId) {
     }
   }
   try {
-    await ADMIN_API.call('adminUpdateStore', Object.assign({ storeId: storeId, patch: patch }, modulePayload));
+    await ADMIN_API.call('adminUpdateStore', { storeId: storeId, patch: patch });
     _toast('Staff access repair saved. Ask the owner to log out and back in.');
     await _refreshStores();
     renderDashboard();
@@ -1323,7 +1323,7 @@ async function _changePlan(storeId) {
     patch.Monthly_Fee = def.fee;
   }
   try {
-    await ADMIN_API.call('adminUpdateStore', Object.assign({ storeId: storeId, patch: patch }, modulePayload));
+    await ADMIN_API.call('adminUpdateStore', { storeId: storeId, patch: patch });
     _toast('Plan updated to ' + _planLabel(plan));
     await _refreshStores();
     renderDashboard();
