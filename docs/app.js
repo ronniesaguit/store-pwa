@@ -601,20 +601,7 @@ function renderOwnerDashboard(msg) {
   if (_hasModule('hardware_profiles')) btns += '<button class="big-btn" onclick="renderHardwareSetup()">🖨️ Hardware</button>';
   if (_hasModule('sandbox_mode')) btns += '<button class="big-btn" onclick="renderSandboxMode()">🧪 Sandbox</button>';
   if (_hasModule('support'))         btns += '<button class="big-btn" onclick="renderSupport()">📞 Help</button>';
-
-  // Locked / upsell tiles for modules not in current plan
-  var lockedBtns = '';
-  var mods = _planModules();
-  if (mods) {
-    Object.keys(UPSELL_META).forEach(function(m) {
-      if (!_hasModule(m)) {
-        var meta = UPSELL_META[m];
-        lockedBtns += '<button class="big-btn" disabled style="opacity:0.45;cursor:default;position:relative;" title="Upgrade to unlock">' +
-          '<span style="position:absolute;top:4px;right:6px;font-size:0.6rem;background:#f59e0b;color:#fff;padding:1px 5px;border-radius:8px;font-weight:700;">ADD-ON</span>' +
-          meta.icon + ' ' + meta.label + '<br><span style="font-size:0.65rem;opacity:0.7;">🔒 Upgrade</span></button>';
-      }
-    });
-  }
+  btns += '<button class="big-btn" onclick="renderAddOnsPanel()" style="border:2px dashed rgba(255,255,255,0.28);background:rgba(255,255,255,0.06);">⊕ Explore Add-Ons</button>';
 
   var quickActions = '';
   if (_hasModule('products')) quickActions += '<button class="btn btn-secondary" onclick="renderAddProductForm()">+ Add New Product</button>';
@@ -631,10 +618,182 @@ function renderOwnerDashboard(msg) {
     _dashboardHeader_(storeName, ownerName, '', state.isOffline) +
     planLine +
     (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
-    '<div class="grid-buttons">' + btns + lockedBtns + '</div>' +
+    '<div class="grid-buttons">' + btns + '</div>' +
     (quickActions ? '<div class="card"><div class="subtitle">Quick Actions</div>' + quickActions + '</div>' : '') +
     paymentCard +
     '</div>';
+}
+
+// ── Add-Ons Discovery Panel (Phase 2A/2B) ────────────────────────────────────
+
+var _MODULE_ICONS = {
+  products: '📦', quick_sell: '💰', inventory: '📊', expenses: '💸',
+  reports: '📈', suppliers: '🏭', purchase_orders: '📋',
+  branch_transfer: '🔄', hq_control_center: '🏢', internal_chat: '💬',
+  staff_management: '👥', custom_role_builder: '🎭', approvals: '✅',
+  roi: '💹', monitors: '📡', automation_rules: '⚡', data_import_tools: '📥',
+  settings: '⚙️', feature_marketplace: '🛒', hardware_profiles: '🖨️',
+  sandbox_mode: '🧪', support: '📞', activity_log: '📜', alert_rules_engine: '🔔'
+};
+
+function _addonCards(list) {
+  if (!list.length) {
+    return '<div style="text-align:center;color:#9ca3af;padding:40px 16px;">' +
+      '<div style="font-size:2rem;margin-bottom:8px;">🔍</div>' +
+      '<div>No add-ons match your search.</div></div>';
+  }
+  return list.map(function(f) {
+    var icon = _MODULE_ICONS[f.module_code] || '🔧';
+    var price = (f.monthly_price != null) ? '₱' + f.monthly_price + '/mo' : '';
+    var trialBadge = f.is_trial_available
+      ? '<span style="background:#16a34a;color:#fff;font-size:0.6rem;padding:2px 6px;border-radius:8px;font-weight:700;letter-spacing:.3px;">FREE TRIAL</span>'
+      : '';
+    return '<div class="card" style="cursor:pointer;margin-bottom:10px;border:1px solid #e5e7eb;padding:14px;" onclick="renderFeatureDetailModal(\'' + _escAttr(f.module_code) + '\')">' +
+      '<div style="display:flex;align-items:flex-start;gap:12px;">' +
+        '<div style="font-size:2rem;line-height:1;flex-shrink:0;">' + icon + '</div>' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="font-weight:700;font-size:0.95rem;margin-bottom:3px;">' + _escHtml(f.feature_name) + '</div>' +
+          '<div style="font-size:0.78rem;color:#6b7280;margin-bottom:8px;line-height:1.4;">' + _escHtml(f.short_description || '') + '</div>' +
+          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
+            (price ? '<span style="font-size:0.78rem;font-weight:700;color:#1d4ed8;">' + price + '</span>' : '') +
+            trialBadge +
+          '</div>' +
+        '</div>' +
+        '<div style="color:#d1d5db;font-size:1.1rem;align-self:center;">›</div>' +
+      '</div>' +
+      '</div>';
+  }).join('');
+}
+
+function renderAddOnsPanel() {
+  var all = (state.ownerAddOns || []).filter(function(f) {
+    return !_isActiveAddOnStatus(f.tenant_status) && !_hasModule(f.module_code);
+  });
+  state._addOnsPanelAll = all;
+
+  var loading = !state.ownerAddOnsLoaded;
+  var body = loading
+    ? '<div style="text-align:center;color:#9ca3af;padding:48px 16px;"><div style="font-size:2rem;margin-bottom:8px;">⏳</div><div>Loading add-ons…</div></div>'
+    : _addonCards(all);
+
+  var overlay = document.createElement('div');
+  overlay.id = 'addons-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:900;display:flex;flex-direction:column;justify-content:flex-end;';
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) closeAddOnsPanel(); });
+
+  overlay.innerHTML =
+    '<div id="addons-sheet" style="background:#f9fafb;border-radius:20px 20px 0 0;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;">' +
+      '<div style="padding:14px 16px 10px;background:#fff;border-bottom:1px solid #f0f0f0;flex-shrink:0;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">' +
+          '<div style="font-size:1.05rem;font-weight:700;color:#111;">⊕ Explore Add-Ons</div>' +
+          '<button onclick="closeAddOnsPanel()" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:#9ca3af;line-height:1;">✕</button>' +
+        '</div>' +
+        '<input id="addons-search" type="text" placeholder="What feature do you need?" ' +
+          'style="width:100%;box-sizing:border-box;padding:10px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:0.9rem;outline:none;" ' +
+          'oninput="filterAddOns(this.value)">' +
+      '</div>' +
+      '<div id="addons-cards" style="overflow-y:auto;padding:12px 16px 32px;">' + body + '</div>' +
+    '</div>';
+
+  document.body.appendChild(overlay);
+
+  if (loading) {
+    _refreshOwnerAddOns({}).then(function() {
+      var el = document.getElementById('addons-cards');
+      if (!el) return;
+      var fresh = (state.ownerAddOns || []).filter(function(f) {
+        return !_isActiveAddOnStatus(f.tenant_status) && !_hasModule(f.module_code);
+      });
+      state._addOnsPanelAll = fresh;
+      el.innerHTML = _addonCards(fresh);
+    });
+  }
+}
+
+function closeAddOnsPanel() {
+  var el = document.getElementById('addons-overlay');
+  if (el) el.remove();
+}
+
+function filterAddOns(q) {
+  var el = document.getElementById('addons-cards');
+  if (!el) return;
+  var term = String(q || '').toLowerCase().trim();
+  var list = state._addOnsPanelAll || [];
+  var filtered = term
+    ? list.filter(function(f) {
+        return (f.feature_name || '').toLowerCase().indexOf(term) !== -1 ||
+               (f.short_description || '').toLowerCase().indexOf(term) !== -1 ||
+               (f.why_it_matters || '').toLowerCase().indexOf(term) !== -1 ||
+               (f.module_code || '').toLowerCase().indexOf(term) !== -1;
+      })
+    : list;
+  el.innerHTML = _addonCards(filtered);
+}
+
+function renderFeatureDetailModal(moduleCode) {
+  var feature = (state.ownerAddOns || []).filter(function(f) { return f.module_code === moduleCode; })[0];
+  if (!feature) return;
+
+  var icon = _MODULE_ICONS[moduleCode] || '🔧';
+  var price = (feature.monthly_price != null) ? '₱' + feature.monthly_price + '/mo' : 'Contact us';
+  var trialLabel = feature.is_trial_available ? '🎁 Start 30-Day Free Trial' : null;
+  var addOnPrice = _planAddOnPrice();
+  var priceLine = addOnPrice !== null
+    ? 'Add-on price: <strong>₱' + addOnPrice + '/mo</strong>'
+    : price;
+
+  var recommended = (feature.recommended_users || []).join(', ');
+  var whyHtml = feature.why_it_matters
+    ? '<div style="background:#eff6ff;border-left:4px solid #3b82f6;border-radius:6px;padding:12px 14px;margin-bottom:16px;font-size:0.88rem;line-height:1.6;color:#1e3a5f;">' +
+        '💡 ' + _escHtml(feature.why_it_matters) +
+      '</div>'
+    : '';
+
+  var modal = document.createElement('div');
+  modal.id = 'feature-detail-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:950;display:flex;align-items:flex-end;justify-content:center;';
+  modal.addEventListener('click', function(e) { if (e.target === modal) closeFeatureDetailModal(); });
+
+  modal.innerHTML =
+    '<div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;">' +
+      '<div style="padding:20px 20px 0;text-align:center;">' +
+        '<div style="font-size:3rem;margin-bottom:8px;">' + icon + '</div>' +
+        '<div style="font-size:1.2rem;font-weight:800;color:#111;margin-bottom:4px;">' + _escHtml(feature.feature_name) + '</div>' +
+        (recommended ? '<div style="font-size:0.75rem;color:#6b7280;margin-bottom:4px;">For: ' + _escHtml(recommended) + '</div>' : '') +
+        '<div style="display:inline-block;background:#dbeafe;color:#1d4ed8;font-size:0.8rem;font-weight:700;padding:3px 12px;border-radius:20px;margin-bottom:16px;">' + priceLine + '</div>' +
+      '</div>' +
+      '<div style="padding:0 20px 24px;">' +
+        (feature.short_description ? '<div style="font-size:0.9rem;color:#374151;line-height:1.6;margin-bottom:14px;">' + _escHtml(feature.short_description) + '</div>' : '') +
+        whyHtml +
+        (trialLabel
+          ? '<button class="btn btn-primary" style="width:100%;padding:14px;font-size:1rem;margin-bottom:10px;" onclick="_startAddOnTrial(\'' + _escAttr(moduleCode) + '\')">' + trialLabel + '</button>'
+          : '<button class="btn btn-primary" style="width:100%;padding:14px;font-size:1rem;margin-bottom:10px;" onclick="renderFeatureMarketplace()">Activate This Feature</button>') +
+        '<button class="btn btn-secondary" style="width:100%;padding:12px;" onclick="closeFeatureDetailModal()">← Back to Add-Ons</button>' +
+      '</div>' +
+    '</div>';
+
+  document.body.appendChild(modal);
+}
+
+function closeFeatureDetailModal() {
+  var el = document.getElementById('feature-detail-modal');
+  if (el) el.remove();
+}
+
+async function _startAddOnTrial(moduleCode) {
+  var btn = event && event.target;
+  if (btn) { btn.disabled = true; btn.textContent = 'Starting trial…'; }
+  try {
+    await API.call('startTrial', { module_code: moduleCode });
+    closeFeatureDetailModal();
+    closeAddOnsPanel();
+    await _refreshOwnerAddOns({ rerender: true });
+    showToast && showToast('30-day free trial started!', 'success');
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.textContent = '🎁 Start 30-Day Free Trial'; }
+    alert('Could not start trial: ' + (e.message || 'Unknown error'));
+  }
 }
 
 // MANAGER — operational cockpit (v1)
