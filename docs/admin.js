@@ -619,7 +619,8 @@ async function _repairStaffAccess(storeId, planId) {
   }
   try {
     await ADMIN_API.call('adminUpdateStore', { storeId: storeId, patch: patch });
-    _toast('Staff access repair saved. Ask the owner to log out and back in.');
+    try { await ADMIN_API.call('adminMigrateStore', { storeId: storeId }); } catch(migErr) {}
+    _toast('Staff access repair saved and migration triggered. Ask the owner to log out and back in.');
     await _refreshStores();
     renderDashboard();
   } catch(e) {

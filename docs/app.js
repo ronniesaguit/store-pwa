@@ -402,6 +402,7 @@ async function _ownerAdminPlanResaveRepair() {
   if (!storeId) return false;
   try {
     await ADMIN_API.call('adminUpdateStore', { storeId: storeId, patch: _planRepairPatch(_currentPlanId()) });
+    try { await ADMIN_API.call('adminMigrateStore', { storeId: storeId }); } catch(migErr) {}
     await API._silentReAuth();
     return true;
   } catch(e) {
