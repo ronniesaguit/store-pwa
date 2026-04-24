@@ -255,9 +255,6 @@ const API = {
       repairs.push({ action: 'manageSubscription', data: Object.assign({}, context, { moduleCode: moduleCode, action: 'activate', source: 'core_staff_repair' }) });
       repairs.push({ action: 'activateFeature', data: Object.assign({}, context, { moduleCode: moduleCode, source: 'core_staff_repair' }) });
       repairs.push({ action: 'enableFeature', data: Object.assign({}, context, { moduleCode: moduleCode, source: 'core_staff_repair' }) });
-      repairs.push({ action: 'enableModule', data: Object.assign({}, context, { moduleCode: moduleCode, source: 'core_staff_repair' }) });
-      repairs.push({ action: 'syncStoreModules', data: Object.assign({}, context, { moduleCode: moduleCode, source: 'core_staff_repair' }) });
-      repairs.push({ action: 'repairStoreModules', data: Object.assign({}, context, { moduleCode: moduleCode, source: 'core_staff_repair' }) });
     });
 
     for (var i = 0; i < repairs.length; i++) {
@@ -281,11 +278,13 @@ const API = {
     if (!this.token || !STORE_KEY) return false;
     const context = _staffRepairContext();
     const repairs = [
-      { action: 'syncStoreModules', data: Object.assign({}, context, { source: 'core_staff_quick_repair' }) },
-      { action: 'repairStoreModules', data: Object.assign({}, context, { source: 'core_staff_quick_repair' }) },
-      { action: 'enableModule', data: Object.assign({}, context, { moduleCode: 'staff_management', source: 'core_staff_quick_repair' }) },
-      { action: 'enableModule', data: Object.assign({}, context, { moduleCode: 'staff', source: 'core_staff_quick_repair' }) },
+      { action: 'startTrial', data: Object.assign({}, context, { moduleCode: 'staff_management', source: 'core_staff_quick_repair' }) },
+      { action: 'manageSubscription', data: Object.assign({}, context, { moduleCode: 'staff_management', action: 'start_trial', source: 'core_staff_quick_repair' }) },
+      { action: 'manageSubscription', data: Object.assign({}, context, { moduleCode: 'staff_management', action: 'activate', source: 'core_staff_quick_repair' }) },
       { action: 'enableFeature', data: Object.assign({}, context, { moduleCode: 'staff_management', source: 'core_staff_quick_repair' }) },
+      { action: 'startTrial', data: Object.assign({}, context, { moduleCode: 'staff', source: 'core_staff_quick_repair' }) },
+      { action: 'manageSubscription', data: Object.assign({}, context, { moduleCode: 'staff', action: 'start_trial', source: 'core_staff_quick_repair' }) },
+      { action: 'manageSubscription', data: Object.assign({}, context, { moduleCode: 'staff', action: 'activate', source: 'core_staff_quick_repair' }) },
       { action: 'enableFeature', data: Object.assign({}, context, { moduleCode: 'staff', source: 'core_staff_quick_repair' }) }
     ];
     for (var i = 0; i < repairs.length; i++) {
