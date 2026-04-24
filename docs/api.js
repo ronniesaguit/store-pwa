@@ -1,6 +1,122 @@
 // api.js — Cloudflare Workers API client
 
-const GAS_URL = 'https://businesshub-api.ronniesaguit.workers.dev';
+const API_BASE_STORAGE_KEY = 'store_api_base';
+const APP_CONFIG = window.__STORE_APP_CONFIG__ || {};
+
+function _normalizeApiBase(raw) {
+  if (!raw) return '';
+  var value = String(raw).trim();
+  if (!value) return '';
+  try {
+    return new URL(value, window.location.origin).toString();
+  } catch(e) {
+    return value.replace(/\/+$/, '');
+  }
+}
+
+function _persistApiBaseOverrideFromUrl() {
+  var fromUrl = new URLSearchParams(window.location.search).get('api');
+  if (fromUrl == null) return;
+  var value = String(fromUrl).trim();
+  if (!value || value.toLowerCase() === 'reset') {
+    localStorage.removeItem(API_BASE_STORAGE_KEY);
+  } else {
+    localStorage.setItem(API_BASE_STORAGE_KEY, value);
+  }
+}
+
+function _getApiTargets() {
+  var override = localStorage.getItem(API_BASE_STORAGE_KEY) || '';
+  var primary = _normalizeApiBase(override || APP_CONFIG.apiBase || '/api');
+  var fallback = _normalizeApiBase(APP_CONFIG.apiFallbackBase || '');
+  var targets = [];
+  if (primary) targets.push(primary);
+  if (fallback && targets.indexOf(fallback) === -1) targets.push(fallback);
+  return targets.length ? targets : [_normalizeApiBase('/api')];
+}
+
+async function _postToApiTargets(body) {
+  var targets = _getApiTargets();
+  var lastErr = null;
+
+  for (var i = 0; i < targets.length; i++) {
+    try {
+      return await _postToApi(targets[i], body);
+    } catch(e) {
+      lastErr = e;
+      if (!e.canFallback || i === targets.length - 1) throw e;
+    }
+  }
+
+  throw lastErr || new Error('No internet connection');
+}
+
+function _describeBadApiResponse(response, text) {
+  var status = 'HTTP ' + String((response && response.status) || 0);
+  if (response && response.statusText) status += ' ' + response.statusText;
+
+  var contentType = '';
+  try { contentType = String((response && response.headers && response.headers.get('content-type')) || ''); } catch(e) {}
+
+  var snippet = String(text || '').replace(/\s+/g, ' ').trim();
+  if (snippet.length > 180) snippet = snippet.slice(0, 177) + '...';
+
+  var looksHtml = /^<!doctype html/i.test(snippet) || /^<html/i.test(snippet) || contentType.toLowerCase().indexOf('text/html') !== -1;
+  if (looksHtml) {
+    return status + ' returned HTML instead of JSON. Check the /api route and Cloudflare Pages UPSTREAM_API_BASE.';
+  }
+  if (!snippet) {
+    return status + ' returned an empty response body.';
+  }
+  return status + ': ' + snippet;
+}
+
+function _shouldFallbackBadApiResponse(response, text) {
+  var status = (response && response.status) || 0;
+  if (status === 404 || status === 405 || status === 502 || status === 503 || status === 504) return true;
+
+  var contentType = '';
+  try { contentType = String((response && response.headers && response.headers.get('content-type')) || ''); } catch(e) {}
+  var snippet = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!snippet) return true;
+
+  return /^<!doctype html/i.test(snippet) || /^<html/i.test(snippet) || contentType.toLowerCase().indexOf('text/html') !== -1;
+}
+
+async function _postToApi(url, body) {
+  var response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: body,
+      redirect: 'follow'
+    });
+  } catch(e) {
+    var networkErr = new Error('No internet connection');
+    networkErr.canFallback = true;
+    throw networkErr;
+  }
+
+  var text = '';
+  try { text = await response.text(); } catch(e) {}
+
+  if (!text) {
+    var emptyErr = new Error(_describeBadApiResponse(response, text));
+    emptyErr.canFallback = _shouldFallbackBadApiResponse(response, text);
+    throw emptyErr;
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch(e) {
+    var parseErr = new Error(_describeBadApiResponse(response, text));
+    parseErr.canFallback = _shouldFallbackBadApiResponse(response, text);
+    throw parseErr;
+  }
+}
+
+_persistApiBaseOverrideFromUrl();
 
 // Store key for this store installation — set from URL ?k= param or localStorage
 const STORE_KEY = (function() {
@@ -29,6 +145,17 @@ const API = {
       if (ok) result = await this._raw(action, data);
     }
 
+    // GitHub Pages can call the Worker directly, bypassing the Pages proxy repair.
+    // Staff is now a core module, so repair legacy tenant access once and retry.
+    if (!result.success && _isStaffManagementAction(action) && _isStaffModuleGateResult(result)) {
+      const refreshed = await this._silentReAuth();
+      if (refreshed) result = await this._raw(action, data);
+    }
+    if (!result.success && _isStaffManagementAction(action) && _isStaffModuleGateResult(result) && !_isStaffReadAction(action)) {
+      const repaired = await this._repairCoreStaffAccess();
+      if (repaired) result = await this._raw(action, data);
+    }
+
     if (!result.success && result.errorCode === 'SUBSCRIPTION_EXPIRED') {
       showSubscriptionExpired(result.paymentInfo || {});
       throw new Error('SUBSCRIPTION_EXPIRED');
@@ -36,25 +163,30 @@ const API = {
     if (!result.success) {
       const err = new Error(result.error || 'Server error');
       if (result.errorCode) err.code = result.errorCode;
+      err.action = action;
+      err.apiTarget = result._apiTarget || '';
+      try {
+        console.warn('[HubSuite API rejected]', {
+          action: action,
+          apiTarget: err.apiTarget || '(unknown)',
+          errorCode: result.errorCode || null,
+          error: result.error || null,
+          storeKeyPresent: !!STORE_KEY
+        });
+      } catch(e) {}
       throw err;
     }
     return result.data;
   },
 
   async _raw(action, data) {
+    const payloadData = _isStaffManagementAction(action)
+      ? Object.assign({}, _staffRepairContext(), data || {})
+      : (data || {});
     const body = JSON.stringify({
-      action, token: this.token, storeKey: STORE_KEY, data: data || {}
+      action, token: this.token, storeKey: STORE_KEY, data: payloadData
     });
-    let response;
-    try {
-      response = await fetch(GAS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body, redirect: 'follow'
-      });
-    } catch(e) { throw new Error('No internet connection'); }
-    try { return await response.json(); }
-    catch(e) { throw new Error('Bad response from server'); }
+    return _postToApiTargets(body);
   },
 
   _isExpired(msg) {
@@ -76,6 +208,25 @@ const API = {
       if (!result.success) return false;
       this.setToken(result.data.token);
       // Update cached session and data silently
+      try {
+        if (window.state && result.data.user) {
+          state.session = {
+            loggedIn: true,
+            user: result.data.user,
+            plan: result.data.plan || null,
+            inTrial: result.data.inTrial || false,
+            manifest: result.data.manifest || null
+          };
+          localStorage.setItem('store_session', JSON.stringify(state.session));
+        }
+        if (window.state && (result.data.storeName || result.data.ownerName)) {
+          state.storeProfile = {
+            storeName: result.data.storeName || ((state.storeProfile || {}).storeName) || '',
+            ownerName: result.data.ownerName || ((state.storeProfile || {}).ownerName) || ''
+          };
+          localStorage.setItem('store_profile', JSON.stringify(state.storeProfile));
+        }
+      } catch(e) {}
       if (result.data.products)   { try { window.state && (state.products   = result.data.products);   } catch(e){} }
       if (result.data.categories) { try { window.state && (state.categories = result.data.categories); } catch(e){} }
       return true;
@@ -182,16 +333,7 @@ const ADMIN_API = {
 
   async _raw(action, data) {
     const body = JSON.stringify({ action, adminToken: this.token, data: data || {} });
-    let response;
-    try {
-      response = await fetch(GAS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body, redirect: 'follow'
-      });
-    } catch(e) { throw new Error('No internet connection'); }
-    try { return await response.json(); }
-    catch(e) { throw new Error('Bad response from server'); }
+    return _postToApiTargets(body);
   },
 
   _isExpired(msg) {

@@ -107,6 +107,56 @@ function _featureCatalog() {
   return Array.isArray(adminState.featureCatalog) ? adminState.featureCatalog : [];
 }
 
+function _planCoreModuleCatalog(planId) {
+  if (HUB && HUB.getCoreModuleCatalog) return HUB.getCoreModuleCatalog(planId);
+  return [];
+}
+
+function _planCoreModuleCodes(planId) {
+  if (HUB && HUB.getCoreModuleCodes) return HUB.getCoreModuleCodes(planId) || [];
+  return _planCoreModuleCatalog(planId).map(function(feature) {
+    return feature.module_code || feature.code;
+  }).filter(Boolean);
+}
+
+function _uniqueModuleCodes(codes) {
+  var seen = {};
+  return (codes || []).filter(function(code) {
+    code = String(code || '').trim();
+    if (!code || seen[code]) return false;
+    seen[code] = true;
+    return true;
+  });
+}
+
+function _moduleSyncPayload(planId, selectedAddOns) {
+  var core = _planCoreModuleCodes(planId);
+  var enabled = _uniqueModuleCodes(core.concat(selectedAddOns || []));
+  return {
+    coreModuleCodes: core,
+    enabledModuleCodes: enabled,
+    initialModuleCodes: enabled,
+    planModuleCodes: enabled
+  };
+}
+
+function _applyModulePatchFields(patch, modulePayload) {
+  // Do not write guessed module columns into store.patch.
+  // D1-backed stores reject unknown columns like Enabled_Modules.
+  // Module sync is handled by top-level payload fields and repair actions.
+  return patch;
+}
+
+function _planAddOnCatalog(planId, catalog) {
+  if (HUB && HUB.getAddOnCatalog) return HUB.getAddOnCatalog(planId, catalog || _featureCatalog());
+  return catalog || _featureCatalog();
+}
+
+function _staffPolicy(planId) {
+  if (HUB && HUB.getStaffPolicy) return HUB.getStaffPolicy(planId);
+  return { includedUsers: 2, includedStaff: 1, extraStaffPrice: 10 };
+}
+
 async function _ensureFeatureCatalog() {
   if (_featureCatalog().length) return adminState.featureCatalog;
   adminState.featureCatalog = await ADMIN_API.call('adminGetFeatureCatalog');
@@ -125,13 +175,14 @@ function _renderAddOnSelector(containerId, planId, selectedModuleCodes) {
   var container = document.getElementById(containerId);
   if (!container) return;
   var addOnPrice = _addOnPriceForPlan(planId);
+  var addOns = _planAddOnCatalog(planId, _featureCatalog());
   var selectedMap = {};
   (selectedModuleCodes || []).forEach(function(code) { selectedMap[String(code)] = true; });
 
   container.innerHTML =
     '<div class="section-title">Initial Add-ons</div>' +
     '<div class="hint" style="margin-bottom:10px;">Every new Hub starts with a 30-day trial. These add-ons are prepared now and can also be managed later from the owner dashboard.</div>' +
-    _featureCatalog().map(function(feature) {
+    addOns.map(function(feature) {
       var code = feature.module_code;
       return '<label style="display:block;border:1px solid #e5e7eb;border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;">' +
         '<div style="display:flex;align-items:flex-start;gap:10px;">' +
@@ -144,7 +195,43 @@ function _renderAddOnSelector(containerId, planId, selectedModuleCodes) {
         '</div>' +
         '</label>';
     }).join('') +
-    (_featureCatalog().length ? '' : '<div class="muted">No add-ons available yet.</div>');
+    (addOns.length ? '' : '<div class="muted">No add-ons available for this plan.</div>');
+}
+
+function _renderCommercialStateFallback(planId, errMsg) {
+  var addOnPrice = _addOnPriceForPlan(planId);
+  var rows = _planAddOnCatalog(planId, _featureCatalog()).map(function(feature) {
+    return '<div style="padding:10px 0;border-bottom:1px solid #f3f4f6;">' +
+      '<div style="font-size:13px;font-weight:700;">' + _esc(feature.feature_name || feature.module_code) + '</div>' +
+      '<div class="muted" style="font-size:12px;">' + _esc(feature.short_description || '') + '</div>' +
+      '<div class="hint">' + (addOnPrice !== null ? ('After trial: ' + _money(addOnPrice) + '/month') : 'Plan-based pricing') + '</div>' +
+      '</div>';
+  }).join('');
+
+  return '<div class="card">' +
+    '<div class="section-title">Add-ons</div>' +
+    '<div class="hint" style="margin-bottom:10px;">Per-store add-on subscription status is not available from the current backend yet. Showing the available add-on catalog instead.' +
+    (addOnPrice !== null ? ' Current Hub add-ons are ' + _money(addOnPrice) + '/month each after trial.' : '') +
+    '</div>' +
+    (rows || '<div class="muted">No add-ons available yet.</div>') +
+    (errMsg ? '<div class="hint" style="margin-top:10px;color:#92400e;">Backend note: ' + _esc(errMsg) + '</div>' : '') +
+    '</div>';
+}
+
+function _renderPlanInclusionsCard(planId) {
+  var staffPolicy = _staffPolicy(planId);
+  var rows = _planCoreModuleCatalog(planId).map(function(feature) {
+    return '<div style="padding:6px 0;border-bottom:1px solid #f3f4f6;font-size:12px;">' +
+      '<strong>' + _esc(feature.icon || '•') + ' ' + _esc(feature.name || feature.code) + '</strong>' +
+      (feature.shortDescription ? '<div class="muted" style="font-size:11px;margin-top:2px;">' + _esc(feature.shortDescription) + '</div>' : '') +
+      '</div>';
+  }).join('');
+
+  return '<div class="card">' +
+    '<div class="section-title">Included In ' + _esc(_planLabel(planId)) + '</div>' +
+    (staffPolicy.includedUsers !== null ? '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px;margin-bottom:8px;font-size:12px;">Staff included: <strong>' + staffPolicy.includedUsers + ' total users</strong> (owner + ' + staffPolicy.includedStaff + ' staff). Extra staff: <strong>' + _money(staffPolicy.extraStaffPrice) + '/month each</strong>.</div>' : '') +
+    (rows || '<div class="muted">No core feature summary available.</div>') +
+    '</div>';
 }
 
 async function _loadStoreCommercialState(storeId, planId) {
@@ -156,6 +243,7 @@ async function _loadStoreCommercialState(storeId, planId) {
     if (data.featureCatalog && data.featureCatalog.length) adminState.featureCatalog = data.featureCatalog;
     var subs = data.subscriptions || [];
     var revenue = data.revenueState;
+    var staffSeats = data.staffSeatState;
     var addOnPrice = _addOnPriceForPlan(planId);
     var rows = subs.map(function(sub) {
       var label = sub.status === 'active_paid' ? 'Active' : (sub.status === 'trial_active' ? 'Trial' : sub.status);
@@ -168,16 +256,29 @@ async function _loadStoreCommercialState(storeId, planId) {
         '</div>' +
         '</div>';
     }).join('');
+    var staffSeatHtml = staffSeats ? '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px;margin-bottom:10px;font-size:12px;">' +
+      '<strong>Staff allowance</strong><br>' +
+      'Included: <strong>' + _esc(staffSeats.included_users == null ? 'Custom' : staffSeats.included_users + ' total users') + '</strong>' +
+      (staffSeats.included_staff == null ? '' : ' (owner + ' + staffSeats.included_staff + ' staff)') + '<br>' +
+      'Current staff: <strong>' + _esc(staffSeats.staff_count || 0) + '</strong> · Extra staff: <strong>' + _esc(staffSeats.extra_staff_count || 0) + '</strong>' +
+      (staffSeats.extra_staff_price ? ' × ' + _money(staffSeats.extra_staff_price) + '/month' : '') + '<br>' +
+      'Staff overage: <strong>' + _money(staffSeats.extra_staff_amount || 0) + '/month</strong>' +
+      '</div>' : '';
     host.innerHTML =
       '<div class="card">' +
       '<div class="section-title">Add-ons</div>' +
       '<div class="hint" style="margin-bottom:10px;">Owner-selected add-ons from the marketplace will show here automatically.' +
       (addOnPrice !== null ? ' Current Hub add-ons are ₱' + addOnPrice + '/month each after trial.' : '') +
       '</div>' +
-      (revenue ? '<div style="background:#f9fafb;border-radius:8px;padding:10px;margin-bottom:10px;font-size:12px;">Base: <strong>' + _money(revenue.base_recurring_amount || 0) + '</strong> · Add-ons: <strong>' + _money(revenue.addons_recurring_amount || 0) + '</strong> · Total: <strong>' + _money(revenue.total_recurring_amount || 0) + '</strong></div>' : '') +
+      (revenue ? '<div style="background:#f9fafb;border-radius:8px;padding:10px;margin-bottom:10px;font-size:12px;">Base: <strong>' + _money(revenue.base_recurring_amount || 0) + '</strong> · Add-ons: <strong>' + _money(revenue.addons_recurring_amount || 0) + '</strong> · Staff overage: <strong>' + _money(revenue.staff_overage_amount || 0) + '</strong> · Total: <strong>' + _money(revenue.total_recurring_amount || 0) + '</strong></div>' : '') +
+      staffSeatHtml +
       (rows || '<div class="muted">No add-ons selected yet.</div>') +
       '</div>';
   } catch(e) {
+    if (e && e.message && e.message.indexOf('Unknown admin action: adminGetStoreCommercialState') !== -1) {
+      host.innerHTML = _renderCommercialStateFallback(planId, e.message);
+      return;
+    }
     host.innerHTML = '<div class="card"><div class="msg-err">Failed to load add-ons: ' + _esc(e.message) + '</div></div>';
   }
 }
@@ -228,12 +329,12 @@ function renderAdminLogin(msg) {
     '<div style="margin-bottom:10px;">' + _planLogoHtml('NEGOSYO_HUB') + '</div>' +
     '<h2 style="color:#1e3a5f;margin-top:8px;">' + (localStorage.getItem('admin_platform_name') || 'HubSuite') + '</h2>' +
     '<div class="muted">HubSuite Admin Panel</div></div>' +
-    '<div class="card">' +
+    '<form class="card" onsubmit="submitAdminLogin(); return false;">' +
     (msg ? '<div class="msg-err">' + msg + '</div>' : '') +
     '<div class="field"><label>Username</label><input id="a-user" placeholder="Admin username"></div>' +
     '<div class="field"><label>Password</label><input id="a-pass" type="password" placeholder="Password"></div>' +
-    '<button class="btn btn-primary" onclick="submitAdminLogin()">Login</button>' +
-    '</div></div>');
+    '<button class="btn btn-primary" type="submit">Login</button>' +
+    '</form></div>');
   document.getElementById('a-pass').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') submitAdminLogin();
   });
@@ -394,7 +495,11 @@ function renderStoreDetail(idx) {
     '</select></div>' +
     '<div class="hint" style="margin-bottom:8px;">All new and reassigned Hub plans are paired with add-ons separately. Owners can later add more modules from their dashboard.</div>' +
     '<button class="btn btn-primary" style="margin-top:8px;" onclick="_changePlan(\'' + st.Store_ID + '\')">Save Plan</button>' +
+    '<button class="btn btn-secondary" style="margin-top:8px;" onclick="_repairStaffAccess(\'' + st.Store_ID + '\',\'' + plan + '\')">Repair Staff Access</button>' +
+    '<div class="hint" style="margin-top:6px;">Use repair if Owner Staff says the backend is still blocking Staff.</div>' +
     '</div>' +
+
+    _renderPlanInclusionsCard(plan) +
 
     '<div id="store-commercial-state"></div>' +
 
@@ -463,6 +568,8 @@ async function _recordPayment(storeId) {
 async function _changePlan(storeId) {
   var plan = document.getElementById('chg-plan').value;
   var patch = { Plan: plan };
+  var modulePayload = _moduleSyncPayload(plan, []);
+  _applyModulePatchFields(patch, modulePayload);
   if (plan === 'CUSTOM') {
     patch.Max_Users             = document.getElementById('chg-users').value;
     patch.Max_Products          = document.getElementById('chg-products').value;
@@ -486,6 +593,39 @@ async function _changePlan(storeId) {
     await _refreshStores();
     renderDashboard();
   } catch(e) { _toast(e.message, true); }
+}
+
+async function _repairStaffAccess(storeId, planId) {
+  var plan = planId || (document.getElementById('chg-plan') && document.getElementById('chg-plan').value) || 'NEGOSYO_HUB';
+  var patch = { Plan: plan };
+  var modulePayload = _moduleSyncPayload(plan, []);
+  _applyModulePatchFields(patch, modulePayload);
+  if (plan === 'CUSTOM') {
+    patch.Max_Users             = document.getElementById('chg-users').value;
+    patch.Max_Products          = document.getElementById('chg-products').value;
+    patch.Reports_Level         = document.getElementById('chg-reports').value;
+    patch.Has_Health_Indicators = String(document.getElementById('chg-health').checked);
+    patch.Monthly_Fee           = document.getElementById('chg-fee').value;
+  } else {
+    var planDefs = _planDefs();
+    var def = planDefs[plan];
+    if (def) {
+      patch.Max_Users             = def.max_users;
+      patch.Max_Products          = def.max_products;
+      patch.Reports_Level         = def.reports;
+      patch.Has_Health_Indicators = String(def.health);
+      patch.Monthly_Fee           = def.fee;
+    }
+  }
+  try {
+    await ADMIN_API.call('adminUpdateStore', { storeId: storeId, patch: patch });
+    try { await ADMIN_API.call('adminMigrateStore', { storeId: storeId }); } catch(migErr) {}
+    _toast('Staff access repair saved and migration triggered. Ask the owner to log out and back in.');
+    await _refreshStores();
+    renderDashboard();
+  } catch(e) {
+    _toast(e.message, true);
+  }
 }
 
 async function _toggleStatus(storeId, newStatus) {
@@ -1106,8 +1246,11 @@ async function submitCreateStore() {
     d1Binding: (document.getElementById('cs-d1-binding').value || '').trim(),
     tursoDbUrl: (document.getElementById('cs-turso-url').value || '').trim(),
     notes: (document.getElementById('cs-notes').value || '').trim(),
-    initialModuleCodes: _selectedModulesFromForm('cs-addons-card')
+    initialModuleCodes: _moduleSyncPayload(plan, _selectedModulesFromForm('cs-addons-card')).initialModuleCodes
   };
+  var createModulePayload = _moduleSyncPayload(plan, _selectedModulesFromForm('cs-addons-card'));
+  Object.assign(data, createModulePayload);
+  _applyModulePatchFields(data, createModulePayload);
   if (provider === 'libsql' && !data.tursoDbUrl) { _toast('Dedicated Turso DB URL is required', true); return; }
   if (provider === 'd1' && !data.d1Binding) { _toast('Dedicated D1 binding is required', true); return; }
 
@@ -1169,6 +1312,8 @@ function renderProvisionSuccess(r) {
 async function _changePlan(storeId) {
   var plan = document.getElementById('chg-plan').value;
   var patch = { Plan: plan };
+  var modulePayload = _moduleSyncPayload(plan, []);
+  _applyModulePatchFields(patch, modulePayload);
   var planDefs = _planDefs();
   var def = planDefs[plan];
   if (def) {
@@ -1189,5 +1334,3 @@ async function _changePlan(storeId) {
 function _esc(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-/ /   T r i g g e r   r e d e p l o y  
- 
