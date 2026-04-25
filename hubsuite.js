@@ -73,6 +73,40 @@
     }
   };
 
+  var CUSTOM_MODULE_CATALOG = [
+    { code: 'quick_sell',          name: 'Quick Sell (POS)',       price: 60, description: 'Point-of-sale and sales transactions' },
+    { code: 'products',            name: 'Products',               price: 60, description: 'Product catalog management' },
+    { code: 'inventory',           name: 'Inventory',              price: 60, description: 'Stock tracking and adjustments' },
+    { code: 'expenses',            name: 'Expenses',               price: 60, description: 'Expense tracking and fixed costs' },
+    { code: 'reports',             name: 'Reports',                price: 60, description: 'Sales and financial reports' },
+    { code: 'monitors',            name: 'Business Monitors',      price: 60, description: 'KPI dashboards and health indicators' },
+    { code: 'staff_management',    name: 'Staff Management',       price: 60, description: 'Staff accounts, roles, and permissions' },
+    { code: 'approvals',           name: 'Approvals',              price: 60, description: 'Approval workflows for store operations' },
+    { code: 'activity_log',        name: 'Activity Log',           price: 60, description: 'Audit trail for all store actions' },
+    { code: 'suppliers',           name: 'Supplier Management',    price: 60, description: 'Supplier records and contacts' },
+    { code: 'purchase_orders',     name: 'Purchase Orders',        price: 60, description: 'Create and track purchase orders' },
+    { code: 'stock_receiving',     name: 'Stock Receiving',        price: 60, description: 'Receive and verify incoming stock' },
+    { code: 'branch_transfer',     name: 'Branch Transfers',       price: 60, description: 'Transfer stock between branches' },
+    { code: 'data_import_tools',   name: 'Data Import',            price: 60, description: 'Bulk import products and inventory' },
+    { code: 'custom_role_builder', name: 'Custom Roles',           price: 60, description: 'Create and assign custom staff roles' },
+    { code: 'alert_rules_engine',  name: 'Alerts & Automation',    price: 60, description: 'Automated alerts and rules engine' },
+    { code: 'internal_chat',       name: 'Internal Chat',          price: 40, description: 'Team messaging within the store' }
+  ];
+  var CUSTOM_PLAN_MIN_FEE = 200;
+
+  function computeCustomPrice(selectedModuleCodes) {
+    var codes = Array.isArray(selectedModuleCodes) ? selectedModuleCodes : [];
+    var total = codes.reduce(function(sum, code) {
+      var entry = CUSTOM_MODULE_CATALOG.find(function(m) { return m.code === code; });
+      return sum + (entry ? entry.price : 0);
+    }, 0);
+    return Math.max(CUSTOM_PLAN_MIN_FEE, total);
+  }
+
+  function getCustomModuleCatalog() {
+    return CUSTOM_MODULE_CATALOG;
+  }
+
   var PLAN_MODULES = {
     TRIAL:        ['auth','quick_sell','products','inventory','expenses','reports','monitors','roi','staff_management','settings','support','internal_chat','activity_log','feature_marketplace'],
     NEGOSYO_HUB:  ['auth','quick_sell','products','inventory','expenses','reports','monitors','settings','support','staff_management','feature_marketplace','notification_delivery','alert_rules_engine','hardware_profiles'],
@@ -155,6 +189,10 @@
     getPlanOptions: getPlanOptions,
     logoMarkup: logoMarkup,
     getCoreModuleCodes: getCoreModuleCodes,
-    getAddOnCatalog: getAddOnCatalog
+    getAddOnCatalog: getAddOnCatalog,
+    customModuleCatalog: CUSTOM_MODULE_CATALOG,
+    customPlanMinFee: CUSTOM_PLAN_MIN_FEE,
+    computeCustomPrice: computeCustomPrice,
+    getCustomModuleCatalog: getCustomModuleCatalog
   };
 })(window);

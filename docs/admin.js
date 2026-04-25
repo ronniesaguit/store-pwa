@@ -73,9 +73,10 @@ function _planOptions(includeCustom) {
 
 function _hubPlanOptions(currentPlan) {
   var options = [
-    { value: 'NEGOSYO_HUB', label: 'Negosyo Hub - ₱200/mo (Basic)' },
-    { value: 'BUSINESS_HUB', label: 'Business Hub - ₱500/mo (Mid)' },
-    { value: 'NEXORA_HUB', label: 'Nexora Hub - ₱1000/mo (High)' }
+    { value: 'NEGOSYO_HUB', label: 'Negosyo Hub' },
+    { value: 'BUSINESS_HUB', label: 'Business Hub' },
+    { value: 'NEXORA_HUB', label: 'Nexora Hub' },
+    { value: 'CUSTOM', label: 'Custom / Flexible' }
   ];
   var normalizedCurrent = _normalizePlanId(currentPlan || '');
   if (normalizedCurrent && !options.some(function(opt) { return opt.value === normalizedCurrent; })) {
@@ -447,7 +448,7 @@ function renderStoreDetail(idx) {
     '<div style="font-size:13px;line-height:2;">' +
     '<div>📧 ' + (st.Owner_Email || '—') + '</div>' +
     '<div>📱 ' + (st.Owner_Phone || '—') + '</div>' +
-    '<div>📋 Plan: <strong>' + _esc(_planLabel(plan)) + '</strong> · ' + _money(st.Monthly_Fee) + '/mo</div>' +
+    '<div>📋 Plan: <strong>' + _esc(_planLabel(plan)) + '</strong> (Negotiable)</div>' +
     (status === 'TRIAL' ? '<div>🎁 Trial ends: <strong>' + (String(st.Trial_End || '').substring(0, 10) || '—') + '</strong></div>' : '') +
     '<div>📅 Expires: <strong>' + (String(st.Subscription_Expires || '').substring(0, 10) || '—') + '</strong></div>' +
     '</div>' +
@@ -908,8 +909,8 @@ function renderProvisionSuccess(r) {
     '<div style="background:#f9fafb;border-radius:8px;padding:12px;text-align:left;">' +
     '<div style="font-size:12px;line-height:2;color:#374151;">' +
     '<div>🎁 Trial ends: <strong>' + r.trialEnd + '</strong></div>' +
-    '<div>📋 Plan: <strong>' + r.plan + '</strong></div>' +
-    (r.monthlyFee ? '<div>💰 Monthly fee: <strong>' + _money(r.monthlyFee) + '</strong></div>' : '') +
+    '<div>📋 Plan: <strong>' + _esc(_planLabel(r.plan)) + '</strong> (Negotiable)</div>' +
+    (r.monthlyFee ? '<div>💰 Monthly fee: <strong>' + _money(r.monthlyFee) + ' (Negotiated)</strong></div>' : '') +
     '<div>🔑 API Key: <span style="word-break:break-all;font-size:11px;">' + r.apiKey + '</span></div>' +
     '</div></div>' +
     '</div>' +
@@ -1411,7 +1412,7 @@ function renderProvisionSuccess(r) {
     '<div style="background:#f9fafb;border-radius:8px;padding:12px;text-align:left;">' +
     '<div style="font-size:12px;line-height:2;color:#374151;">' +
     lifecycleHtml +
-    '<div>Plan: <strong>' + _esc(_planLabel(r.plan)) + '</strong></div>' +
+    '<div>Plan: <strong>' + _esc(_planLabel(r.plan)) + '</strong> (Negotiable)</div>' +
     (r.monthlyFee ? '<div>Monthly fee: <strong>' + _money(r.monthlyFee) + '</strong></div>' : '') +
     (seededAddOns.length ? '<div>Initial add-ons: <strong>' + _esc(seededAddOns.map(function(item) { return item.feature_name || item.module_code; }).join(', ')) + '</strong></div>' : '<div>Initial add-ons: <strong>None selected</strong></div>') +
     dbHtml +

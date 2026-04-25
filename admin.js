@@ -73,15 +73,28 @@ function _planOptions(includeCustom) {
 
 function _hubPlanOptions(currentPlan) {
   var options = [
-    { value: 'NEGOSYO_HUB', label: 'Negosyo Hub - ₱200/mo (Basic)' },
-    { value: 'BUSINESS_HUB', label: 'Business Hub - ₱500/mo (Mid)' },
-    { value: 'NEXORA_HUB', label: 'Nexora Hub - ₱1000/mo (High)' }
+    { value: 'NEGOSYO_HUB', label: 'Negosyo Hub' },
+    { value: 'BUSINESS_HUB', label: 'Business Hub' },
+    { value: 'NEXORA_HUB', label: 'Nexora Hub' },
+    { value: 'CUSTOM', label: 'Custom / Flexible' }
   ];
   var normalizedCurrent = _normalizePlanId(currentPlan || '');
   if (normalizedCurrent && !options.some(function(opt) { return opt.value === normalizedCurrent; })) {
     options.unshift({ value: normalizedCurrent, label: _planLabel(normalizedCurrent) });
   }
   return options;
+}
+
+function _onChangePlanChange(currentCustomModules) {
+  var plan = document.getElementById('chg-plan').value;
+  var card = document.getElementById('chg-custom-card');
+  if (!card) return;
+  if (plan === 'CUSTOM') {
+    card.style.display = '';
+    _renderCustomModuleSelector('chg-custom-modules', currentCustomModules || []);
+  } else {
+    card.style.display = 'none';
+  }
 }
 
 function _planDefs() {
@@ -101,6 +114,61 @@ function _planLogoHtml(planId) {
 function _addOnPriceForPlan(planId) {
   if (HUB && HUB.getAddOnPrice) return HUB.getAddOnPrice(planId);
   return null;
+}
+
+function _customModuleCatalog() {
+  if (HUB && HUB.getCustomModuleCatalog) return HUB.getCustomModuleCatalog();
+  return [];
+}
+
+function _customPlanMinFee() {
+  return (HUB && HUB.customPlanMinFee) ? HUB.customPlanMinFee : 200;
+}
+
+function _computeCustomFee(selectedCodes) {
+  if (HUB && HUB.computeCustomPrice) return HUB.computeCustomPrice(selectedCodes);
+  return _customPlanMinFee();
+}
+
+function _renderCustomModuleSelector(containerId, selectedCodes) {
+  var container = document.getElementById(containerId);
+  if (!container) return;
+  var catalog = _customModuleCatalog();
+  var selectedMap = {};
+  (selectedCodes || []).forEach(function(code) { selectedMap[String(code)] = true; });
+  var feeElId = containerId + '-fee';
+  container.innerHTML =
+    '<div style="display:flex;gap:8px;margin-bottom:10px;">' +
+    '<button type="button" class="btn btn-secondary" style="width:auto;padding:6px 12px;font-size:12px;" onclick="_selectAllCustomModules(\'' + containerId + '\',true)">Select All</button>' +
+    '<button type="button" class="btn btn-secondary" style="width:auto;padding:6px 12px;font-size:12px;" onclick="_selectAllCustomModules(\'' + containerId + '\',false)">Clear All</button>' +
+    '</div>' +
+    catalog.map(function(m) {
+      return '<label style="display:flex;align-items:center;gap:10px;border:1px solid #e5e7eb;border-radius:10px;padding:10px 12px;margin-bottom:6px;cursor:pointer;">' +
+        '<input type="checkbox" data-module-code="' + _esc(m.code) + '"' + (selectedMap[m.code] ? ' checked' : '') +
+        ' onchange="_updateCustomFeeDisplay(\'' + containerId + '\',\'' + feeElId + '\')" style="margin:0;flex-shrink:0;">' +
+        '<div style="flex:1;">' +
+        '<div style="font-size:13px;font-weight:700;color:#111827;">' + _esc(m.name) + '</div>' +
+        '<div class="muted" style="font-size:11px;">' + _esc(m.description) + '</div>' +
+        '</div>' +
+        '<div style="font-size:13px;font-weight:700;color:#059669;white-space:nowrap;">₱' + m.price + '/mo</div>' +
+        '</label>';
+    }).join('') +
+    (catalog.length ? '' : '<div class="muted">Module catalog unavailable.</div>');
+  _updateCustomFeeDisplay(containerId, feeElId);
+}
+
+function _selectAllCustomModules(containerId, select) {
+  var root = document.getElementById(containerId);
+  if (!root) return;
+  root.querySelectorAll('input[type=checkbox][data-module-code]').forEach(function(el) { el.checked = select; });
+  _updateCustomFeeDisplay(containerId, containerId + '-fee');
+}
+
+function _updateCustomFeeDisplay(containerId, feeElId) {
+  var selected = _selectedModulesFromForm(containerId);
+  var fee = _computeCustomFee(selected);
+  var feeEl = document.getElementById(feeElId);
+  if (feeEl) feeEl.textContent = '₱' + fee + '/mo';
 }
 
 function _featureCatalog() {
@@ -447,7 +515,7 @@ function renderStoreDetail(idx) {
     '<div style="font-size:13px;line-height:2;">' +
     '<div>📧 ' + (st.Owner_Email || '—') + '</div>' +
     '<div>📱 ' + (st.Owner_Phone || '—') + '</div>' +
-    '<div>📋 Plan: <strong>' + _esc(_planLabel(plan)) + '</strong> · ' + _money(st.Monthly_Fee) + '/mo</div>' +
+    '<div>📋 Plan: <strong>' + _esc(_planLabel(plan)) + '</strong> (Negotiable)</div>' +
     (status === 'TRIAL' ? '<div>🎁 Trial ends: <strong>' + (String(st.Trial_End || '').substring(0, 10) || '—') + '</strong></div>' : '') +
     '<div>📅 Expires: <strong>' + (String(st.Subscription_Expires || '').substring(0, 10) || '—') + '</strong></div>' +
     '</div>' +
@@ -485,19 +553,36 @@ function renderStoreDetail(idx) {
     '</div>' +
 
     // ── Change plan ──
-    '<div class="card">' +
-    '<div class="section-title">📋 Change Plan</div>' +
-    '<div class="field"><label>Hub Plan</label>' +
-    '<select id="chg-plan">' +
-    _hubPlanOptions(plan).map(function(opt) {
-      return '<option value="' + opt.value + '"' + (opt.value === plan ? ' selected' : '') + '>' + _esc(opt.label) + '</option>';
-    }).join('') +
-    '</select></div>' +
-    '<div class="hint" style="margin-bottom:8px;">All new and reassigned Hub plans are paired with add-ons separately. Owners can later add more modules from their dashboard.</div>' +
-    '<button class="btn btn-primary" style="margin-top:8px;" onclick="_changePlan(\'' + st.Store_ID + '\')">Save Plan</button>' +
-    '<button class="btn btn-secondary" style="margin-top:8px;" onclick="_repairStaffAccess(\'' + st.Store_ID + '\',\'' + plan + '\')">Repair Staff Access</button>' +
-    '<div class="hint" style="margin-top:6px;">Use repair if Owner Staff says the backend is still blocking Staff.</div>' +
-    '</div>' +
+    (function() {
+      var existingCustomModules = [];
+      try {
+        var rawMods = st.Custom_Modules;
+        if (rawMods) existingCustomModules = JSON.parse(rawMods);
+      } catch(e) {}
+      var existingModsJson = _esc(JSON.stringify(existingCustomModules));
+      return '<div class="card">' +
+        '<div class="section-title">📋 Change Plan</div>' +
+        '<div class="field"><label>Hub Plan</label>' +
+        '<select id="chg-plan" onchange="_onChangePlanChange(' + existingModsJson + ')">' +
+        _hubPlanOptions(plan).map(function(opt) {
+          return '<option value="' + opt.value + '"' + (opt.value === plan ? ' selected' : '') + '>' + _esc(opt.label) + '</option>';
+        }).join('') +
+        '</select></div>' +
+        '<div id="chg-custom-card" style="display:' + (plan === 'CUSTOM' ? '' : 'none') + ';">' +
+        '<div class="hint" style="margin-bottom:8px;">All 17 selected = ₱1,000/mo · Minimum ₱200/mo</div>' +
+        '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:14px;display:flex;justify-content:space-between;align-items:center;">' +
+        '<span>Computed monthly fee</span><strong id="chg-custom-modules-fee">₱200/mo</strong>' +
+        '</div>' +
+        '<div id="chg-custom-modules"></div>' +
+        '<div class="field" style="margin-top:8px;"><label>Monthly Fee Override (₱) — 0 = computed</label>' +
+        '<input id="chg-fee" type="number" min="0" value="0"></div>' +
+        '</div>' +
+        '<div class="hint" style="margin-bottom:8px;">Owners can add more modules from their dashboard after provisioning.</div>' +
+        '<button class="btn btn-primary" style="margin-top:8px;" onclick="_changePlan(\'' + st.Store_ID + '\')">Save Plan</button>' +
+        '<button class="btn btn-secondary" style="margin-top:8px;" onclick="_repairStaffAccess(\'' + st.Store_ID + '\',\'' + plan + '\')">Repair Staff Access</button>' +
+        '<div class="hint" style="margin-top:6px;">Use repair if Owner/Staff say the backend is still blocking access.</div>' +
+        '</div>';
+    })() +
 
     _renderPlanInclusionsCard(plan) +
 
@@ -562,6 +647,12 @@ function renderStoreDetail(idx) {
     '<div class="hint">Use one D1 binding per store if you want strict database isolation.</div>' +
     '</div></div>');
   _loadStoreCommercialState(st.Store_ID, plan);
+  if (plan === 'CUSTOM') {
+    var rawMods2 = st.Custom_Modules;
+    var initMods = [];
+    try { if (rawMods2) initMods = JSON.parse(rawMods2); } catch(e) {}
+    _renderCustomModuleSelector('chg-custom-modules', initMods);
+  }
 }
 
 function _onChangePlan() {
@@ -608,15 +699,19 @@ async function _recordPayment(storeId) {
 async function _changePlan(storeId) {
   var plan = document.getElementById('chg-plan').value;
   var patch = { Plan: plan };
-  var modulePayload = _moduleSyncPayload(plan, []);
-  _applyModulePatchFields(patch, modulePayload);
+  var apiData = { storeId: storeId, patch: patch };
   if (plan === 'CUSTOM') {
-    patch.Max_Users             = document.getElementById('chg-users').value;
-    patch.Max_Products          = document.getElementById('chg-products').value;
-    patch.Reports_Level         = document.getElementById('chg-reports').value;
-    patch.Has_Health_Indicators = String(document.getElementById('chg-health').checked);
-    patch.Monthly_Fee           = document.getElementById('chg-fee').value;
+    var selectedMods = _selectedModulesFromForm('chg-custom-modules');
+    var feeOverride = Number((document.getElementById('chg-fee') || {}).value) || 0;
+    patch.Monthly_Fee           = feeOverride > 0 ? feeOverride : _computeCustomFee(selectedMods);
+    patch.Max_Users             = -1;
+    patch.Max_Products          = -1;
+    patch.Reports_Level         = 'ALL';
+    patch.Has_Health_Indicators = 'true';
+    apiData.customModules = selectedMods;
   } else {
+    var modulePayload = _moduleSyncPayload(plan, []);
+    _applyModulePatchFields(patch, modulePayload);
     var planDefs = _planDefs();
     var def = planDefs[plan];
     if (def) {
@@ -628,7 +723,7 @@ async function _changePlan(storeId) {
     }
   }
   try {
-    await ADMIN_API.call('adminUpdateStore', { storeId: storeId, patch: patch });
+    await ADMIN_API.call('adminUpdateStore', apiData);
     _toast('Plan updated to ' + _planLabel(plan));
     await _refreshStores();
     renderDashboard();
@@ -813,15 +908,14 @@ function renderCreateStore(msg) {
     '</div>' +
 
     '<div class="card" id="cs-custom-card" style="display:none;">' +
-    '<div class="section-title">Custom Plan Settings</div>' +
-    '<div class="field"><label>Max Users (-1 = unlimited)</label><input id="cs-users" type="number" value="2"></div>' +
-    '<div class="field"><label>Max Products (-1 = unlimited)</label><input id="cs-products" type="number" value="100"></div>' +
-    '<div class="field"><label>Reports</label><select id="cs-reports">' +
-    '<option value="DAILY">Daily only</option><option value="ALL">All reports</option></select></div>' +
-    '<div class="field"><label><input type="checkbox" id="cs-health"> Health Indicators</label></div>' +
-    '<div class="field"><label>Monthly Fee (₱)</label><input id="cs-fee" type="number" value="0"></div>' +
-    '<div id="cs-suggested" class="hint" style="margin-bottom:8px;"></div>' +
-    '<button class="btn btn-secondary" onclick="_computeCreateSuggest()">💡 Suggest Price</button>' +
+    '<div class="section-title">Custom Plan — Module Selection</div>' +
+    '<div class="hint" style="margin-bottom:10px;">Pick the modules this store needs. All 17 selected = ₱1,000/mo. Minimum charge: ₱200/mo.</div>' +
+    '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:14px;display:flex;justify-content:space-between;align-items:center;">' +
+    '<span>Computed monthly fee</span><strong id="cs-custom-modules-fee">₱200/mo</strong>' +
+    '</div>' +
+    '<div id="cs-custom-modules"></div>' +
+    '<div class="field" style="margin-top:10px;"><label>Monthly Fee Override (₱) — 0 = use computed price</label>' +
+    '<input id="cs-fee" type="number" min="0" value="0"></div>' +
     '</div>' +
 
     '<div class="card">' +
@@ -908,8 +1002,8 @@ function renderProvisionSuccess(r) {
     '<div style="background:#f9fafb;border-radius:8px;padding:12px;text-align:left;">' +
     '<div style="font-size:12px;line-height:2;color:#374151;">' +
     '<div>🎁 Trial ends: <strong>' + r.trialEnd + '</strong></div>' +
-    '<div>📋 Plan: <strong>' + r.plan + '</strong></div>' +
-    (r.monthlyFee ? '<div>💰 Monthly fee: <strong>' + _money(r.monthlyFee) + '</strong></div>' : '') +
+    '<div>📋 Plan: <strong>' + _esc(_planLabel(r.plan)) + '</strong> (Negotiable)</div>' +
+    (r.monthlyFee ? '<div>💰 Monthly fee: <strong>' + _money(r.monthlyFee) + ' (Negotiated)</strong></div>' : '') +
     '<div>🔑 API Key: <span style="word-break:break-all;font-size:11px;">' + r.apiKey + '</span></div>' +
     '</div></div>' +
     '</div>' +
@@ -1291,6 +1385,17 @@ async function renderCreateStore(msg) {
 
     '<div class="card" id="cs-addons-card"></div>' +
 
+    '<div class="card" id="cs-custom-card" style="display:none;">' +
+    '<div class="section-title">Custom Plan — Module Selection</div>' +
+    '<div class="hint" style="margin-bottom:10px;">Pick the modules this store needs. All 17 selected = ₱1,000/mo. Minimum charge: ₱200/mo.</div>' +
+    '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:14px;display:flex;justify-content:space-between;align-items:center;">' +
+    '<span>Computed monthly fee</span><strong id="cs-custom-modules-fee">₱200/mo</strong>' +
+    '</div>' +
+    '<div id="cs-custom-modules"></div>' +
+    '<div class="field" style="margin-top:10px;"><label>Monthly Fee Override (₱) — 0 = use computed price</label>' +
+    '<input id="cs-fee" type="number" min="0" value="0"></div>' +
+    '</div>' +
+
     '<div class="card">' +
     '<div class="section-title">Owner Login Seed</div>' +
     '<div class="field"><label>Owner Username</label><input id="cs-owner-user" value="owner" placeholder="owner"></div>' +
@@ -1335,6 +1440,21 @@ function _onCreateDbProviderChange() {
   document.getElementById('cs-d1-fields').style.display = provider === 'd1' ? 'block' : 'none';
 }
 
+// override _onCreatePlanChange to handle CUSTOM module selector
+function _onCreatePlanChange() {
+  var plan = document.getElementById('cs-plan').value;
+  var addonsCard = document.getElementById('cs-addons-card');
+  var customCard = document.getElementById('cs-custom-card');
+  if (plan === 'CUSTOM') {
+    if (addonsCard) addonsCard.style.display = 'none';
+    if (customCard) customCard.style.display = '';
+    _renderCustomModuleSelector('cs-custom-modules', []);
+  } else {
+    if (addonsCard) { addonsCard.style.display = ''; _renderAddOnSelector('cs-addons-card', plan, _selectedModulesFromForm('cs-addons-card')); }
+    if (customCard) customCard.style.display = 'none';
+  }
+}
+
 async function submitCreateStore() {
   var name = (document.getElementById('cs-name').value || '').trim();
   if (!name) { _toast('Store name is required', true); return; }
@@ -1361,9 +1481,20 @@ async function submitCreateStore() {
     notes: (document.getElementById('cs-notes').value || '').trim(),
     initialModuleCodes: _moduleSyncPayload(plan, _selectedModulesFromForm('cs-addons-card')).initialModuleCodes
   };
-  var createModulePayload = _moduleSyncPayload(plan, _selectedModulesFromForm('cs-addons-card'));
-  Object.assign(data, createModulePayload);
-  _applyModulePatchFields(data, createModulePayload);
+  if (plan === 'CUSTOM') {
+    var selectedMods = _selectedModulesFromForm('cs-custom-modules');
+    data.customModules = selectedMods;
+    var feeOverride = Number((document.getElementById('cs-fee') || {}).value) || 0;
+    data.monthlyFee = feeOverride > 0 ? feeOverride : _computeCustomFee(selectedMods);
+    data.maxUsers = -1;
+    data.maxProducts = -1;
+    data.reportsLevel = 'ALL';
+    data.hasHealthIndicators = true;
+  } else {
+    var createModulePayload = _moduleSyncPayload(plan, _selectedModulesFromForm('cs-addons-card'));
+    Object.assign(data, createModulePayload);
+    _applyModulePatchFields(data, createModulePayload);
+  }
   if (provider === 'libsql' && !data.tursoDbUrl) { _toast('Dedicated Turso DB URL is required', true); return; }
   if (provider === 'd1' && !data.d1Binding) { _toast('Dedicated D1 binding is required', true); return; }
 
@@ -1411,7 +1542,7 @@ function renderProvisionSuccess(r) {
     '<div style="background:#f9fafb;border-radius:8px;padding:12px;text-align:left;">' +
     '<div style="font-size:12px;line-height:2;color:#374151;">' +
     lifecycleHtml +
-    '<div>Plan: <strong>' + _esc(_planLabel(r.plan)) + '</strong></div>' +
+    '<div>Plan: <strong>' + _esc(_planLabel(r.plan)) + '</strong> (Negotiable)</div>' +
     (r.monthlyFee ? '<div>Monthly fee: <strong>' + _money(r.monthlyFee) + '</strong></div>' : '') +
     (seededAddOns.length ? '<div>Initial add-ons: <strong>' + _esc(seededAddOns.map(function(item) { return item.feature_name || item.module_code; }).join(', ')) + '</strong></div>' : '<div>Initial add-ons: <strong>None selected</strong></div>') +
     dbHtml +

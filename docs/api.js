@@ -251,7 +251,41 @@ const API = {
     }
   },
 
-  async _repairCoreStaffAccess() { return false; },
+   async _repairCoreStaffAccess() {
+
+    try {
+
+      await this._raw('repairStaffAccess', {});
+
+      return true;
+
+    } catch(e) {
+
+      console.warn('Core staff access repair failed:', e);
+
+      return false;
+
+    }
+
+  },
+
+  async _repairCoreStaffAccessQuick() {
+
+    try {
+
+      await this._raw('repairStaffAccessQuick', {});
+
+      return true;
+
+    } catch(e) {
+
+      console.warn('Quick staff access repair failed:', e);
+
+      return false;
+
+    }
+
+  },
 
   setToken(token) {
     this.token = token;

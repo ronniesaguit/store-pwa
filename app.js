@@ -404,17 +404,21 @@ function _planRepairPatch(planId) {
 }
 
 async function _ownerAdminPlanResaveRepair() {
-  if (!window.ADMIN_API || !ADMIN_API.token) return false;
-  var storeId = state.session && (state.session.storeId || state.session.Store_ID || (state.session.user && state.session.user.Store_ID));
-  if (!storeId) return false;
   try {
-    await ADMIN_API.call('adminUpdateStore', { storeId: storeId, patch: _planRepairPatch(_currentPlanId()) });
-    try { await ADMIN_API.call('adminMigrateStore', { storeId: storeId }); } catch(migErr) {}
-    await API._silentReAuth();
+    // Trigger backend repair by calling the repair endpoint
+    await API.call('repairStaffAccess', {});
     return true;
   } catch(e) {
+    console.warn('Owner admin plan resave repair failed:', e);
     return false;
   }
+}
+
+}
+
+}
+
+}
 }
 
 function _staffPolicy() {
