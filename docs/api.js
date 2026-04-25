@@ -118,6 +118,20 @@ async function _postToApi(url, body) {
 
 _persistApiBaseOverrideFromUrl();
 
+// ── Staff repair helpers ───────────────────────────────────────────────────────
+var _STAFF_MGMT_ACTIONS = ['getStaff','getStaffById','createStaff','updateStaff',
+  'assignStaffRole','setStaffPassword','setStaffStatus','deactivateStaff',
+  'getCustomRoles','createCustomRole','updateCustomRole','assignCustomRole',
+  'listRoleAssignments'];
+function _isStaffManagementAction(action) { return _STAFF_MGMT_ACTIONS.indexOf(action) !== -1; }
+function _isStaffModuleGateResult(result) {
+  return !!(result && !result.success &&
+    (result.errorCode === 'MODULE_DISABLED' ||
+     (typeof result.error === 'string' && result.error.toLowerCase().indexOf('staff_management') !== -1)));
+}
+function _isStaffReadAction(action) { return action === 'getStaff' || action === 'getStaffById'; }
+function _staffRepairContext() { return {}; }
+
 // Store key for this store installation — set from URL ?k= param or localStorage
 const STORE_KEY = (function() {
   var fromUrl = new URLSearchParams(window.location.search).get('k');
@@ -236,6 +250,8 @@ const API = {
       this._reauthing = false;
     }
   },
+
+  async _repairCoreStaffAccess() { return false; },
 
   setToken(token) {
     this.token = token;

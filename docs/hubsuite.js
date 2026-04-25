@@ -73,11 +73,30 @@
     }
   };
 
+  var PLAN_MODULES = {
+    TRIAL:        ['auth','quick_sell','products','inventory','expenses','reports','monitors','roi','staff_management','settings','support','internal_chat','activity_log','feature_marketplace'],
+    NEGOSYO_HUB:  ['auth','quick_sell','products','inventory','expenses','reports','monitors','settings','support','staff_management','feature_marketplace','notification_delivery','alert_rules_engine','hardware_profiles'],
+    BUSINESS_HUB: ['auth','quick_sell','products','inventory','expenses','reports','monitors','staff_management','settings','support','approvals','alert_rules_engine','notification_delivery','suppliers','purchase_orders','stock_receiving','branch_transfer','data_import_tools','feature_marketplace'],
+    NEXORA_HUB:   ['auth','quick_sell','products','inventory','expenses','reports','monitors','roi','staff_management','settings','support','internal_chat','tax_reports','approvals','activity_log','executive_dashboard','branch_transfer','consolidated_executive_dashboard','hq_control_center','multi_branch_advanced_reports','custom_role_builder','alert_rules_engine','notification_delivery','automation_rules','data_import_tools','legacy_migration_tools','feature_marketplace','sandbox_mode','hardware_profiles','billing_events','suppliers','purchase_orders','stock_receiving'],
+    CUSTOM:       null
+  };
+
   var BASIC_FEATURES = {
     NEGOSYO_HUB: ['Quick Sell', 'Products', 'Inventory', 'Expenses', 'Daily Reports', 'Staff Accounts', 'Feature Marketplace', 'Hardware Setup'],
     BUSINESS_HUB: ['Everything in Negosyo Hub', 'Advanced Reports', 'Staff Management', 'Approvals', 'Suppliers', 'Purchase Orders', 'Stock Receiving', 'Sandbox Mode'],
     NEXORA_HUB: ['Everything in Business Hub', 'Executive Views', 'HQ Control', 'Branch Transfers', 'Custom Roles', 'Automation', 'Billing Visibility', 'Migration Tools']
   };
+
+  function getCoreModuleCodes(planId) {
+    var id = String(planId || '').trim().toUpperCase();
+    id = PLAN_ALIASES[id] || id;
+    if (!(id in PLAN_MODULES)) return null;
+    return PLAN_MODULES[id];
+  }
+
+  function getAddOnCatalog(planId, features) {
+    return features || [];
+  }
 
   function normalizePlanId(planId) {
     var normalized = String(planId || '').trim().toUpperCase();
@@ -127,13 +146,16 @@
     planIds: PLAN_IDS,
     tiers: TIERS,
     basicFeatures: BASIC_FEATURES,
+    planModules: PLAN_MODULES,
     normalizePlanId: normalizePlanId,
     getTier: getTier,
     getPlanLabel: getPlanLabel,
     getAddOnPrice: getAddOnPrice,
     resolveModuleId: resolveModuleId,
     getPlanOptions: getPlanOptions,
-    logoMarkup: logoMarkup
+    logoMarkup: logoMarkup,
+    getCoreModuleCodes: getCoreModuleCodes,
+    getAddOnCatalog: getAddOnCatalog
   };
 })(window);
 

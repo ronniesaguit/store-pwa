@@ -1,5 +1,9 @@
 // app.js — Store Management PWA main logic
 
+// Platform GCash payment details — updated at login from platformSettings
+var HUB_GCASH_NUMBER = '09163561251';
+var HUB_GCASH_NAME   = 'HubSuite';
+
 var SCANNER_URL = (function() {
   try { return new URL('./scanner.html', window.location.href).toString(); }
   catch(e) { return './scanner.html'; }
@@ -273,6 +277,10 @@ async function submitLogin() {
     state.products     = result.products   || [];
     state.categories   = result.categories || [];
     state.isOffline    = false;
+    if (result.paymentInfo) {
+      if (result.paymentInfo.gcashNumber) HUB_GCASH_NUMBER = result.paymentInfo.gcashNumber;
+      if (result.paymentInfo.gcashName)   HUB_GCASH_NAME   = result.paymentInfo.gcashName;
+    }
     localStorage.setItem('store_session', JSON.stringify(state.session));
     localStorage.setItem('store_profile', JSON.stringify(state.storeProfile));
     try { await DB.saveProducts(state.products);   } catch(e) {}
@@ -785,11 +793,11 @@ async function _startAddOnTrial(moduleCode) {
   var btn = event && event.target;
   if (btn) { btn.disabled = true; btn.textContent = 'Starting trial…'; }
   try {
-    await API.call('startTrial', { module_code: moduleCode });
+    await API.call('startTrial', { moduleCode: moduleCode });
     closeFeatureDetailModal();
     closeAddOnsPanel();
     await _refreshOwnerAddOns({ rerender: true });
-    showToast && showToast('30-day free trial started!', 'success');
+    _showToast('30-day free trial started! ✅', false);
   } catch(e) {
     if (btn) { btn.disabled = false; btn.textContent = '🎁 Start 30-Day Free Trial'; }
     alert('Could not start trial: ' + (e.message || 'Unknown error'));
