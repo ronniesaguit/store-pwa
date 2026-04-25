@@ -405,20 +405,12 @@ function _planRepairPatch(planId) {
 
 async function _ownerAdminPlanResaveRepair() {
   try {
-    // Trigger backend repair by calling the repair endpoint
     await API.call('repairStaffAccess', {});
     return true;
   } catch(e) {
     console.warn('Owner admin plan resave repair failed:', e);
     return false;
   }
-}
-
-}
-
-}
-
-}
 }
 
 function _staffPolicy() {
