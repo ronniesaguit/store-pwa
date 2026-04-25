@@ -511,12 +511,52 @@ function renderStoreDetail(idx) {
       : '<button class="btn btn-danger"  onclick="_toggleStatus(\'' + st.Store_ID + '\',\'SUSPENDED\')">🚫 Suspend Store</button>') +
     '</div>' +
 
-    // ── DB Migration ──
+    // ── Repair Toolkit ──
     '<div class="card">' +
-    '<div class="section-title">🔧 Database Migration</div>' +
-    '<p style="font-size:12px;color:#6b7280;margin-bottom:8px;">Run this once to create missing tables (branch_transfers, purchase_orders, stock_receiving, branches) and add missing supplier columns.</p>' +
-    '<button class="btn btn-secondary" onclick="_migrateStore(\'' + st.Store_ID + '\')">Run Migration</button>' +
-    '<div class="field" style="margin-top:12px;"><label>Dedicated D1 Binding</label><input id="d1-binding" placeholder="e.g. STORE_DB_DEMO" value="' + _esc(st.D1_Binding || '') + '"></div>' +
+    '<div class="section-title">🔧 Repair Toolkit</div>' +
+    '<div class="hint" style="margin-bottom:10px;">Use these when an owner reports a feature is broken. Each repair re-runs schema migration for that module. Safe to run multiple times.</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">' +
+    '<button class="btn btn-secondary" style="font-size:12px;padding:10px;" onclick="_repairModule(\'' + st.Store_ID + '\',\'staff_management\')">👥 Staff Access</button>' +
+    '<button class="btn btn-secondary" style="font-size:12px;padding:10px;" onclick="_repairModule(\'' + st.Store_ID + '\',\'custom_role_builder\')">🎭 Custom Roles</button>' +
+    '<button class="btn btn-secondary" style="font-size:12px;padding:10px;" onclick="_repairModule(\'' + st.Store_ID + '\',\'activity_log\')">📜 Activity Log</button>' +
+    '<button class="btn btn-secondary" style="font-size:12px;padding:10px;" onclick="_repairModule(\'' + st.Store_ID + '\',\'approvals\')">✅ Approvals</button>' +
+    '<button class="btn btn-secondary" style="font-size:12px;padding:10px;" onclick="_repairModule(\'' + st.Store_ID + '\',\'suppliers\')">🏭 Suppliers</button>' +
+    '<button class="btn btn-secondary" style="font-size:12px;padding:10px;" onclick="_repairModule(\'' + st.Store_ID + '\',\'purchase_orders\')">📋 Purchase Orders</button>' +
+    '<button class="btn btn-secondary" style="font-size:12px;padding:10px;" onclick="_repairModule(\'' + st.Store_ID + '\',\'branch_transfer\')">🔄 Branch Transfers</button>' +
+    '<button class="btn btn-secondary" style="font-size:12px;padding:10px;" onclick="_repairModule(\'' + st.Store_ID + '\',\'internal_chat\')">💬 Internal Chat</button>' +
+    '</div>' +
+    '<button class="btn btn-primary" style="margin-bottom:8px;" onclick="_migrateStore(\'' + st.Store_ID + '\')">🔁 Full Migration (All Tables)</button>' +
+    '</div>' +
+
+    // ── Activity Log ──
+    '<div class="card">' +
+    '<div class="section-title">📜 Activity Log</div>' +
+    '<div style="display:flex;gap:8px;margin-bottom:8px;">' +
+    '<select id="al-module" style="flex:1;padding:8px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;">' +
+    '<option value="">All modules</option>' +
+    '<option value="auth">Auth</option><option value="products">Products</option>' +
+    '<option value="inventory">Inventory</option><option value="expenses">Expenses</option>' +
+    '<option value="quick_sell">Quick Sell</option><option value="staff_management">Staff</option>' +
+    '<option value="custom_role_builder">Custom Roles</option><option value="approvals">Approvals</option>' +
+    '<option value="suppliers">Suppliers</option><option value="purchase_orders">Purchase Orders</option>' +
+    '<option value="reports">Reports</option>' +
+    '</select>' +
+    '<button class="btn btn-secondary" style="width:auto;padding:8px 14px;font-size:13px;" onclick="_loadActivityLog(\'' + st.Store_ID + '\')">Load</button>' +
+    '</div>' +
+    '<div id="activity-log-area"><div class="muted" style="font-size:12px;">Press Load to view recent activity.</div></div>' +
+    '</div>' +
+
+    // ── Custom Roles ──
+    '<div class="card">' +
+    '<div class="section-title">🎭 Custom Roles</div>' +
+    '<button class="btn btn-secondary" style="margin-bottom:10px;" onclick="_loadCustomRoles(\'' + st.Store_ID + '\')">Load Roles</button>' +
+    '<div id="custom-roles-area"><div class="muted" style="font-size:12px;">Press Load to view roles defined for this store.</div></div>' +
+    '</div>' +
+
+    // ── DB Management ──
+    '<div class="card">' +
+    '<div class="section-title">🗄️ Database Management</div>' +
+    '<div class="field"><label>Dedicated D1 Binding</label><input id="d1-binding" placeholder="e.g. STORE_DB_DEMO" value="' + _esc(st.D1_Binding || '') + '"></div>' +
     '<div class="field"><label><input type="checkbox" id="d1-activate"> Activate dedicated DB after successful copy</label></div>' +
     '<button class="btn btn-primary" onclick="_copyStoreToDedicatedDb(\'' + st.Store_ID + '\')">Copy To Dedicated D1</button>' +
     '<div class="hint">Use one D1 binding per store if you want strict database isolation.</div>' +
@@ -646,6 +686,79 @@ async function _migrateStore(storeId) {
     var fail = (res.results || []).filter(function(r) { return !r.ok; }).length;
     _toast('Migration done: ' + ok + ' ok, ' + fail + ' skipped/already existed');
   } catch(e) { _toast('Migration failed: ' + e.message, true); }
+}
+
+async function _repairModule(storeId, moduleId) {
+  var label = {
+    staff_management: 'Staff Access', custom_role_builder: 'Custom Roles',
+    activity_log: 'Activity Log', approvals: 'Approvals', suppliers: 'Suppliers',
+    purchase_orders: 'Purchase Orders', branch_transfer: 'Branch Transfers',
+    internal_chat: 'Internal Chat'
+  }[moduleId] || moduleId;
+  try {
+    await ADMIN_API.call('adminRepairStoreModule', { storeId: storeId, moduleId: moduleId });
+    _toast(label + ' repaired. Ask owner to log out and back in.');
+  } catch(e) { _toast('Repair failed: ' + e.message, true); }
+}
+
+async function _loadActivityLog(storeId) {
+  var module = (document.getElementById('al-module') && document.getElementById('al-module').value) || '';
+  var area = document.getElementById('activity-log-area');
+  if (!area) return;
+  area.innerHTML = '<div class="muted" style="font-size:12px;">Loading…</div>';
+  try {
+    var result = await ADMIN_API.call('adminGetStoreActivityLog', { storeId: storeId, module: module || null, limit: 100 });
+    var logs = result.logs || [];
+    if (!logs.length) { area.innerHTML = '<div class="muted" style="font-size:12px;">No activity found.</div>'; return; }
+    var actColors = { login_success: '#dcfce7', login_failed: '#fee2e2', sale_created: '#dbeafe', product_created: '#fef9c3', staff_created: '#e9d5ff' };
+    area.innerHTML = '<div style="max-height:320px;overflow-y:auto;">' +
+      logs.map(function(l) {
+        var bg = actColors[l.action] || '#f9fafb';
+        var time = String(l.created_at || '').substring(0, 16).replace('T', ' ');
+        return '<div style="padding:6px 8px;border-bottom:1px solid #f3f4f6;background:' + bg + ';border-radius:6px;margin-bottom:3px;">' +
+          '<div style="display:flex;justify-content:space-between;font-size:11px;">' +
+          '<span style="font-weight:700;color:#374151;">' + _esc(l.module) + ' › ' + _esc(l.action) + '</span>' +
+          '<span style="color:#6b7280;">' + time + '</span>' +
+          '</div>' +
+          '<div style="font-size:12px;color:#111;">' + _esc(l.summary || '') + '</div>' +
+          '<div style="font-size:11px;color:#9ca3af;">By: ' + _esc(l.username || l.user_id || '?') + ' (' + _esc(l.role || '') + ')' +
+          (l.target_id ? ' · Target: ' + _esc(l.target_id) : '') + '</div>' +
+          '</div>';
+      }).join('') +
+      '</div>';
+  } catch(e) {
+    area.innerHTML = '<div class="msg-err" style="font-size:12px;">Failed: ' + _esc(e.message) + '</div>';
+  }
+}
+
+async function _loadCustomRoles(storeId) {
+  var area = document.getElementById('custom-roles-area');
+  if (!area) return;
+  area.innerHTML = '<div class="muted" style="font-size:12px;">Loading…</div>';
+  try {
+    var result = await ADMIN_API.call('adminGetStoreCustomRoles', { storeId: storeId });
+    var roles = result.roles || [];
+    if (!roles.length) { area.innerHTML = '<div class="muted" style="font-size:12px;">No custom roles defined yet.</div>'; return; }
+    area.innerHTML = roles.map(function(r) {
+      var perms = (r.permissions || []).slice(0, 6);
+      var more = r.permissions.length - perms.length;
+      return '<div style="border:1px solid #e5e7eb;border-radius:10px;padding:10px 12px;margin-bottom:8px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;">' +
+        '<div>' +
+        '<div style="font-weight:700;font-size:13px;">' + _esc(r.name) + '</div>' +
+        (r.description ? '<div style="font-size:11px;color:#6b7280;">' + _esc(r.description) + '</div>' : '') +
+        '</div>' +
+        '<span style="background:#e9d5ff;color:#6d28d9;font-size:11px;padding:2px 8px;border-radius:8px;font-weight:600;">' + (r.member_count || 0) + ' member' + (r.member_count !== 1 ? 's' : '') + '</span>' +
+        '</div>' +
+        '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;">' +
+        perms.map(function(p) { return '<span style="background:#f3f4f6;font-size:10px;padding:1px 6px;border-radius:6px;">' + _esc(p) + '</span>'; }).join('') +
+        (more > 0 ? '<span style="background:#f3f4f6;font-size:10px;padding:1px 6px;border-radius:6px;color:#6b7280;">+' + more + ' more</span>' : '') +
+        '</div>' +
+        '</div>';
+    }).join('');
+  } catch(e) {
+    area.innerHTML = '<div class="msg-err" style="font-size:12px;">Failed: ' + _esc(e.message) + '</div>';
+  }
 }
 
 async function _copyStoreToDedicatedDb(storeId) {
