@@ -304,30 +304,52 @@ async function submitLogin() {
 }
 
 function logout() {
-  var currentUsername = state.session && state.session.user ? state.session.user.Username : null;
-  if (currentUsername) localStorage.removeItem('offline_cred_' + currentUsername.toLowerCase());
-  if (API.token) API.call('logout').catch(function() {});
-  API.clearToken();
-  state.session      = null;
-  state.products     = [];
-  state.categories   = [];
-  state.cart         = [];
-  state.todayExpenses = null;
+  try {
+    var currentUsername = state && state.session && state.session.user ? state.session.user.Username : null;
+    if (currentUsername) localStorage.removeItem('offline_cred_' + String(currentUsername).toLowerCase());
+  } catch(e) {}
+
+  try { if (API && API.token) API.call('logout').catch(function() {}); } catch(e) {}
+  try { if (API && API.clearToken) API.clearToken(); } catch(e) {}
+
+  try {
+    [
+      'store_token',
+      'store_session',
+      'store_profile',
+      '_ak',
+      'mgr_dash',
+      'exec_dash_cache',
+      'exec_dash_ts',
+      'last_sync_at',
+      'store_api_base'
+    ].forEach(function(k) { localStorage.removeItem(k); });
+
+    Object.keys(localStorage).forEach(function(k) {
+      if (
+        k.indexOf('owner_addons') !== -1 ||
+        k.indexOf('mon_') === 0 ||
+        k.indexOf('offline_cred_') === 0
+      ) {
+        localStorage.removeItem(k);
+      }
+    });
+
+    sessionStorage.clear();
+  } catch(e) {}
+
+  state.session = null;
+  state.products = [];
+  state.sales = [];
+  state.expenses = [];
+  state.users = [];
   state.storeProfile = null;
   state.ownerAddOns = [];
   state.ownerAddOnsLoaded = false;
   state.ownerAddOnsFetchedAt = 0;
-  localStorage.removeItem('store_session');
-  localStorage.removeItem('store_profile');
-  localStorage.removeItem(OWNER_ADDONS_CACHE_KEY);
-  // Clear per-role dashboard caches so next user starts fresh
-  localStorage.removeItem('mgr_dash');
-  localStorage.removeItem('exec_dash_cache');
-  localStorage.removeItem('exec_dash_ts');
-  ['today','last_week','last_month','last_quarter','last_year'].forEach(function(p) {
-    localStorage.removeItem('mon_' + p);
-  });
-  renderLogin();
+
+  var cleanUrl = window.location.origin + window.location.pathname + '?api=reset&logout=1&v=' + Date.now();
+  window.location.replace(cleanUrl);
 }
 
 // ── Module helpers ────────────────────────────────────────────────────────────
@@ -6673,6 +6695,7 @@ window.addEventListener('DOMContentLoaded', function() {
     renderLogin('Startup error: ' + err.message);
   });
 });
+
 
 
 
