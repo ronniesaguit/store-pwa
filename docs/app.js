@@ -1941,7 +1941,7 @@ async function renderAddProductForm(msg, scannedCode, existingImage) {
       '<div class="field"><label>Cost Price (₱)</label><input id="p-cost" type="number" step="0.01" placeholder="0.00" oninput="calcSellingPrice()"></div>' +
       '<div class="field"><label>Profit Margin (%)</label><input id="p-margin" type="number" value="20" oninput="calcSellingPrice()"></div>' +
       '<div class="field"><label>Selling Price (₱) *</label><input id="p-price" type="number" step="0.01" placeholder="Auto-calculated"></div>' +
-      '<div class="field"><label>Starting Stock</label><input id="p-stock" type="number" value="0"></div>' +
+      '<div class="field"><label>Starting Stock</label><input id="p-stock" type="number" value="0" disabled><div class="hint">For now, add stock after saving the product using Inventory → Add Stock.</div></div>' +
       '<div class="field"><label>Reorder Level</label><input id="p-reorder" type="number" value="5"></div>' +
       '<button class="btn btn-primary" onclick="submitProduct()">Save Product</button>' +
     '</div>' +
@@ -2094,7 +2094,7 @@ async function submitProduct() {
     Barcode:       (document.getElementById('p-barcode')  || {}).value || '',
     Cost_Price:    (document.getElementById('p-cost')     || {}).value || 0,
     Selling_Price: price,
-    Current_Stock: (document.getElementById('p-stock')   || {}).value || 0,
+    Current_Stock: 0,
     Reorder_Level: (document.getElementById('p-reorder') || {}).value || 5,
     Image:         _pendingProductImage || ''
   };
@@ -6681,6 +6681,7 @@ window.addEventListener('DOMContentLoaded', function() {
     renderLogin('Startup error: ' + err.message);
   });
 });
+
 
 
 
