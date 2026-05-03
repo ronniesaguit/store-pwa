@@ -37,3 +37,4 @@ LEAN-CTX.md
 
 .codex-deploy/store-pwa-pages/
 deploy.ps1.bak-before-safe-codeforge-deploy-*
+*.bak-gcash-donation-*
