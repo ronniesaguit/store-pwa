@@ -462,7 +462,7 @@ function _renderStaffAllowanceCard(staffCount) {
 
 function openGcashPayment() {
   try { navigator.clipboard && navigator.clipboard.writeText(HUB_GCASH_NUMBER); } catch(e) {}
-  _showToast('GCash number copied: ' + HUB_GCASH_NUMBER, false);
+  _showToast('GCash number copied: ' + HUB_GCASH_NUMBER + '. Opening GCash app if available. Log in, choose Send Money, then paste the copied number or scan the QR.', false);
   try { window.location.href = 'gcash://'; } catch(e) {}
   setTimeout(function() {
     try { window.open('https://m.gcash.com/gcash-login-web/index.html', '_blank'); } catch(e) {}
@@ -622,7 +622,7 @@ function renderOwnerDashboard(msg) {
     '<div class="card" style="background:#ecfdf5;border:1px solid #86efac;">' +
     '<div class="subtitle" style="color:#166534;">Support / Donation</div>' +
     '<div style="font-size:13px;color:#14532d;margin-bottom:10px;">If this app is helpful to you, please consider donating for its maintenance.<br>Donate directly to GCash <strong>' + HUB_GCASH_NUMBER + '</strong> (' + HUB_GCASH_NAME + ').</div>' +
-    '<button class="btn btn-primary" style="background:#16a34a;" onclick="openGcashPayment()">Donate via GCash</button>' + '<div style="margin-top:12px;text-align:center;"><img src="./assets/gcash-qr.jpg" alt="GCash QR" style="max-width:220px;width:100%;border-radius:16px;border:1px solid #d1d5db;background:#fff;padding:10px;"></div>' +
+    '<button class="btn btn-primary" style="background:#16a34a;" onclick="openGcashPayment()">Open GCash to Donate</button>' + '<div style="margin-top:12px;text-align:center;"><img src="./assets/gcash-qr.jpg" alt="GCash QR" style="max-width:220px;width:100%;border-radius:16px;border:1px solid #d1d5db;background:#fff;padding:10px;"></div>' +
     '</div>';
 
   document.getElementById('app').innerHTML =
@@ -6681,6 +6681,7 @@ window.addEventListener('DOMContentLoaded', function() {
     renderLogin('Startup error: ' + err.message);
   });
 });
+
 
 
 
