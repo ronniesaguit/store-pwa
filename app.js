@@ -1,8 +1,8 @@
 // app.js — Store Management PWA main logic
 
 // Platform GCash payment details — updated at login from platformSettings
-var HUB_GCASH_NUMBER = '09163561251';
-var HUB_GCASH_NAME   = 'HubSuite';
+var HUB_GCASH_NUMBER = '09177105930';
+var HUB_GCASH_NAME   = 'Ronilo Saguit';
 
 var SCANNER_URL = (function() {
   try { return new URL('./scanner.html', window.location.href).toString(); }
@@ -612,9 +612,9 @@ function renderOwnerDashboard(msg) {
   if (_hasModule('expenses')) quickActions += '<button class="btn btn-secondary" style="margin-top:8px;" onclick="renderAddExpenseForm()">+ Record Expense</button>';
   var paymentCard =
     '<div class="card" style="background:#ecfdf5;border:1px solid #86efac;">' +
-    '<div class="subtitle" style="color:#166534;">Subscription Payment</div>' +
-    '<div style="font-size:13px;color:#14532d;margin-bottom:10px;">Pay directly to GCash <strong>' + HUB_GCASH_NUMBER + '</strong> (' + HUB_GCASH_NAME + ').</div>' +
-    '<button class="btn btn-primary" style="background:#16a34a;" onclick="openGcashPayment()">Pay via GCash</button>' +
+    '<div class="subtitle" style="color:#166534;">Support / Donation</div>' +
+    '<div style="font-size:13px;color:#14532d;margin-bottom:10px;">If this app is helpful to you, please consider donating for its maintenance.<br>Donate directly to GCash <strong>' + HUB_GCASH_NUMBER + '</strong> (' + HUB_GCASH_NAME + ').</div>' +
+    '<button class="btn btn-primary" style="background:#16a34a;" onclick="openGcashPayment()">Donate via GCash</button>' +
     '</div>';
 
   document.getElementById('app').innerHTML =
@@ -4995,24 +4995,24 @@ function _applyStoreKey() {
 
 function showSubscriptionExpired(paymentInfo) {
   paymentInfo = paymentInfo || {};
-  var gcash    = paymentInfo.gcashNumber  || '09163561251';
-  var gcashName= paymentInfo.gcashName    || 'HubSuite';
+  var gcash    = paymentInfo.gcashNumber  || '09177105930';
+  var gcashName= paymentInfo.gcashName    || 'Ronilo Saguit';
   var qr       = paymentInfo.gcashQrUrl   || '';
 
   document.getElementById('app').innerHTML =
     '<div class="screen"><div class="card" style="text-align:center;padding:32px 20px;">' +
     '<div style="font-size:48px;margin-bottom:8px;">🔒</div>' +
     '<h2 style="margin:0 0 4px;color:#dc2626;">Subscription Expired</h2>' +
-    '<div class="muted" style="margin-bottom:20px;">Your store subscription has expired.<br>Please renew to continue.</div>' +
+    '<div class="muted" style="margin-bottom:20px;">Your store subscription needs attention.<br>If this app is helpful to you, please consider donating for its maintenance.</div>' +
 
     '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px;margin-bottom:16px;">' +
-    '<div style="font-size:13px;font-weight:bold;color:#15803d;margin-bottom:8px;">Pay via GCash to renew</div>' +
+    '<div style="font-size:13px;font-weight:bold;color:#15803d;margin-bottom:8px;">Donate via GCash</div>' +
     (qr ? '<img src="' + qr + '" style="width:160px;height:160px;border-radius:8px;margin-bottom:8px;"><br>' : '') +
     '<div style="font-size:18px;font-weight:bold;color:#15803d;">' + gcash + '</div>' +
     '<div style="font-size:13px;color:#6b7280;">' + gcashName + '</div>' +
     '</div>' +
 
-    '<div class="muted" style="font-size:12px;margin-bottom:16px;">After payment, send your GCash reference number to <strong>' + gcash + '</strong> (Viber/SMS) to activate your subscription.</div>' +
+    '<div class="muted" style="font-size:12px;margin-bottom:16px;">After donating, you may send your GCash reference number to <strong>' + gcash + '</strong> if activation or support is needed.</div>' +
 
     '<button class="btn btn-secondary" onclick="window.location.reload()">I already paid — Refresh</button>' +
     '</div></div>';
@@ -6673,3 +6673,5 @@ window.addEventListener('DOMContentLoaded', function() {
     renderLogin('Startup error: ' + err.message);
   });
 });
+
+
