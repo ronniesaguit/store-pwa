@@ -1,6 +1,44 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+(function(){
+  try {
+    var params = new URLSearchParams(window.location.search || "");
+    if (params.get("logout") === "1" || params.get("resetSession") === "1") {
+      [
+        "store_token",
+        "store_session",
+        "store_profile",
+        "_ak",
+        "mgr_dash",
+        "exec_dash_cache",
+        "exec_dash_ts",
+        "last_sync_at",
+        "store_api_base"
+      ].forEach(function(k){ localStorage.removeItem(k); });
+
+      Object.keys(localStorage).forEach(function(k){
+        if (
+          k.indexOf("owner_addons") !== -1 ||
+          k.indexOf("mon_") === 0 ||
+          k.indexOf("offline_cred_") === 0
+        ) {
+          localStorage.removeItem(k);
+        }
+      });
+
+      try { sessionStorage.clear(); } catch(e) {}
+
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(regs){
+          regs.forEach(function(reg){ reg.unregister(); });
+        }).catch(function(){});
+      }
+    }
+  } catch(e) {}
+})();
+</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>HubSuite</title>
@@ -74,14 +112,14 @@
 </head>
 <body>
   <div id="install-banner">
-    <span>ðŸ“² Install app for offline use</span>
+    <span>📲 Install app for offline use</span>
     <button id="install-btn">Install</button>
   </div>
 
   <div id="app">
     <div style="text-align:center;padding:80px 20px;">
-      <div style="font-size:56px;">ðŸª</div>
-      <div style="margin-top:16px;color:#6b7280;font-size:16px;">Loadingâ€¦</div>
+      <div style="font-size:56px;">🏪</div>
+      <div style="margin-top:16px;color:#6b7280;font-size:16px;">Loading…</div>
     </div>
   </div>
 
@@ -100,8 +138,8 @@
   <div id="barcode-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#111827;z-index:10000;flex-direction:column;overflow:hidden;">
     <!-- Top bar -->
     <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:rgba(0,0,0,.8);flex-shrink:0;">
-      <h2 style="color:#fff;font-size:17px;font-weight:700;margin:0;">ðŸ“· Scan Barcode</h2>
-      <button onclick="closeScannerModal()" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:38px;height:38px;border-radius:50%;font-size:20px;cursor:pointer;">âœ•</button>
+      <h2 style="color:#fff;font-size:17px;font-weight:700;margin:0;">📷 Scan Barcode</h2>
+      <button onclick="closeScannerModal()" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:38px;height:38px;border-radius:50%;font-size:20px;cursor:pointer;">✕</button>
     </div>
 
     <!-- Camera area with viewfinder -->
@@ -128,10 +166,10 @@
     <!-- Bottom controls -->
     <div style="flex-shrink:0;padding:14px 18px 24px;background:rgba(0,0,0,.88);text-align:center;">
       <p id="barcode-status" style="color:#d1fae5;font-size:13px;font-weight:600;margin:0 0 12px 0;">
-        Point camera at barcodeâ€¦
+        Point camera at barcode…
       </p>
       <div style="display:flex;gap:8px;max-width:340px;margin:0 auto 10px;">
-        <input id="scan-manual-input" placeholder="Type barcode manuallyâ€¦" inputmode="numeric" autocomplete="off"
+        <input id="scan-manual-input" placeholder="Type barcode manually…" inputmode="numeric" autocomplete="off"
           style="flex:1;padding:12px;border-radius:10px;border:none;font-size:16px;background:#1f2937;color:#fff;">
         <button onclick="submitManualScan()"
           style="padding:12px 18px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;">Go</button>
@@ -149,10 +187,10 @@
 
   <!-- Scanner overlay (fallback manual input, kept for compatibility) -->
   <div id="scanner-overlay">
-    <h2>ðŸ“· Scanner Openingâ€¦</h2>
+    <h2>📷 Scanner Opening…</h2>
     <p>A scanner window should open.<br>After scanning, the barcode fills in automatically.<br>If the window was blocked, type barcode below.</p>
     <div id="scan-manual-row">
-      <input id="scan-manual-input-fallback" placeholder="Type barcode manuallyâ€¦" inputmode="numeric" autocomplete="off">
+      <input id="scan-manual-input-fallback" placeholder="Type barcode manually…" inputmode="numeric" autocomplete="off">
       <button id="scan-go-btn-fallback" onclick="submitManualScan()">Go</button>
     </div>
     <button class="cancel-btn" onclick="closeScannerModal()">Cancel</button>
@@ -164,7 +202,7 @@
   <script src="./hubsuite.js"></script>
   <script src="./app.js"></script>
   <script>
-    // Service worker registration â€” auto-reload when a new version activates
+    // Service worker registration — auto-reload when a new version activates
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js').then(function(reg) {
         console.log('SW registered');
@@ -197,4 +235,5 @@
   </script>
 </body>
 </html>
+
 

@@ -1,6 +1,44 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+(function(){
+  try {
+    var params = new URLSearchParams(window.location.search || "");
+    if (params.get("logout") === "1" || params.get("resetSession") === "1") {
+      [
+        "store_token",
+        "store_session",
+        "store_profile",
+        "_ak",
+        "mgr_dash",
+        "exec_dash_cache",
+        "exec_dash_ts",
+        "last_sync_at",
+        "store_api_base"
+      ].forEach(function(k){ localStorage.removeItem(k); });
+
+      Object.keys(localStorage).forEach(function(k){
+        if (
+          k.indexOf("owner_addons") !== -1 ||
+          k.indexOf("mon_") === 0 ||
+          k.indexOf("offline_cred_") === 0
+        ) {
+          localStorage.removeItem(k);
+        }
+      });
+
+      try { sessionStorage.clear(); } catch(e) {}
+
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(regs){
+          regs.forEach(function(reg){ reg.unregister(); });
+        }).catch(function(){});
+      }
+    }
+  } catch(e) {}
+})();
+</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>HubSuite</title>
@@ -197,3 +235,4 @@
   </script>
 </body>
 </html>
+

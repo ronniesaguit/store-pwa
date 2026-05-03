@@ -42,3 +42,4 @@ deploy.ps1.bak-before-safe-codeforge-deploy-*
 *.bak-gcash-openapp-*
 *.bak-product-stock-zero-*
 *.bak-logout-force-*
+*.bak-index-logout-reset-*
