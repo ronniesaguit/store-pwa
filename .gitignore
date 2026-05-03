@@ -1,2 +1,36 @@
-# Local Netlify folder
-.netlify
+# Local tool folders
+.claude/
+.codeforge/
+.lean-ctx/
+.sixthrules/
+lean-ctx/
+
+# Local deploy scratch files
+.codex-deploy/
+deploy.ps1
+robocopy.log
+
+# Wrangler / environment files
+.wrangler/
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
+wrangler.jsonc
+
+# Local admin secrets / demo credentials
+admin-config.json
+
+# OS / editor junk
+Thumbs.db
+.DS_Store
+
+
+ # Extra local-only folders/files
+store-pwa/
+scanner-pwa/
+.netlify/
+.cursorrules
+AGENTS.md
+LEAN-CTX.md
+.gitignore.bak-before-deploy-cleanup-*
