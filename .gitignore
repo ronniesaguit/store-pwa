@@ -36,3 +36,4 @@ LEAN-CTX.md
 .gitignore.bak-before-deploy-cleanup-*
 
 .codex-deploy/store-pwa-pages/
+deploy.ps1.bak-before-safe-codeforge-deploy-*
