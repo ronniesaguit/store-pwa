@@ -34,3 +34,5 @@ scanner-pwa/
 AGENTS.md
 LEAN-CTX.md
 .gitignore.bak-before-deploy-cleanup-*
+
+.codex-deploy/store-pwa-pages/
