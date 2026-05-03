@@ -614,7 +614,7 @@ function renderOwnerDashboard(msg) {
     '<div class="card" style="background:#ecfdf5;border:1px solid #86efac;">' +
     '<div class="subtitle" style="color:#166534;">Support / Donation</div>' +
     '<div style="font-size:13px;color:#14532d;margin-bottom:10px;">If this app is helpful to you, please consider donating for its maintenance.<br>Donate directly to GCash <strong>' + HUB_GCASH_NUMBER + '</strong> (' + HUB_GCASH_NAME + ').</div>' +
-    '<button class="btn btn-primary" style="background:#16a34a;" onclick="openGcashPayment()">Donate via GCash</button>' +
+    '<button class="btn btn-primary" style="background:#16a34a;" onclick="openGcashPayment()">Donate via GCash</button>' + '<div style="margin-top:12px;text-align:center;"><img src="./assets/gcash-qr.jpg" alt="GCash QR" style="max-width:220px;width:100%;border-radius:16px;border:1px solid #d1d5db;background:#fff;padding:10px;"></div>' +
     '</div>';
 
   document.getElementById('app').innerHTML =
@@ -4997,7 +4997,7 @@ function showSubscriptionExpired(paymentInfo) {
   paymentInfo = paymentInfo || {};
   var gcash    = paymentInfo.gcashNumber  || '09177105930';
   var gcashName= paymentInfo.gcashName    || 'Ronilo Saguit';
-  var qr       = paymentInfo.gcashQrUrl   || '';
+  var qr       = paymentInfo.gcashQrUrl || './assets/gcash-qr.jpg';
 
   document.getElementById('app').innerHTML =
     '<div class="screen"><div class="card" style="text-align:center;padding:32px 20px;">' +
@@ -5009,7 +5009,7 @@ function showSubscriptionExpired(paymentInfo) {
     '<div style="font-size:13px;font-weight:bold;color:#15803d;margin-bottom:8px;">Donate via GCash</div>' +
     (qr ? '<img src="' + qr + '" style="width:160px;height:160px;border-radius:8px;margin-bottom:8px;"><br>' : '') +
     '<div style="font-size:18px;font-weight:bold;color:#15803d;">' + gcash + '</div>' +
-    '<div style="font-size:13px;color:#6b7280;">' + gcashName + '</div>' +
+    '<div style="font-size:13px;color:#6b7280;">' + gcashName + '</div>' + (qr ? '<div style="margin:14px 0 16px;text-align:center;"><img src="' + qr + '" alt="GCash QR" style="max-width:220px;width:100%;border-radius:16px;border:1px solid #d1d5db;background:#fff;padding:10px;"></div>' : '') +
     '</div>' +
 
     '<div class="muted" style="font-size:12px;margin-bottom:16px;">After donating, you may send your GCash reference number to <strong>' + gcash + '</strong> if activation or support is needed.</div>' +
@@ -6673,5 +6673,6 @@ window.addEventListener('DOMContentLoaded', function() {
     renderLogin('Startup error: ' + err.message);
   });
 });
+
 
 
