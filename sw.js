@@ -1,5 +1,5 @@
 // sw.js — Service Worker for offline-first Store PWA
-const CACHE = 'store-pwa-v63';
+const CACHE = 'store-pwa-v64';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -38,6 +38,13 @@ function isConfigRequest(request, url) {
     /\/config\.js$/.test(url.pathname);
 }
 
+function isFreshAppShellRequest(request, url) {
+  if (request.method !== 'GET') return false;
+  if (url.origin !== self.location.origin) return false;
+  if (url.search && (url.search.indexOf('logout=1') !== -1 || url.search.indexOf('resetSession=1') !== -1 || url.search.indexOf('api=reset') !== -1)) return true;
+  return /\/($|index\.html$|app\.js$|api\.js$|config\.js$|admin\.html$|admin\.js$|sw\.js$)/.test(url.pathname);
+}
+
 // Install: pre-cache all static assets
 self.addEventListener('install', function(e) {
   e.waitUntil(
@@ -67,6 +74,22 @@ self.addEventListener('activate', function(e) {
 self.addEventListener('fetch', function(e) {
   var url = new URL(e.request.url);
 
+  if (isFreshAppShellRequest(e.request, url)) {
+    e.respondWith(
+      fetch(e.request, { cache: 'no-store' }).then(function(response) {
+        if (response && response.status === 200) {
+          var clone = response.clone();
+          caches.open(CACHE).then(function(cache) { cache.put(e.request, clone); });
+        }
+        return response;
+      }).catch(function() {
+        return caches.match(e.request).then(function(cached) {
+          return cached || caches.match('./index.html');
+        });
+      })
+    );
+    return;
+  }
   // Never cache GAS API calls — always go to network
   if (isConfigRequest(e.request, url)) {
     e.respondWith(
@@ -113,3 +136,4 @@ self.addEventListener('fetch', function(e) {
     })
   );
 });
+
