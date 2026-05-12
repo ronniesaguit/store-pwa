@@ -1,4 +1,4 @@
-// api.js — Cloudflare Workers API client
+﻿// api.js â€” Cloudflare Workers API client
 
 const API_BASE_STORAGE_KEY = 'store_api_base';
 const APP_CONFIG = window.__STORE_APP_CONFIG__ || {};
@@ -118,7 +118,7 @@ async function _postToApi(url, body) {
 
 _persistApiBaseOverrideFromUrl();
 
-// ── Staff repair helpers ───────────────────────────────────────────────────────
+// â”€â”€ Staff repair helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // These guard the staff module-gate retry logic in API.call / API._raw.
 // Defined as no-ops here so the repair paths don't run until properly implemented.
 var _STAFF_MGMT_ACTIONS = ['getStaff','getStaffById','createStaff','updateStaff',
@@ -134,7 +134,7 @@ function _isStaffModuleGateResult(result) {
 function _isStaffReadAction(action) { return action === 'getStaff' || action === 'getStaffById'; }
 function _staffRepairContext() { return {}; }
 
-// Store key for this store installation — set from URL ?k= param or localStorage
+// Store key for this store installation â€” set from URL ?k= param or localStorage
 const STORE_KEY = (function() {
   var fromUrl = new URLSearchParams(window.location.search).get('k');
   if (fromUrl) {
@@ -155,7 +155,7 @@ const API = {
   async call(action, data) {
     let result = await this._raw(action, data);
 
-    // Silent re-auth on token expiry — transparent to the user
+    // Silent re-auth on token expiry â€” transparent to the user
     if (!result.success && this._isExpired(result.error) && !this._reauthing) {
       const ok = await this._silentReAuth();
       if (ok) result = await this._raw(action, data);
@@ -212,81 +212,9 @@ const API = {
   },
 
   async _silentReAuth() {
-    const raw = localStorage.getItem('_ak');
-    if (!raw) return false;
-    try {
-      this._reauthing = true;
-      const decoded = atob(raw);
-      const sep = decoded.indexOf(':');
-      const username = decoded.substring(0, sep);
-      const password = decoded.substring(sep + 1);
-      const result = await this._raw('login', { username, password });
-      if (!result.success) return false;
-      this.setToken(result.data.token);
-      // Update cached session and data silently
-      try {
-        if (window.state && result.data.user) {
-          state.session = {
-            loggedIn: true,
-            user: result.data.user,
-            plan: result.data.plan || null,
-            inTrial: result.data.inTrial || false,
-            manifest: result.data.manifest || null
-          };
-          localStorage.setItem('store_session', JSON.stringify(state.session));
-        }
-        if (window.state && (result.data.storeName || result.data.ownerName)) {
-          state.storeProfile = {
-            storeName: result.data.storeName || ((state.storeProfile || {}).storeName) || '',
-            ownerName: result.data.ownerName || ((state.storeProfile || {}).ownerName) || ''
-          };
-          localStorage.setItem('store_profile', JSON.stringify(state.storeProfile));
-        }
-      } catch(e) {}
-      if (result.data.products)   { try { window.state && (state.products   = result.data.products);   } catch(e){} }
-      if (result.data.categories) { try { window.state && (state.categories = result.data.categories); } catch(e){} }
-      return true;
-    } catch(e) {
-      return false;
-    } finally {
-      this._reauthing = false;
-    }
-  },
-
-   async _repairCoreStaffAccess() {
-
-    try {
-
-      await this._raw('repairStaffAccess', {});
-
-      return true;
-
-    } catch(e) {
-
-      console.warn('Core staff access repair failed:', e);
-
-      return false;
-
-    }
-
-  },
-
-  async _repairCoreStaffAccessQuick() {
-
-    try {
-
-      await this._raw('repairStaffAccessQuick', {});
-
-      return true;
-
-    } catch(e) {
-
-      console.warn('Quick staff access repair failed:', e);
-
-      return false;
-
-    }
-
+    // SECURITY: disabled password based silent reauth. User must log in again when token expires.
+    localStorage.removeItem('_ak');
+    return false;
   },
 
   setToken(token) {
@@ -364,7 +292,7 @@ const API = {
   }
 };
 
-// ── Admin API client (used only by admin.html) ────────────────────────────────
+// â”€â”€ Admin API client (used only by admin.html) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const ADMIN_API = {
   token: localStorage.getItem('admin_token') || null,
@@ -395,23 +323,9 @@ const ADMIN_API = {
   },
 
   async _silentReAuth() {
-    const raw = localStorage.getItem('_aak');
-    if (!raw) return false;
-    try {
-      this._reauthing = true;
-      const decoded = atob(raw);
-      const sep = decoded.indexOf(':');
-      const username = decoded.substring(0, sep);
-      const password = decoded.substring(sep + 1);
-      const result = await this._raw('adminLogin', { username, password });
-      if (!result.success) return false;
-      this.setToken(result.data.token);
-      return true;
-    } catch(e) {
-      return false;
-    } finally {
-      this._reauthing = false;
-    }
+    // SECURITY: disabled admin password based silent reauth. Admin must log in again when token expires.
+    localStorage.removeItem('_aak');
+    return false;
   },
 
   setToken(token) {
@@ -426,3 +340,4 @@ const ADMIN_API = {
     localStorage.removeItem('_aak');
   }
 };
+

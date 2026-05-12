@@ -1,5 +1,5 @@
-// sw.js — Service Worker for offline-first Store PWA
-const CACHE = 'store-pwa-v64';
+﻿// sw.js â€” Service Worker for offline-first Store PWA
+const CACHE = 'store-pwa-v65';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -90,7 +90,7 @@ self.addEventListener('fetch', function(e) {
     );
     return;
   }
-  // Never cache GAS API calls — always go to network
+  // Never cache GAS API calls â€” always go to network
   if (isConfigRequest(e.request, url)) {
     e.respondWith(
       fetch(e.request).then(function(response) {
@@ -128,7 +128,7 @@ self.addEventListener('fetch', function(e) {
         }
         return response;
       }).catch(function() {
-        // Offline and not cached — return index.html for navigation requests
+        // Offline and not cached â€” return index.html for navigation requests
         if (e.request.destination === 'document') {
           return caches.match('./index.html');
         }
@@ -136,4 +136,5 @@ self.addEventListener('fetch', function(e) {
     })
   );
 });
+
 
