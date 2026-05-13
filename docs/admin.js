@@ -400,12 +400,21 @@ function renderAdminLogin(msg) {
     '<form class="card" onsubmit="submitAdminLogin(); return false;">' +
     (msg ? '<div class="msg-err">' + msg + '</div>' : '') +
     '<div class="field"><label>Username</label><input id="a-user" placeholder="Admin username"></div>' +
-    '<div class="field"><label>Password</label><input id="a-pass" type="password" placeholder="Password"></div>' +
+    '<div class="field"><label>Password</label><input id="a-pass" type="password" placeholder="Password" autocomplete="current-password"></div>' +
+    '<label style="display:flex;align-items:center;gap:8px;margin:-4px 0 12px;color:#475569;font-size:13px;"><input id="a-show-pass" type="checkbox" onchange="toggleAdminPasswordVisibility()"> Show password</label>' +
     '<button class="btn btn-primary" type="submit">Login</button>' +
     '</form></div>');
   document.getElementById('a-pass').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') submitAdminLogin();
   });
+}
+
+
+function toggleAdminPasswordVisibility() {
+  var pw = document.getElementById('a-pass');
+  var cb = document.getElementById('a-show-pass');
+  if (!pw || !cb) return;
+  pw.type = cb.checked ? 'text' : 'password';
 }
 
 async function submitAdminLogin() {
@@ -1578,4 +1587,6 @@ async function _changePlan(storeId) {
 function _esc(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+
 
