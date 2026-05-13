@@ -117,7 +117,10 @@ function _addOnPriceForPlan(planId) {
 }
 
 function _customModuleCatalog() {
-  if (HUB && HUB.getCustomModuleCatalog) return HUB.getCustomModuleCatalog();
+  var hubList = [];
+  try { if (HUB && HUB.getCustomModuleCatalog) hubList = HUB.getCustomModuleCatalog() || []; } catch(e) {}
+  if (hubList && hubList.length) return hubList;
+  if (typeof _fallbackModuleCatalog === 'function') return _fallbackModuleCatalog();
   return [];
 }
 
@@ -1747,4 +1750,5 @@ function _renderAddOnSelector(containerId, planId, selectedModuleCodes) {
 }
 
 /* HUB_PLAN_BUNDLE_FALLBACK_END */
+
 
