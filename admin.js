@@ -1772,3 +1772,184 @@ function _renderAddOnSelector(containerId, planId, selectedModuleCodes) {
 
 
 
+
+/* UNIFIED_MODULE_SPLIT_OVERRIDE_START */
+
+function _moduleCodeKey(code) {
+  return String(code || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+}
+
+function _moduleCodeOf(m) {
+  return String((m && (m.module_code || m.code || m.Module_Code || m.Code)) || '').trim();
+}
+
+function _moduleNameOf(m) {
+  return (m && (m.feature_name || m.name || m.module_name || m.Feature_Name || m.Name || m.module_code || m.code)) || 'Module';
+}
+
+function _moduleDescOf(m) {
+  return (m && (m.short_description || m.description || m.feature_description || m.Short_Description || m.Description)) || '';
+}
+
+function _canonicalModule(m, fallbackCode) {
+  var code = _moduleCodeOf(m) || String(fallbackCode || '').trim();
+  return {
+    code: code,
+    module_code: code,
+    feature_name: _moduleNameOf(m || { code: code }),
+    name: _moduleNameOf(m || { code: code }),
+    description: _moduleDescOf(m || {}),
+    short_description: _moduleDescOf(m || {}),
+    price: (m && m.price) || (m && m.Price) || null
+  };
+}
+
+function _allModuleCatalog() {
+  var map = {};
+  function addList(list) {
+    (list || []).forEach(function(m) {
+      var code = _moduleCodeOf(m);
+      if (!code) return;
+      var key = _moduleCodeKey(code);
+      if (!map[key]) map[key] = _canonicalModule(m, code);
+    });
+  }
+
+  addList(_featureCatalog());
+
+  try {
+    if (HUB && HUB.getCustomModuleCatalog) addList(HUB.getCustomModuleCatalog() || []);
+  } catch(e) {}
+
+  try {
+    if (typeof _fallbackModuleCatalog === 'function') addList(_fallbackModuleCatalog() || []);
+  } catch(e) {}
+
+  ['TRIAL','NEGOSYO_HUB','BUSINESS_HUB','NEXORA_HUB'].forEach(function(plan) {
+    _planCoreModuleCodes(plan).forEach(function(code) {
+      var key = _moduleCodeKey(code);
+      if (!map[key]) map[key] = _canonicalModule({ code: code, name: String(code).replace(/_/g, ' ') }, code);
+    });
+  });
+
+  return Object.keys(map).sort().map(function(k) { return map[k]; });
+}
+
+function _customModuleCatalog() {
+  return _allModuleCatalog();
+}
+
+function _planCoreModuleCodes(planId) {
+  var plan = _normalizePlanId(planId);
+  if (plan === 'CUSTOM') return [];
+
+  var hubCodes = null;
+  try {
+    if (HUB && HUB.getCoreModuleCodes) hubCodes = HUB.getCoreModuleCodes(plan);
+  } catch(e) {}
+
+  if (Array.isArray(hubCodes)) {
+    return _uniqueModuleCodes(hubCodes.map(function(code) { return _moduleCodeKey(code); }));
+  }
+
+  if (typeof _fallbackCoreModuleCodes === 'function') {
+    return _uniqueModuleCodes((_fallbackCoreModuleCodes(plan) || []).map(function(code) { return _moduleCodeKey(code); }));
+  }
+
+  return [];
+}
+
+function _planCoreModuleCatalog(planId) {
+  var coreMap = {};
+  _planCoreModuleCodes(planId).forEach(function(code) { coreMap[_moduleCodeKey(code)] = true; });
+
+  var all = _allModuleCatalog();
+  var included = all.filter(function(m) {
+    return coreMap[_moduleCodeKey(_moduleCodeOf(m))];
+  });
+
+  var found = {};
+  included.forEach(function(m) { found[_moduleCodeKey(_moduleCodeOf(m))] = true; });
+
+  _planCoreModuleCodes(planId).forEach(function(code) {
+    var key = _moduleCodeKey(code);
+    if (!found[key]) included.push(_canonicalModule({ code: key, name: String(key).replace(/_/g, ' ') }, key));
+  });
+
+  return included;
+}
+
+function _planAddOnCatalog(planId, catalog) {
+  var plan = _normalizePlanId(planId);
+  var all = _allModuleCatalog();
+
+  if (plan === 'CUSTOM') return all;
+
+  var coreMap = {};
+  _planCoreModuleCodes(plan).forEach(function(code) { coreMap[_moduleCodeKey(code)] = true; });
+
+  return all.filter(function(m) {
+    var code = _moduleCodeKey(_moduleCodeOf(m));
+    return code && !coreMap[code];
+  });
+}
+
+function _renderPlanBundleSummary(planId) {
+  var plan = _normalizePlanId(planId);
+  var tier = _planTier(planId) || {};
+  var defs = _planDefs();
+  var def = defs[plan] || {};
+  var core = _planCoreModuleCatalog(planId) || [];
+
+  var coreHtml = core.length ? core.map(function(feature) {
+    var name = _moduleNameOf(feature);
+    var desc = _moduleDescOf(feature);
+    return '<div style="background:#ecfdf5;border:1px solid #bbf7d0;border-radius:10px;padding:10px 12px;margin-bottom:8px;">' +
+      '<div style="font-size:13px;font-weight:800;color:#065f46;">Included: ' + _esc(name) + '</div>' +
+      (desc ? '<div class="muted" style="font-size:11px;margin-top:2px;">' + _esc(desc) + '</div>' : '') +
+      '</div>';
+  }).join('') : '<div class="muted">No included modules for this plan.</div>';
+
+  var limitHtml = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;font-size:12px;">' +
+    '<div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:8px;"><strong>Users</strong><br>' + (def.max_users === -1 ? 'Unlimited' : (def.max_users || tier.maxUsers || '')) + '</div>' +
+    '<div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:8px;"><strong>Products</strong><br>' + (def.max_products === -1 ? 'Unlimited' : (def.max_products || tier.maxProducts || '')) + '</div>' +
+    '<div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:8px;"><strong>Reports</strong><br>' + _esc(def.reports || tier.reportsLevel || '') + '</div>' +
+    '<div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:8px;"><strong>Health</strong><br>' + ((def.health || tier.hasHealthIndicators) ? 'Included' : 'Not included') + '</div>' +
+    '</div>';
+
+  return '<div style="background:#f8fafc;border:1px solid #dbeafe;border-radius:10px;padding:12px;margin-bottom:12px;">' +
+    '<div style="font-weight:800;color:#1e3a5f;margin-bottom:4px;">' + _esc(_planLabel(planId)) + ' Included Bundle</div>' +
+    '<div class="muted" style="font-size:12px;margin-bottom:8px;">Green modules are already included in this plan. They do not need checkboxes.</div>' +
+    coreHtml + limitHtml +
+    '</div>';
+}
+
+function _renderAddOnSelector(containerId, planId, selectedModuleCodes) {
+  var container = document.getElementById(containerId);
+  if (!container) return;
+  var addOnPrice = _addOnPriceForPlan(planId);
+  var addOns = _planAddOnCatalog(planId, _featureCatalog());
+  var selectedMap = {};
+  (selectedModuleCodes || []).forEach(function(code) { selectedMap[_moduleCodeKey(code)] = true; });
+
+  container.innerHTML =
+    '<div class="section-title">Additional Add-ons</div>' +
+    _renderPlanBundleSummary(planId) +
+    '<div class="hint" style="margin-bottom:10px;">Brown modules are not included yet. Tick optional modules to add them on top of the selected plan.</div>' +
+    (addOns.length ? addOns.map(function(feature) {
+      var code = _moduleCodeOf(feature);
+      var name = _moduleNameOf(feature);
+      var desc = _moduleDescOf(feature);
+      return '<label style="display:block;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;">' +
+        '<div style="display:flex;align-items:flex-start;gap:10px;">' +
+        '<input type="checkbox" data-module-code="' + _esc(code) + '"' + (selectedMap[_moduleCodeKey(code)] ? ' checked' : '') + ' style="margin-top:3px;">' +
+        '<div style="flex:1;">' +
+        '<div style="font-size:13px;font-weight:800;color:#9a3412;">Add-on: ' + _esc(name) + '</div>' +
+        (desc ? '<div class="muted" style="font-size:11px;margin-top:2px;">' + _esc(desc) + '</div>' : '') +
+        '<div style="font-size:11px;color:#9a3412;margin-top:4px;">Optional add-on' + (addOnPrice ? ' - ' + addOnPrice + '/mo' : '') + '</div>' +
+        '</div></div></label>';
+    }).join('') : '<div class="muted">No add-ons available for this plan.</div>');
+}
+
+/* UNIFIED_MODULE_SPLIT_OVERRIDE_END */
+
