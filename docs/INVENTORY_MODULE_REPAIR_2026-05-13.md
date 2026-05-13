@@ -47,3 +47,41 @@ Validation after deploy:
 
 Status:
 Inventory legacy Add Stock path repaired and verified.
+
+## Additional Repair: Approval Movement History Stock Values
+
+Worker deployed version: e75e33d6-ae9e-4872-807e-f0b1c1b3a28e
+
+Bug found:
+When a pending stock adjustment was approved, the product stock changed correctly, but the inventory movement history did not update new_stock. Example:
+- Product stock changed from 4 to 3 after approval.
+- Source movement still showed previous_stock = 4 and new_stock = 4.
+
+Patch:
+Updated _applyInventoryMovement so approval updates movement history with:
+- previous_stock = Number(product.current_stock) before approval effect
+- new_stock = calculated stock after approval effect
+
+Patched SQL:
+UPDATE inventory_movements
+SET status='effective',
+    approved_by_user_id=?,
+    approved_at=?,
+    previous_stock=?,
+    new_stock=?,
+    updated_at=?
+WHERE movement_id=?
+
+Validation:
+- Created pending out adjustment:
+  movementId = ADJmp3vgi9w7efk
+  approvalId = APRmp3vgib91279
+- Approved as second owner.
+- Source movement after approval:
+  previous_stock = 3
+  new_stock = 2
+  status = effective
+- Product Current_Stock became 2.
+
+Status:
+Inventory approval movement history repair verified.
