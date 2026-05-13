@@ -321,8 +321,7 @@ function logout() {
       'mgr_dash',
       'exec_dash_cache',
       'exec_dash_ts',
-      'last_sync_at',
-      'store_api_base'
+      'last_sync_at'
     ].forEach(function(k) { localStorage.removeItem(k); });
 
     Object.keys(localStorage).forEach(function(k) {
@@ -348,7 +347,7 @@ function logout() {
   state.ownerAddOnsLoaded = false;
   state.ownerAddOnsFetchedAt = 0;
 
-  var cleanUrl = window.location.origin + window.location.pathname + '?api=reset&logout=1&v=' + Date.now();
+  var cleanUrl = window.location.origin + window.location.pathname + '?logout=1&v=' + Date.now();
   window.location.replace(cleanUrl);
 }
 
@@ -6697,11 +6696,4 @@ window.addEventListener('DOMContentLoaded', function() {
     renderLogin('Startup error: ' + err.message);
   });
 });
-
-
-
-
-
-
-
 
