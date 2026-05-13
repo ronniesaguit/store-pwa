@@ -239,6 +239,30 @@ function _selectedModulesFromForm(containerId) {
   });
 }
 
+
+function _renderPlanBundleSummary(planId) {
+  var tier = _planTier(planId) || {};
+  var defs = _planDefs();
+  var def = defs[_normalizePlanId(planId)] || {};
+  var core = _planCoreModuleCatalog(planId) || [];
+  var coreHtml = core.length ? core.map(function(feature) {
+    var name = feature.feature_name || feature.name || feature.module_name || feature.module_code || feature.code || 'Included feature';
+    var desc = feature.description || feature.feature_description || '';
+    return '<li style="margin-bottom:6px;"><strong>' + _esc(name) + '</strong>' + (desc ? '<div class="muted" style="font-size:11px;">' + _esc(desc) + '</div>' : '') + '</li>';
+  }).join('') : '<li class="muted">No included module list available yet for this plan.</li>';
+  var limitHtml = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;font-size:12px;">' +
+    '<div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:8px;"><strong>Users</strong><br>' + (def.max_users === -1 ? 'Unlimited' : (def.max_users || tier.maxUsers || '')) + '</div>' +
+    '<div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:8px;"><strong>Products</strong><br>' + (def.max_products === -1 ? 'Unlimited' : (def.max_products || tier.maxProducts || '')) + '</div>' +
+    '<div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:8px;"><strong>Reports</strong><br>' + _esc(def.reports || tier.reportsLevel || '') + '</div>' +
+    '<div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:8px;"><strong>Health</strong><br>' + ((def.health || tier.hasHealthIndicators) ? 'Included' : 'Not included') + '</div>' +
+    '</div>';
+  return '<div style="background:#f8fafc;border:1px solid #dbeafe;border-radius:10px;padding:12px;margin-bottom:12px;">' +
+    '<div style="font-weight:800;color:#1e3a5f;margin-bottom:4px;">' + _esc(_planLabel(planId)) + ' Included Bundle</div>' +
+    '<div class="muted" style="font-size:12px;margin-bottom:8px;">These features are already included in the selected Hub plan.</div>' +
+    '<ul style="margin:0 0 0 18px;padding:0;font-size:13px;color:#111827;">' + coreHtml + '</ul>' + limitHtml +
+    '</div>';
+}
+
 function _renderAddOnSelector(containerId, planId, selectedModuleCodes) {
   var container = document.getElementById(containerId);
   if (!container) return;
@@ -248,8 +272,9 @@ function _renderAddOnSelector(containerId, planId, selectedModuleCodes) {
   (selectedModuleCodes || []).forEach(function(code) { selectedMap[String(code)] = true; });
 
   container.innerHTML =
-    '<div class="section-title">Initial Add-ons</div>' +
-    '<div class="hint" style="margin-bottom:10px;">Every new Hub starts with a 30-day trial. These add-ons are prepared now and can also be managed later from the owner dashboard.</div>' +
+    '<div class="section-title">Additional Add-ons</div>' +
+    _renderPlanBundleSummary(planId) +
+    '<div class="hint" style="margin-bottom:10px;">Choose optional add-on features below. The included bundle above is already part of the selected Hub plan.</div>' +
     addOns.map(function(feature) {
       var code = feature.module_code;
       return '<label style="display:block;border:1px solid #e5e7eb;border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;">' +
@@ -1587,6 +1612,7 @@ async function _changePlan(storeId) {
 function _esc(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
 
 
 
