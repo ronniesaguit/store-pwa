@@ -2750,7 +2750,9 @@ function _renderApprovalDetailUI(approval, sourceRecord, error) {
     content = '<div class="message message-error">' + error + '</div>';
   } else {
     var typeLabel = approval.approval_type === 'expense' ? 'Expense' : 'Stock Adjustment';
-    var payload = approval.request_payload ? JSON.parse(approval.request_payload) : {};
+    var payloadRaw = approval.request_payload_json || approval.request_payload || '{}';
+    var payload = {};
+    try { payload = JSON.parse(payloadRaw || '{}'); } catch(e) { payload = {}; }
 
     content = '<div class="card">' +
       '<div class="title">' + typeLabel + ' Approval Request</div>' +
@@ -6695,6 +6697,7 @@ window.addEventListener('DOMContentLoaded', function() {
     renderLogin('Startup error: ' + err.message);
   });
 });
+
 
 
 
