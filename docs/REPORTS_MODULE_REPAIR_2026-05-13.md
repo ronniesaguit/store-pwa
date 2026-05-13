@@ -39,3 +39,29 @@ After Worker deploy d01d9028-c888-4e7c-a7d3-f4462d7687e2:
 
 Status:
 Reports inventory_movement advanced report repaired and verified.
+
+## Additional Repair: Advanced Report Currency Text Encoding
+
+Worker deployed version: a2d9fa3e-e7a0-486e-9621-d006985d0640
+
+Bug found:
+Advanced reports returned corrupted currency text in API output:
+- Expected: â‚±0
+- Actual display: ï¿½?ï¿½0
+- Character code inspection showed the first character was 226, not U+20B1 / 8369.
+
+Decision:
+To avoid cross-environment encoding issues in Cloudflare Worker, PowerShell, GitHub Pages, and mobile/browser output, replaced Worker report currency strings from peso symbol escape \u20B1 to safe text "PHP ".
+
+Patch:
+Replaced 31 occurrences of \u20B1 with "PHP " in Worker report/audit strings.
+
+Validation:
+After Worker deploy a2d9fa3e-e7a0-486e-9621-d006985d0640:
+- Sales Analysis Total Sales value = PHP 0
+- First 3 characters = PHP
+- Result passed
+- Average Sale value = PHP 0.00
+
+Status:
+Advanced reports currency text encoding repaired and verified.
