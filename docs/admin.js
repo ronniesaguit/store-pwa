@@ -218,6 +218,11 @@ function _applyModulePatchFields(patch, modulePayload) {
   return patch;
 }
 
+
+function _moduleCodeKey(code) {
+  return String(code || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+}
+
 function _planAddOnCatalog(planId, catalog) {
   if (HUB && HUB.getAddOnCatalog) return HUB.getAddOnCatalog(planId, catalog || _featureCatalog());
   return catalog || _featureCatalog();
@@ -1684,24 +1689,29 @@ function _planCoreModuleCatalog(planId) {
 function _planCoreModuleCodes(planId) {
   var hubCodes = [];
   try { if (HUB && HUB.getCoreModuleCodes) hubCodes = HUB.getCoreModuleCodes(planId) || []; } catch(e) {}
-  if (hubCodes && hubCodes.length) return hubCodes;
+  if (hubCodes && hubCodes.length) return _uniqueModuleCodes(hubCodes.map(function(code) { return _moduleCodeKey(code); }));
   return _planCoreModuleCatalog(planId).map(function(feature) { return feature.module_code || feature.code; }).filter(Boolean);
+}
+
+
+function _moduleCodeKey(code) {
+  return String(code || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 }
 
 function _planAddOnCatalog(planId, catalog) {
   var coreMap = {};
-  _planCoreModuleCodes(planId).forEach(function(code) { coreMap[String(code)] = true; });
+  _planCoreModuleCodes(planId).forEach(function(code) { coreMap[_moduleCodeKey(code)] = true; });
   var hubList = [];
   try { if (HUB && HUB.getAddOnCatalog) hubList = HUB.getAddOnCatalog(planId, catalog || _featureCatalog()) || []; } catch(e) {}
   if (hubList && hubList.length) {
     return hubList.filter(function(m) {
       var code = String(m.module_code || m.code || '');
-      return code && !coreMap[code];
+      return code && !coreMap[_moduleCodeKey(code)];
     });
   }
   return _fallbackModuleCatalog().filter(function(m) {
     var code = String(m.module_code || m.code || '');
-    return code && !coreMap[code];
+    return code && !coreMap[_moduleCodeKey(code)];
   });
 }
 
@@ -1758,6 +1768,7 @@ function _renderAddOnSelector(containerId, planId, selectedModuleCodes) {
 }
 
 /* HUB_PLAN_BUNDLE_FALLBACK_END */
+
 
 
 
