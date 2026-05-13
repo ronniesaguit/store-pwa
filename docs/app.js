@@ -6200,9 +6200,10 @@ async function renderImportJobDetail(jobId) {
   showLoading('Loading job');
   try {
     var job = await API.call('getImportJobById', { id: jobId });
-    var rowsHtml = (job.sample_rows||[]).slice(0,10).map(function(r) {
+    var rowsHtml = ((job.sample_rows || job.rows || [])).slice(0,10).map(function(r) {
       var color = r.validation_status === 'valid' ? '#16a34a' : '#dc2626';
-      return '<div style="padding:4px 0;border-bottom:1px solid #f3f4f6;font-size:11px;color:' + color + ';">Row ' + r.row_number + ': ' + (r.validation_messages||[]).join(', ') + '</div>';
+      var msgs = Array.isArray(r.validation_messages) ? r.validation_messages : JSON.parse(r.validation_messages_json || '[]');
+      return '<div style="padding:4px 0;border-bottom:1px solid #f3f4f6;font-size:11px;color:' + color + ';\">Row ' + r.row_number + ': ' + msgs.join(', ') + '</div>';
     }).join('');
 
     var canConfirm = job.status === 'validated' && (job.valid_rows||0) > 0;
@@ -6696,4 +6697,5 @@ window.addEventListener('DOMContentLoaded', function() {
     renderLogin('Startup error: ' + err.message);
   });
 });
+
 
