@@ -1689,12 +1689,20 @@ function _planCoreModuleCodes(planId) {
 }
 
 function _planAddOnCatalog(planId, catalog) {
+  var coreMap = {};
+  _planCoreModuleCodes(planId).forEach(function(code) { coreMap[String(code)] = true; });
   var hubList = [];
   try { if (HUB && HUB.getAddOnCatalog) hubList = HUB.getAddOnCatalog(planId, catalog || _featureCatalog()) || []; } catch(e) {}
-  if (hubList && hubList.length) return hubList;
-  var coreMap = {};
-  _planCoreModuleCodes(planId).forEach(function(code) { coreMap[code] = true; });
-  return _fallbackModuleCatalog().filter(function(m) { return !coreMap[m.code]; });
+  if (hubList && hubList.length) {
+    return hubList.filter(function(m) {
+      var code = String(m.module_code || m.code || '');
+      return code && !coreMap[code];
+    });
+  }
+  return _fallbackModuleCatalog().filter(function(m) {
+    var code = String(m.module_code || m.code || '');
+    return code && !coreMap[code];
+  });
 }
 
 function _renderPlanBundleSummary(planId) {
@@ -1750,5 +1758,6 @@ function _renderAddOnSelector(containerId, planId, selectedModuleCodes) {
 }
 
 /* HUB_PLAN_BUNDLE_FALLBACK_END */
+
 
 
