@@ -1617,3 +1617,134 @@ function _esc(str) {
 
 
 
+
+/* HUB_PLAN_BUNDLE_FALLBACK_START */
+
+function _fallbackModuleCatalog() {
+  return [
+    { code: 'DASHBOARD', feature_name: 'Dashboard', description: 'Main store overview and quick business summary.' },
+    { code: 'PRODUCTS', feature_name: 'Products / Items', description: 'Product list, item details, prices, and SKU basics.' },
+    { code: 'CATEGORIES', feature_name: 'Categories', description: 'Organize products by category.' },
+    { code: 'INVENTORY', feature_name: 'Inventory / Stock', description: 'Stock count, stock movement, and inventory visibility.' },
+    { code: 'SALES_POS', feature_name: 'Sales / POS', description: 'Record sales and daily transactions.' },
+    { code: 'CASHIER', feature_name: 'Cashier', description: 'Cashier workflow for store selling.' },
+    { code: 'RECEIPTS', feature_name: 'Receipts', description: 'Receipt view and transaction proof.' },
+    { code: 'BASIC_REPORTS', feature_name: 'Basic Reports', description: 'Daily sales and basic store reports.' },
+    { code: 'ADVANCED_REPORTS', feature_name: 'Advanced Reports', description: 'Deeper sales, inventory, and business performance reports.' },
+    { code: 'STAFF_MANAGEMENT', feature_name: 'Staff Management', description: 'Manage users, staff roles, and staff access.' },
+    { code: 'SUPPLIERS', feature_name: 'Supplier Management', description: 'Track suppliers and purchasing sources.' },
+    { code: 'PURCHASE_ORDERS', feature_name: 'Purchase Orders', description: 'Prepare and monitor purchase orders.' },
+    { code: 'RESTOCK_REQUESTS', feature_name: 'Restock Requests', description: 'Request, approve, and monitor restocking.' },
+    { code: 'EXPENSES', feature_name: 'Expenses', description: 'Record store expenses and operating costs.' },
+    { code: 'CUSTOMER_CREDIT', feature_name: 'Customer Credit / Utang', description: 'Track customer balances and credit.' },
+    { code: 'HEALTH_MONITOR', feature_name: 'Health Monitor', description: 'Monitor store status and operational health.' },
+    { code: 'MESSAGES', feature_name: 'Messages', description: 'Admin and store communication.' },
+    { code: 'MULTI_BRANCH', feature_name: 'Multi-branch', description: 'Support for multiple branches or locations.' },
+    { code: 'APPROVALS', feature_name: 'Approvals', description: 'Approval workflow for sensitive actions.' },
+    { code: 'AUDIT_LOG', feature_name: 'Audit Log', description: 'Track important actions and changes.' },
+    { code: 'ONLINE_ORDERING', feature_name: 'Online Ordering', description: 'Allow customers to place orders online.' },
+    { code: 'GCASH_PAYMENT', feature_name: 'GCash / Payment Wall', description: 'GCash payment details and billing wall.' },
+    { code: 'IMPORT_EXPORT', feature_name: 'Import / Export', description: 'Import and export store data.' },
+    { code: 'EXECUTIVE_DASHBOARD', feature_name: 'Executive Dashboard', description: 'Higher-level owner and management dashboard.' },
+    { code: 'OWNER_SETTINGS', feature_name: 'Owner Settings', description: 'Owner profile and store settings.' },
+    { code: 'CUSTOM_BRANDING', feature_name: 'Custom Branding', description: 'Custom colors, logo, and store identity.' },
+    { code: 'DEDICATED_DATABASE', feature_name: 'Dedicated Database', description: 'Dedicated database setup for the tenant.' },
+    { code: 'AI_ASSISTANT', feature_name: 'AI Assistant', description: 'AI-powered help, summaries, and recommendations.' },
+    { code: 'PREMIUM_SUPPORT', feature_name: 'Premium Support', description: 'Priority help and support.' }
+  ];
+}
+
+function _fallbackCoreModuleCodes(planId) {
+  var plan = _normalizePlanId(planId);
+  var negosyo = ['DASHBOARD','PRODUCTS','CATEGORIES','INVENTORY','SALES_POS','CASHIER','RECEIPTS','BASIC_REPORTS','OWNER_SETTINGS'];
+  var business = negosyo.concat(['ADVANCED_REPORTS','STAFF_MANAGEMENT','SUPPLIERS','PURCHASE_ORDERS','RESTOCK_REQUESTS','EXPENSES','CUSTOMER_CREDIT','HEALTH_MONITOR']);
+  var nexora = business.concat(['MESSAGES','MULTI_BRANCH','APPROVALS','AUDIT_LOG','IMPORT_EXPORT','EXECUTIVE_DASHBOARD']);
+  if (plan === 'NEGOSYO_HUB') return negosyo;
+  if (plan === 'BUSINESS_HUB') return business;
+  if (plan === 'NEXORA_HUB') return nexora;
+  return [];
+}
+
+function _catalogByCodes(codes) {
+  var map = {};
+  _fallbackModuleCatalog().forEach(function(m) { map[m.code] = m; });
+  return (codes || []).map(function(code) { return map[code]; }).filter(Boolean);
+}
+
+function _planCoreModuleCatalog(planId) {
+  var hubList = [];
+  try { if (HUB && HUB.getCoreModuleCatalog) hubList = HUB.getCoreModuleCatalog(planId) || []; } catch(e) {}
+  if (hubList && hubList.length) return hubList;
+  return _catalogByCodes(_fallbackCoreModuleCodes(planId));
+}
+
+function _planCoreModuleCodes(planId) {
+  var hubCodes = [];
+  try { if (HUB && HUB.getCoreModuleCodes) hubCodes = HUB.getCoreModuleCodes(planId) || []; } catch(e) {}
+  if (hubCodes && hubCodes.length) return hubCodes;
+  return _planCoreModuleCatalog(planId).map(function(feature) { return feature.module_code || feature.code; }).filter(Boolean);
+}
+
+function _planAddOnCatalog(planId, catalog) {
+  var hubList = [];
+  try { if (HUB && HUB.getAddOnCatalog) hubList = HUB.getAddOnCatalog(planId, catalog || _featureCatalog()) || []; } catch(e) {}
+  if (hubList && hubList.length) return hubList;
+  var coreMap = {};
+  _planCoreModuleCodes(planId).forEach(function(code) { coreMap[code] = true; });
+  return _fallbackModuleCatalog().filter(function(m) { return !coreMap[m.code]; });
+}
+
+function _renderPlanBundleSummary(planId) {
+  var tier = _planTier(planId) || {};
+  var defs = _planDefs();
+  var def = defs[_normalizePlanId(planId)] || {};
+  var core = _planCoreModuleCatalog(planId) || [];
+  var coreHtml = core.length ? core.map(function(feature) {
+    var name = feature.feature_name || feature.name || feature.module_name || feature.module_code || feature.code || 'Included feature';
+    var desc = feature.description || feature.feature_description || '';
+    return '<div style="background:#ecfdf5;border:1px solid #bbf7d0;border-radius:10px;padding:10px 12px;margin-bottom:8px;">' +
+      '<div style="font-size:13px;font-weight:800;color:#065f46;">Included: ' + _esc(name) + '</div>' +
+      (desc ? '<div class="muted" style="font-size:11px;margin-top:2px;">' + _esc(desc) + '</div>' : '') +
+      '</div>';
+  }).join('') : '<div class="muted">No included module list available yet for this plan.</div>';
+  var limitHtml = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;font-size:12px;">' +
+    '<div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:8px;"><strong>Users</strong><br>' + (def.max_users === -1 ? 'Unlimited' : (def.max_users || tier.maxUsers || '')) + '</div>' +
+    '<div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:8px;"><strong>Products</strong><br>' + (def.max_products === -1 ? 'Unlimited' : (def.max_products || tier.maxProducts || '')) + '</div>' +
+    '<div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:8px;"><strong>Reports</strong><br>' + _esc(def.reports || tier.reportsLevel || '') + '</div>' +
+    '<div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:8px;"><strong>Health</strong><br>' + ((def.health || tier.hasHealthIndicators) ? 'Included' : 'Not included') + '</div>' +
+    '</div>';
+  return '<div style="background:#f8fafc;border:1px solid #dbeafe;border-radius:10px;padding:12px;margin-bottom:12px;">' +
+    '<div style="font-weight:800;color:#1e3a5f;margin-bottom:4px;">' + _esc(_planLabel(planId)) + ' Included Bundle</div>' +
+    '<div class="muted" style="font-size:12px;margin-bottom:8px;">These modules are already included in the selected Hub plan. They do not need checkboxes.</div>' +
+    coreHtml + limitHtml +
+    '</div>';
+}
+
+function _renderAddOnSelector(containerId, planId, selectedModuleCodes) {
+  var container = document.getElementById(containerId);
+  if (!container) return;
+  var addOnPrice = _addOnPriceForPlan(planId);
+  var addOns = _planAddOnCatalog(planId, _featureCatalog());
+  var selectedMap = {};
+  (selectedModuleCodes || []).forEach(function(code) { selectedMap[String(code)] = true; });
+  container.innerHTML =
+    '<div class="section-title">Additional Add-ons</div>' +
+    _renderPlanBundleSummary(planId) +
+    '<div class="hint" style="margin-bottom:10px;">Tick optional modules below to add them on top of the included bundle.</div>' +
+    (addOns.length ? addOns.map(function(feature) {
+      var code = feature.module_code || feature.code;
+      var name = feature.feature_name || feature.name || code;
+      var desc = feature.description || feature.feature_description || '';
+      return '<label style="display:block;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;">' +
+        '<div style="display:flex;align-items:flex-start;gap:10px;">' +
+        '<input type="checkbox" data-module-code="' + _esc(code) + '"' + (selectedMap[code] ? ' checked' : '') + ' style="margin-top:3px;">' +
+        '<div style="flex:1;">' +
+        '<div style="font-size:13px;font-weight:800;color:#9a3412;">Add-on: ' + _esc(name) + '</div>' +
+        (desc ? '<div class="muted" style="font-size:11px;margin-top:2px;">' + _esc(desc) + '</div>' : '') +
+        '<div style="font-size:11px;color:#9a3412;margin-top:4px;">Optional add-on' + (addOnPrice ? ' - ' + addOnPrice + '/mo' : '') + '</div>' +
+        '</div></div></label>';
+    }).join('') : '<div class="muted">No add-ons available for this plan.</div>');
+}
+
+/* HUB_PLAN_BUNDLE_FALLBACK_END */
+
