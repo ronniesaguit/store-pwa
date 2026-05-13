@@ -1,4 +1,4 @@
-﻿// admin.js â€” HubSuite Admin Panel
+﻿// admin.js  HubSuite Admin Panel
 
 var adminState = {
   admin: null,
@@ -9,7 +9,7 @@ var adminState = {
 
 var HUB = window.HUBSUITE || null;
 
-// â”€â”€ Boot â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Boot 
 
 window.addEventListener('load', function() { adminBoot(); });
 
@@ -30,7 +30,7 @@ async function adminBoot() {
   renderAdminLogin();
 }
 
-// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Helpers 
 
 function _app(html) { document.getElementById('app').innerHTML = html; }
 
@@ -40,13 +40,13 @@ function _toast(msg, isErr) {
     'border-radius:20px;font-weight:bold;z-index:9999;white-space:nowrap;font-size:14px;' +
     'box-shadow:0 4px 12px rgba(0,0,0,.25);' +
     (isErr ? 'background:#dc2626;color:#fff;' : 'background:#16a34a;color:#fff;');
-  t.textContent = (isErr ? 'âš  ' : 'âœ“ ') + msg;
+  t.textContent = (isErr ? ' ' : ' ') + msg;
   document.body.appendChild(t);
   setTimeout(function() { if (t.parentNode) t.parentNode.removeChild(t); }, 3000);
 }
 
 function _money(v) {
-  return 'â‚±' + Number(v || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 });
+  return '' + Number(v || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 });
 }
 
 function _normalizePlanId(planId) {
@@ -150,7 +150,7 @@ function _renderCustomModuleSelector(containerId, selectedCodes) {
         '<div style="font-size:13px;font-weight:700;color:#111827;">' + _esc(m.name) + '</div>' +
         '<div class="muted" style="font-size:11px;">' + _esc(m.description) + '</div>' +
         '</div>' +
-        '<div style="font-size:13px;font-weight:700;color:#059669;white-space:nowrap;">â‚±' + m.price + '/mo</div>' +
+        '<div style="font-size:13px;font-weight:700;color:#059669;white-space:nowrap;">' + m.price + '/mo</div>' +
         '</label>';
     }).join('') +
     (catalog.length ? '' : '<div class="muted">Module catalog unavailable.</div>');
@@ -168,7 +168,7 @@ function _updateCustomFeeDisplay(containerId, feeElId) {
   var selected = _selectedModulesFromForm(containerId);
   var fee = _computeCustomFee(selected);
   var feeEl = document.getElementById(feeElId);
-  if (feeEl) feeEl.textContent = 'â‚±' + fee + '/mo';
+  if (feeEl) feeEl.textContent = '' + fee + '/mo';
 }
 
 function _featureCatalog() {
@@ -258,7 +258,7 @@ function _renderAddOnSelector(containerId, planId, selectedModuleCodes) {
         '<div style="flex:1;">' +
         '<div style="font-size:13px;font-weight:700;color:#111827;">' + _esc(feature.feature_name || code) + '</div>' +
         '<div class="muted" style="font-size:12px;">' + _esc(feature.short_description || '') + '</div>' +
-        '<div class="hint">After trial: ' + (addOnPrice !== null ? ('â‚±' + addOnPrice + '/month') : 'plan-based pricing') + '</div>' +
+        '<div class="hint">After trial: ' + (addOnPrice !== null ? ('' + addOnPrice + '/month') : 'plan-based pricing') + '</div>' +
         '</div>' +
         '</div>' +
         '</label>';
@@ -290,7 +290,7 @@ function _renderPlanInclusionsCard(planId) {
   var staffPolicy = _staffPolicy(planId);
   var rows = _planCoreModuleCatalog(planId).map(function(feature) {
     return '<div style="padding:6px 0;border-bottom:1px solid #f3f4f6;font-size:12px;">' +
-      '<strong>' + _esc(feature.icon || 'â€¢') + ' ' + _esc(feature.name || feature.code) + '</strong>' +
+      '<strong>' + _esc(feature.icon || '') + ' ' + _esc(feature.name || feature.code) + '</strong>' +
       (feature.shortDescription ? '<div class="muted" style="font-size:11px;margin-top:2px;">' + _esc(feature.shortDescription) + '</div>' : '') +
       '</div>';
   }).join('');
@@ -328,17 +328,17 @@ async function _loadStoreCommercialState(storeId, planId) {
       '<strong>Staff allowance</strong><br>' +
       'Included: <strong>' + _esc(staffSeats.included_users == null ? 'Custom' : staffSeats.included_users + ' total users') + '</strong>' +
       (staffSeats.included_staff == null ? '' : ' (owner + ' + staffSeats.included_staff + ' staff)') + '<br>' +
-      'Current staff: <strong>' + _esc(staffSeats.staff_count || 0) + '</strong> Â· Extra staff: <strong>' + _esc(staffSeats.extra_staff_count || 0) + '</strong>' +
-      (staffSeats.extra_staff_price ? ' Ã— ' + _money(staffSeats.extra_staff_price) + '/month' : '') + '<br>' +
+      'Current staff: <strong>' + _esc(staffSeats.staff_count || 0) + '</strong>  Extra staff: <strong>' + _esc(staffSeats.extra_staff_count || 0) + '</strong>' +
+      (staffSeats.extra_staff_price ? '  ' + _money(staffSeats.extra_staff_price) + '/month' : '') + '<br>' +
       'Staff overage: <strong>' + _money(staffSeats.extra_staff_amount || 0) + '/month</strong>' +
       '</div>' : '';
     host.innerHTML =
       '<div class="card">' +
       '<div class="section-title">Add-ons</div>' +
       '<div class="hint" style="margin-bottom:10px;">Owner-selected add-ons from the marketplace will show here automatically.' +
-      (addOnPrice !== null ? ' Current Hub add-ons are â‚±' + addOnPrice + '/month each after trial.' : '') +
+      (addOnPrice !== null ? ' Current Hub add-ons are ' + addOnPrice + '/month each after trial.' : '') +
       '</div>' +
-      (revenue ? '<div style="background:#f9fafb;border-radius:8px;padding:10px;margin-bottom:10px;font-size:12px;">Base: <strong>' + _money(revenue.base_recurring_amount || 0) + '</strong> Â· Add-ons: <strong>' + _money(revenue.addons_recurring_amount || 0) + '</strong> Â· Staff overage: <strong>' + _money(revenue.staff_overage_amount || 0) + '</strong> Â· Total: <strong>' + _money(revenue.total_recurring_amount || 0) + '</strong></div>' : '') +
+      (revenue ? '<div style="background:#f9fafb;border-radius:8px;padding:10px;margin-bottom:10px;font-size:12px;">Base: <strong>' + _money(revenue.base_recurring_amount || 0) + '</strong>  Add-ons: <strong>' + _money(revenue.addons_recurring_amount || 0) + '</strong>  Staff overage: <strong>' + _money(revenue.staff_overage_amount || 0) + '</strong>  Total: <strong>' + _money(revenue.total_recurring_amount || 0) + '</strong></div>' : '') +
       staffSeatHtml +
       (rows || '<div class="muted">No add-ons selected yet.</div>') +
       '</div>';
@@ -385,11 +385,11 @@ function _badgeHtml(status) {
 
 function _topbar(title, backFn) {
   return '<div class="topbar"><div class="title">' + title + '</div>' +
-    (backFn ? '<button class="small-btn" onclick="' + backFn + '">â† Back</button>' : '') +
+    (backFn ? '<button class="small-btn" onclick="' + backFn + '"> Back</button>' : '') +
     '</div>';
 }
 
-// â”€â”€ Login â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Login 
 
 function renderAdminLogin(msg) {
   _app('<div class="screen">' +
@@ -421,7 +421,7 @@ async function submitAdminLogin() {
   var username = (document.getElementById('a-user').value || '').trim();
   var password = document.getElementById('a-pass').value;
   if (!username || !password) { _toast('Enter username and password', true); return; }
-  _app('<div style="text-align:center;padding:80px 20px;color:#6b7280;">Logging inâ€¦</div>');
+  _app('<div style="text-align:center;padding:80px 20px;color:#6b7280;">Logging in</div>');
   try {
     var result = await ADMIN_API.call('adminLogin', { username: username, password: password });
     ADMIN_API.setToken(result.token);
@@ -437,14 +437,14 @@ async function submitAdminLogin() {
 }
 
 function adminLogout() {
-  // Instant â€” no network wait
+  // Instant  no network wait
   ADMIN_API.clearToken();
   adminState.admin  = null;
   adminState.stores = [];
   renderAdminLogin();
 }
 
-// â”€â”€ Dashboard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Dashboard 
 
 function renderDashboard() {
   var stores   = adminState.stores;
@@ -470,7 +470,7 @@ function renderDashboard() {
     return '<div class="store-row" onclick="renderStoreDetail(' + i + ')">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;">' +
       '<div><div style="font-size:14px;font-weight:bold;">' + st.Store_Name + '</div>' +
-        '<div class="muted" style="font-size:12px;">' + (st.Owner_Name || 'No owner') + ' Â· ' + _esc(_planLabel(st.Plan || '')) + ' Â· ' + sub + '</div></div>' +
+        '<div class="muted" style="font-size:12px;">' + (st.Owner_Name || 'No owner') + '  ' + _esc(_planLabel(st.Plan || '')) + '  ' + sub + '</div></div>' +
       _badgeHtml(status) + '</div></div>';
   }).join('');
 
@@ -493,9 +493,9 @@ function renderDashboard() {
 
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">' +
     '<button class="btn btn-primary" style="margin:0;" onclick="renderCreateStore()">+ New Store</button>' +
-    '<button class="btn btn-secondary" style="margin:0;" onclick="renderPlatformSettings()">âš™ï¸ Settings</button>' +
-    '<button class="btn btn-secondary" style="margin:0;" onclick="renderHealthMonitor()">ðŸ¥ Health Monitor</button>' +
-    '<button class="btn btn-secondary" style="margin:0;position:relative;" id="msg-btn" onclick="renderMessagesInbox()">ðŸ“¬ Messages</button>' +
+    '<button class="btn btn-secondary" style="margin:0;" onclick="renderPlatformSettings()">Settings</button>' +
+    '<button class="btn btn-secondary" style="margin:0;" onclick="renderHealthMonitor()">Health Monitor</button>' +
+    '<button class="btn btn-secondary" style="margin:0;position:relative;" id="msg-btn" onclick="renderMessagesInbox()">Messages</button>' +
     '</div>' +
 
     '<div class="card">' +
@@ -504,7 +504,7 @@ function renderDashboard() {
     '</div></div>');
 }
 
-// â”€â”€ Store Detail â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Store Detail 
 
 function renderStoreDetail(idx) {
   var st     = adminState.stores[idx];
@@ -522,11 +522,11 @@ function renderStoreDetail(idx) {
     _badgeHtml(status) + '</div>' +
 
     '<div style="font-size:13px;line-height:2;">' +
-    '<div>ðŸ“§ ' + (st.Owner_Email || 'â€”') + '</div>' +
-    '<div>ðŸ“± ' + (st.Owner_Phone || 'â€”') + '</div>' +
-    '<div>ðŸ“‹ Plan: <strong>' + _esc(_planLabel(plan)) + '</strong> (Negotiable)</div>' +
-    (status === 'TRIAL' ? '<div>ðŸŽ Trial ends: <strong>' + (String(st.Trial_End || '').substring(0, 10) || 'â€”') + '</strong></div>' : '') +
-    '<div>ðŸ“… Expires: <strong>' + (String(st.Subscription_Expires || '').substring(0, 10) || 'â€”') + '</strong></div>' +
+    '<div> ' + (st.Owner_Email || '') + '</div>' +
+    '<div> ' + (st.Owner_Phone || '') + '</div>' +
+    '<div> Plan: <strong>' + _esc(_planLabel(plan)) + '</strong> (Negotiable)</div>' +
+    (status === 'TRIAL' ? '<div> Trial ends: <strong>' + (String(st.Trial_End || '').substring(0, 10) || '') + '</strong></div>' : '') +
+    '<div> Expires: <strong>' + (String(st.Subscription_Expires || '').substring(0, 10) || '') + '</strong></div>' +
     '</div>' +
 
     '<div style="margin-top:12px;background:#f9fafb;border-radius:8px;padding:10px;">' +
@@ -536,23 +536,23 @@ function renderStoreDetail(idx) {
     '<div style="font-size:12px;color:#374151;word-break:break-all;">' + st.API_Key + '</div>' +
     '<div style="font-size:11px;font-weight:bold;color:#6b7280;margin-top:6px;margin-bottom:2px;">Database Provider</div>' +
     '<div style="font-size:12px;color:#374151;">' + _esc(String(st.DB_Provider || 'libsql').toUpperCase()) +
-      (st.D1_Binding ? ' Â· ' + _esc(st.D1_Binding) : '') + '</div>' +
+      (st.D1_Binding ? '  ' + _esc(st.D1_Binding) : '') + '</div>' +
     '</div></div>' +
 
-    // â”€â”€ Extend trial â”€â”€
+    //  Extend trial 
     '<div class="card">' +
-    '<div class="section-title">ðŸŽ Extend Trial</div>' +
+    '<div class="section-title"> Extend Trial</div>' +
     '<div class="field"><label>Extra days</label>' +
     '<input id="ext-days" type="number" min="1" value="30" placeholder="30"></div>' +
     '<button class="btn btn-secondary" onclick="_extendTrial(\'' + st.Store_ID + '\')">Extend Trial</button>' +
     '</div>' +
 
-    // â”€â”€ Record payment â”€â”€
+    //  Record payment 
     '<div class="card">' +
-    '<div class="section-title">ðŸ’³ Record Payment</div>' +
+    '<div class="section-title"> Record Payment</div>' +
     '<div class="field"><label>Months paid</label>' +
     '<input id="pay-months" type="number" min="1" value="1"></div>' +
-    '<div class="field"><label>Amount (â‚±)</label>' +
+    '<div class="field"><label>Amount ()</label>' +
     '<input id="pay-amount" type="number" min="0" value="' + (st.Monthly_Fee || 0) + '"></div>' +
     '<div class="field"><label>GCash Reference #</label>' +
     '<input id="pay-ref" placeholder="e.g. 1234567890"></div>' +
@@ -561,7 +561,7 @@ function renderStoreDetail(idx) {
     '<button class="btn btn-success" onclick="_recordPayment(\'' + st.Store_ID + '\')">Confirm Payment</button>' +
     '</div>' +
 
-    // â”€â”€ Change plan â”€â”€
+    //  Change plan 
     (function() {
       var existingCustomModules = [];
       try {
@@ -570,7 +570,7 @@ function renderStoreDetail(idx) {
       } catch(e) {}
       var existingModsJson = _esc(JSON.stringify(existingCustomModules));
       return '<div class="card">' +
-        '<div class="section-title">ðŸ“‹ Change Plan</div>' +
+        '<div class="section-title"> Change Plan</div>' +
         '<div class="field"><label>Hub Plan</label>' +
         '<select id="chg-plan" onchange="_onChangePlanChange(' + existingModsJson + ')">' +
         _hubPlanOptions(plan).map(function(opt) {
@@ -578,12 +578,12 @@ function renderStoreDetail(idx) {
         }).join('') +
         '</select></div>' +
         '<div id="chg-custom-card" style="display:' + (plan === 'CUSTOM' ? '' : 'none') + ';">' +
-        '<div class="hint" style="margin-bottom:8px;">All 17 selected = â‚±1,000/mo Â· Minimum â‚±200/mo</div>' +
+        '<div class="hint" style="margin-bottom:8px;">All 17 selected = 1,000/mo  Minimum 200/mo</div>' +
         '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:14px;display:flex;justify-content:space-between;align-items:center;">' +
-        '<span>Computed monthly fee</span><strong id="chg-custom-modules-fee">â‚±200/mo</strong>' +
+        '<span>Computed monthly fee</span><strong id="chg-custom-modules-fee">200/mo</strong>' +
         '</div>' +
         '<div id="chg-custom-modules"></div>' +
-        '<div class="field" style="margin-top:8px;"><label>Monthly Fee Override (â‚±) â€” 0 = computed</label>' +
+        '<div class="field" style="margin-top:8px;"><label>Monthly Fee Override ()  0 = computed</label>' +
         '<input id="chg-fee" type="number" min="0" value="0"></div>' +
         '</div>' +
         '<div class="hint" style="margin-bottom:8px;">Owners can add more modules from their dashboard after provisioning.</div>' +
@@ -597,34 +597,34 @@ function renderStoreDetail(idx) {
 
     '<div id="store-commercial-state"></div>' +
 
-    // â”€â”€ Suspend / Activate â”€â”€
+    //  Suspend / Activate 
     '<div class="card">' +
-    '<div class="section-title">âš¡ Store Status</div>' +
+    '<div class="section-title"> Store Status</div>' +
     (status === 'SUSPENDED'
-      ? '<button class="btn btn-success" onclick="_toggleStatus(\'' + st.Store_ID + '\',\'ACTIVE\')">âœ… Activate Store</button>'
-      : '<button class="btn btn-danger"  onclick="_toggleStatus(\'' + st.Store_ID + '\',\'SUSPENDED\')">ðŸš« Suspend Store</button>') +
+      ? '<button class="btn btn-success" onclick="_toggleStatus(\'' + st.Store_ID + '\',\'ACTIVE\')"> Activate Store</button>'
+      : '<button class="btn btn-danger"  onclick="_toggleStatus(\'' + st.Store_ID + '\',\'SUSPENDED\')"> Suspend Store</button>') +
     '</div>' +
 
-    // â”€â”€ Repair Toolkit â”€â”€
+    //  Repair Toolkit 
     '<div class="card">' +
-    '<div class="section-title">ðŸ”§ Repair Toolkit</div>' +
+    '<div class="section-title"> Repair Toolkit</div>' +
     '<div class="hint" style="margin-bottom:10px;">Use these when an owner reports a feature is broken. Each repair re-runs schema migration for that module. Safe to run multiple times.</div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">' +
-    '<button class="btn btn-secondary" style="font-size:12px;padding:10px;" onclick="_repairModule(\'' + st.Store_ID + '\',\'staff_management\')">ðŸ‘¥ Staff Access</button>' +
-    '<button class="btn btn-secondary" style="font-size:12px;padding:10px;" onclick="_repairModule(\'' + st.Store_ID + '\',\'custom_role_builder\')">ðŸŽ­ Custom Roles</button>' +
-    '<button class="btn btn-secondary" style="font-size:12px;padding:10px;" onclick="_repairModule(\'' + st.Store_ID + '\',\'activity_log\')">ðŸ“œ Activity Log</button>' +
-    '<button class="btn btn-secondary" style="font-size:12px;padding:10px;" onclick="_repairModule(\'' + st.Store_ID + '\',\'approvals\')">âœ… Approvals</button>' +
-    '<button class="btn btn-secondary" style="font-size:12px;padding:10px;" onclick="_repairModule(\'' + st.Store_ID + '\',\'suppliers\')">ðŸ­ Suppliers</button>' +
-    '<button class="btn btn-secondary" style="font-size:12px;padding:10px;" onclick="_repairModule(\'' + st.Store_ID + '\',\'purchase_orders\')">ðŸ“‹ Purchase Orders</button>' +
-    '<button class="btn btn-secondary" style="font-size:12px;padding:10px;" onclick="_repairModule(\'' + st.Store_ID + '\',\'branch_transfer\')">ðŸ”„ Branch Transfers</button>' +
-    '<button class="btn btn-secondary" style="font-size:12px;padding:10px;" onclick="_repairModule(\'' + st.Store_ID + '\',\'internal_chat\')">ðŸ’¬ Internal Chat</button>' +
+    '<button class="btn btn-secondary" style="font-size:12px;padding:10px;" onclick="_repairModule(\'' + st.Store_ID + '\',\'staff_management\')"> Staff Access</button>' +
+    '<button class="btn btn-secondary" style="font-size:12px;padding:10px;" onclick="_repairModule(\'' + st.Store_ID + '\',\'custom_role_builder\')"> Custom Roles</button>' +
+    '<button class="btn btn-secondary" style="font-size:12px;padding:10px;" onclick="_repairModule(\'' + st.Store_ID + '\',\'activity_log\')"> Activity Log</button>' +
+    '<button class="btn btn-secondary" style="font-size:12px;padding:10px;" onclick="_repairModule(\'' + st.Store_ID + '\',\'approvals\')"> Approvals</button>' +
+    '<button class="btn btn-secondary" style="font-size:12px;padding:10px;" onclick="_repairModule(\'' + st.Store_ID + '\',\'suppliers\')"> Suppliers</button>' +
+    '<button class="btn btn-secondary" style="font-size:12px;padding:10px;" onclick="_repairModule(\'' + st.Store_ID + '\',\'purchase_orders\')"> Purchase Orders</button>' +
+    '<button class="btn btn-secondary" style="font-size:12px;padding:10px;" onclick="_repairModule(\'' + st.Store_ID + '\',\'branch_transfer\')"> Branch Transfers</button>' +
+    '<button class="btn btn-secondary" style="font-size:12px;padding:10px;" onclick="_repairModule(\'' + st.Store_ID + '\',\'internal_chat\')"> Internal Chat</button>' +
     '</div>' +
-    '<button class="btn btn-primary" style="margin-bottom:8px;" onclick="_migrateStore(\'' + st.Store_ID + '\')">ðŸ” Full Migration (All Tables)</button>' +
+    '<button class="btn btn-primary" style="margin-bottom:8px;" onclick="_migrateStore(\'' + st.Store_ID + '\')"> Full Migration (All Tables)</button>' +
     '</div>' +
 
-    // â”€â”€ Activity Log â”€â”€
+    //  Activity Log 
     '<div class="card">' +
-    '<div class="section-title">ðŸ“œ Activity Log</div>' +
+    '<div class="section-title"> Activity Log</div>' +
     '<div style="display:flex;gap:8px;margin-bottom:8px;">' +
     '<select id="al-module" style="flex:1;padding:8px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;">' +
     '<option value="">All modules</option>' +
@@ -640,16 +640,16 @@ function renderStoreDetail(idx) {
     '<div id="activity-log-area"><div class="muted" style="font-size:12px;">Press Load to view recent activity.</div></div>' +
     '</div>' +
 
-    // â”€â”€ Custom Roles â”€â”€
+    //  Custom Roles 
     '<div class="card">' +
-    '<div class="section-title">ðŸŽ­ Custom Roles</div>' +
+    '<div class="section-title"> Custom Roles</div>' +
     '<button class="btn btn-secondary" style="margin-bottom:10px;" onclick="_loadCustomRoles(\'' + st.Store_ID + '\')">Load Roles</button>' +
     '<div id="custom-roles-area"><div class="muted" style="font-size:12px;">Press Load to view roles defined for this store.</div></div>' +
     '</div>' +
 
-    // â”€â”€ DB Management â”€â”€
+    //  DB Management 
     '<div class="card">' +
-    '<div class="section-title">ðŸ—„ï¸ Database Management</div>' +
+    '<div class="section-title"> Database Management</div>' +
     '<div class="field"><label>Dedicated D1 Binding</label><input id="d1-binding" placeholder="e.g. STORE_DB_DEMO" value="' + _esc(st.D1_Binding || '') + '"></div>' +
     '<div class="field"><label><input type="checkbox" id="d1-activate"> Activate dedicated DB after successful copy</label></div>' +
     '<button class="btn btn-primary" onclick="_copyStoreToDedicatedDb(\'' + st.Store_ID + '\')">Copy To Dedicated D1</button>' +
@@ -677,7 +677,7 @@ async function _computeSuggestedPrice() {
     var result = await ADMIN_API.call('adminSuggestPrice',
       { maxUsers: users, maxProducts: products, reportsLevel: reports, hasHealthIndicators: health });
     document.getElementById('chg-suggested').textContent =
-      'Suggested price: â‚±' + result.suggestedPrice + '/mo';
+      'Suggested price: ' + result.suggestedPrice + '/mo';
   } catch(e) { _toast(e.message, true); }
 }
 
@@ -809,7 +809,7 @@ async function _loadActivityLog(storeId) {
   var module = (document.getElementById('al-module') && document.getElementById('al-module').value) || '';
   var area = document.getElementById('activity-log-area');
   if (!area) return;
-  area.innerHTML = '<div class="muted" style="font-size:12px;">Loadingâ€¦</div>';
+  area.innerHTML = '<div class="muted" style="font-size:12px;">Loading</div>';
   try {
     var result = await ADMIN_API.call('adminGetStoreActivityLog', { storeId: storeId, module: module || null, limit: 100 });
     var logs = result.logs || [];
@@ -821,12 +821,12 @@ async function _loadActivityLog(storeId) {
         var time = String(l.created_at || '').substring(0, 16).replace('T', ' ');
         return '<div style="padding:6px 8px;border-bottom:1px solid #f3f4f6;background:' + bg + ';border-radius:6px;margin-bottom:3px;">' +
           '<div style="display:flex;justify-content:space-between;font-size:11px;">' +
-          '<span style="font-weight:700;color:#374151;">' + _esc(l.module) + ' â€º ' + _esc(l.action) + '</span>' +
+          '<span style="font-weight:700;color:#374151;">' + _esc(l.module) + '  ' + _esc(l.action) + '</span>' +
           '<span style="color:#6b7280;">' + time + '</span>' +
           '</div>' +
           '<div style="font-size:12px;color:#111;">' + _esc(l.summary || '') + '</div>' +
           '<div style="font-size:11px;color:#9ca3af;">By: ' + _esc(l.username || l.user_id || '?') + ' (' + _esc(l.role || '') + ')' +
-          (l.target_id ? ' Â· Target: ' + _esc(l.target_id) : '') + '</div>' +
+          (l.target_id ? '  Target: ' + _esc(l.target_id) : '') + '</div>' +
           '</div>';
       }).join('') +
       '</div>';
@@ -838,7 +838,7 @@ async function _loadActivityLog(storeId) {
 async function _loadCustomRoles(storeId) {
   var area = document.getElementById('custom-roles-area');
   if (!area) return;
-  area.innerHTML = '<div class="muted" style="font-size:12px;">Loadingâ€¦</div>';
+  area.innerHTML = '<div class="muted" style="font-size:12px;">Loading</div>';
   try {
     var result = await ADMIN_API.call('adminGetStoreCustomRoles', { storeId: storeId });
     var roles = result.roles || [];
@@ -886,11 +886,11 @@ async function _refreshStores() {
   try { adminState.stores = await ADMIN_API.call('adminGetStores'); } catch(e) {}
 }
 
-// â”€â”€ Create Store â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Create Store 
 
 function renderCreateStore(msg) {
   _app('<div class="screen">' +
-    _topbar('âž• Create New Store', 'renderDashboard()') +
+    _topbar(' Create New Store', 'renderDashboard()') +
 
     (msg ? '<div class="' + (msg.ok ? 'msg-ok' : 'msg-err') + '">' + msg.text + '</div>' : '') +
 
@@ -917,20 +917,20 @@ function renderCreateStore(msg) {
     '</div>' +
 
     '<div class="card" id="cs-custom-card" style="display:none;">' +
-    '<div class="section-title">Custom Plan â€” Module Selection</div>' +
-    '<div class="hint" style="margin-bottom:10px;">Pick the modules this store needs. All 17 selected = â‚±1,000/mo. Minimum charge: â‚±200/mo.</div>' +
+    '<div class="section-title">Custom Plan  Module Selection</div>' +
+    '<div class="hint" style="margin-bottom:10px;">Pick the modules this store needs. All 17 selected = 1,000/mo. Minimum charge: 200/mo.</div>' +
     '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:14px;display:flex;justify-content:space-between;align-items:center;">' +
-    '<span>Computed monthly fee</span><strong id="cs-custom-modules-fee">â‚±200/mo</strong>' +
+    '<span>Computed monthly fee</span><strong id="cs-custom-modules-fee">200/mo</strong>' +
     '</div>' +
     '<div id="cs-custom-modules"></div>' +
-    '<div class="field" style="margin-top:10px;"><label>Monthly Fee Override (â‚±) â€” 0 = use computed price</label>' +
+    '<div class="field" style="margin-top:10px;"><label>Monthly Fee Override ()  0 = use computed price</label>' +
     '<input id="cs-fee" type="number" min="0" value="0"></div>' +
     '</div>' +
 
     '<div class="card">' +
     '<div class="field"><label>Notes (internal only)</label>' +
-    '<textarea id="cs-notes" placeholder="Any notes about this storeâ€¦"></textarea></div>' +
-    '<button class="btn btn-primary" onclick="submitCreateStore()">ðŸš€ Provision Store</button>' +
+    '<textarea id="cs-notes" placeholder="Any notes about this store"></textarea></div>' +
+    '<button class="btn btn-primary" onclick="submitCreateStore()"> Provision Store</button>' +
     '</div></div>');
 }
 
@@ -947,7 +947,7 @@ async function _computeCreateSuggest() {
   try {
     var r = await ADMIN_API.call('adminSuggestPrice',
       { maxUsers: users, maxProducts: products, reportsLevel: reports, hasHealthIndicators: health });
-    document.getElementById('cs-suggested').textContent = 'Suggested: â‚±' + r.suggestedPrice + '/mo';
+    document.getElementById('cs-suggested').textContent = 'Suggested: ' + r.suggestedPrice + '/mo';
   } catch(e) { _toast(e.message, true); }
 }
 
@@ -972,7 +972,7 @@ async function submitCreateStore() {
     data.monthlyFee           = Number(document.getElementById('cs-fee').value) || 0;
   }
 
-  _app('<div style="text-align:center;padding:80px 20px;color:#6b7280;">Provisioning storeâ€¦<br><small>This may take 10-30 seconds.</small></div>');
+  _app('<div style="text-align:center;padding:80px 20px;color:#6b7280;">Provisioning store<br><small>This may take 10-30 seconds.</small></div>');
 
   try {
     var result = await ADMIN_API.call('adminProvisionStore', data);
@@ -986,34 +986,34 @@ async function submitCreateStore() {
 function renderProvisionSuccess(r) {
   var pwaUrl = _storePwaUrl(r.apiKey);
   _app('<div class="screen">' +
-    _topbar('âœ… Store Created!', 'renderDashboard()') +
+    _topbar(' Store Created!', 'renderDashboard()') +
     '<div class="card" style="text-align:center;">' +
-    '<div style="font-size:48px;margin-bottom:8px;">ðŸŽ‰</div>' +
+    '<div style="font-size:48px;margin-bottom:8px;"></div>' +
     '<h3 style="margin-bottom:4px;">' + _esc(r.storeName) + '</h3>' +
     '<div class="muted" style="margin-bottom:16px;">Store provisioned successfully</div>' +
 
     '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:14px;margin-bottom:12px;text-align:left;">' +
-    '<div style="font-size:12px;font-weight:bold;color:#15803d;margin-bottom:8px;">ðŸ“± PWA Link â€” send this to the store owner</div>' +
+    '<div style="font-size:12px;font-weight:bold;color:#15803d;margin-bottom:8px;"> PWA Link  send this to the store owner</div>' +
     '<div style="font-size:13px;word-break:break-all;color:#1d4ed8;margin-bottom:0;">' + pwaUrl + '</div>' +
     '</div>' +
 
     '<div style="background:#fef9c3;border:1px solid #fde047;border-radius:8px;padding:14px;margin-bottom:12px;text-align:left;">' +
-    '<div style="font-size:12px;font-weight:bold;color:#854d0e;margin-bottom:8px;">ðŸ” Default Login Credentials</div>' +
+    '<div style="font-size:12px;font-weight:bold;color:#854d0e;margin-bottom:8px;"> Default Login Credentials</div>' +
     '<div style="font-size:13px;line-height:2.2;">' +
     '<div style="display:flex;justify-content:space-between;border-bottom:1px solid #fde047;">' +
     '<span>Username</span><strong style="font-family:monospace;font-size:15px;">' + _esc(r.ownerUsername || 'owner') + '</strong></div>' +
     '<div style="display:flex;justify-content:space-between;">' +
     '<span>Password</span><strong style="font-family:monospace;font-size:15px;">' + _esc(r.ownerPassword || '1234') + '</strong></div>' +
     '</div>' +
-    '<div style="font-size:11px;color:#92400e;margin-top:8px;">âš  Remind the owner to change their password after first login.</div>' +
+    '<div style="font-size:11px;color:#92400e;margin-top:8px;"> Remind the owner to change their password after first login.</div>' +
     '</div>' +
 
     '<div style="background:#f9fafb;border-radius:8px;padding:12px;text-align:left;">' +
     '<div style="font-size:12px;line-height:2;color:#374151;">' +
-    '<div>ðŸŽ Trial ends: <strong>' + r.trialEnd + '</strong></div>' +
-    '<div>ðŸ“‹ Plan: <strong>' + _esc(_planLabel(r.plan)) + '</strong> (Negotiable)</div>' +
-    (r.monthlyFee ? '<div>ðŸ’° Monthly fee: <strong>' + _money(r.monthlyFee) + ' (Negotiated)</strong></div>' : '') +
-    '<div>ðŸ”‘ API Key: <span style="word-break:break-all;font-size:11px;">' + r.apiKey + '</span></div>' +
+    '<div> Trial ends: <strong>' + r.trialEnd + '</strong></div>' +
+    '<div> Plan: <strong>' + _esc(_planLabel(r.plan)) + '</strong> (Negotiable)</div>' +
+    (r.monthlyFee ? '<div> Monthly fee: <strong>' + _money(r.monthlyFee) + ' (Negotiated)</strong></div>' : '') +
+    '<div> API Key: <span style="word-break:break-all;font-size:11px;">' + r.apiKey + '</span></div>' +
     '</div></div>' +
     '</div>' +
 
@@ -1021,12 +1021,12 @@ function renderProvisionSuccess(r) {
     '</div>');
 }
 
-// â”€â”€ Platform Settings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Platform Settings 
 
 function renderPlatformSettings(msg) {
   var s = adminState.platformSettings || {};
   _app('<div class="screen">' +
-    _topbar('âš™ï¸ Platform Settings', 'renderDashboard()') +
+    _topbar(' Platform Settings', 'renderDashboard()') +
     (msg ? '<div class="' + (msg.ok ? 'msg-ok' : 'msg-err') + '">' + msg.text + '</div>' : '') +
 
     '<div class="card">' +
@@ -1044,7 +1044,7 @@ function renderPlatformSettings(msg) {
     '<div class="field"><label>GCash Account Name</label>' +
     '<input id="ps-gcash-name" placeholder="Name on GCash" value="' + (s.GCASH_NAME || '') + '"></div>' +
     '<div class="field"><label>GCash QR Image URL</label>' +
-    '<input id="ps-gcash-qr" placeholder="https://â€¦ (upload to Drive/Imgur first)" value="' + (s.GCASH_QR_URL || '') + '">' +
+    '<input id="ps-gcash-qr" placeholder="https:// (upload to Drive/Imgur first)" value="' + (s.GCASH_QR_URL || '') + '">' +
     '<div class="hint">Upload your GCash QR image to Google Drive (set to public link) or Imgur, then paste the URL here.</div></div>' +
     '</div>' +
 
@@ -1054,13 +1054,13 @@ function renderPlatformSettings(msg) {
     '<input id="ps-trial" type="number" min="1" value="' + (s.TRIAL_DAYS || 30) + '"></div>' +
     '</div>' +
 
-    '<button class="btn btn-primary" onclick="savePlatformSettings()">ðŸ’¾ Save Settings</button>' +
+    '<button class="btn btn-primary" onclick="savePlatformSettings()"> Save Settings</button>' +
 
     '<div class="card" style="margin-top:12px;">' +
     '<div class="section-title">Change Admin Password</div>' +
     '<div class="field"><label>New Password</label><input id="ps-pw" type="password" placeholder="New password"></div>' +
     '<div class="field"><label>Confirm Password</label><input id="ps-pw2" type="password" placeholder="Repeat password"></div>' +
-    '<button class="btn btn-secondary" onclick="changeAdminPassword()">ðŸ” Change Password</button>' +
+    '<button class="btn btn-secondary" onclick="changeAdminPassword()"> Change Password</button>' +
     '</div></div>');
 }
 
@@ -1095,20 +1095,20 @@ async function changeAdminPassword() {
   } catch(e) { _toast(e.message, true); }
 }
 
-// â”€â”€ Health Monitoring â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Health Monitoring 
 
 async function renderHealthMonitor() {
-  _app('<div style="text-align:center;padding:60px 20px;color:#6b7280;">Loading health dataâ€¦</div>');
+  _app('<div style="text-align:center;padding:60px 20px;color:#6b7280;">Loading health data</div>');
   var healthRows = [];
   try { healthRows = await ADMIN_API.call('adminGetAllStoreHealth'); } catch(e) {
-    _app('<div class="screen">' + _topbar('ðŸ¥ Store Health', 'renderDashboard()') +
+    _app('<div class="screen">' + _topbar(' Store Health', 'renderDashboard()') +
       '<div class="msg-err">Failed to load health data: ' + e.message + '</div></div>');
     return;
   }
 
   var stores = adminState.stores;
 
-  // Build map of storeId â†’ health data
+  // Build map of storeId  health data
   var healthMap = {};
   healthRows.forEach(function(h) { healthMap[h.Store_ID] = h; });
 
@@ -1116,36 +1116,36 @@ async function renderHealthMonitor() {
     var h = healthMap[st.Store_ID];
     var score = h ? Number(h.Health_Score) : null;
     var status = h ? String(h.Health_Status) : 'UNKNOWN';
-    var dot = status === 'HEALTHY' ? 'ðŸŸ¢' : status === 'WARNING' ? 'ðŸŸ¡' : status === 'ALERT' ? 'ðŸ”´' : 'âšª';
+    var dot = status === 'HEALTHY' ? '' : status === 'WARNING' ? '' : status === 'ALERT' ? '' : '';
     var lastSeen = h ? String(h.Last_Seen_At || '').substring(0, 16).replace('T', ' ') : 'Never';
-    var revenueToday = h ? _money(h.Revenue_Today) : 'â€”';
-    var lowStock = h ? Number(h.Low_Stock_Count) : 'â€”';
+    var revenueToday = h ? _money(h.Revenue_Today) : '';
+    var lowStock = h ? Number(h.Low_Stock_Count) : '';
     return '<div class="store-row" style="cursor:pointer;" onclick="renderStoreSnapshot(\'' + st.Store_ID + '\')">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;">' +
       '<div style="flex:1;">' +
       '<div style="font-size:14px;font-weight:bold;">' + dot + ' ' + st.Store_Name + '</div>' +
-      '<div class="muted" style="font-size:12px;">' + st.Owner_Name + ' Â· ' + st.Owner_Phone + '</div>' +
+      '<div class="muted" style="font-size:12px;">' + st.Owner_Name + '  ' + st.Owner_Phone + '</div>' +
       (h ? '<div style="font-size:12px;margin-top:2px;color:#374151;">' +
-        'Revenue: <strong>' + revenueToday + '</strong> Â· ' +
-        'Low stock: <strong>' + lowStock + '</strong> Â· ' +
+        'Revenue: <strong>' + revenueToday + '</strong>  ' +
+        'Low stock: <strong>' + lowStock + '</strong>  ' +
         'Score: <strong>' + score + '</strong>' +
         '</div>' : '') +
       '<div class="muted" style="font-size:11px;">Last seen: ' + lastSeen + '</div>' +
       '</div>' +
-      '<button class="small-btn" style="margin-left:8px;margin-top:4px;" onclick="event.stopPropagation();renderSendMessageToStore(\'' + st.Store_ID + '\',\'' + _esc(st.Store_Name) + '\')">âœ‰ Message</button>' +
+      '<button class="small-btn" style="margin-left:8px;margin-top:4px;" onclick="event.stopPropagation();renderSendMessageToStore(\'' + st.Store_ID + '\',\'' + _esc(st.Store_Name) + '\')"> Message</button>' +
       '</div></div>';
   }).join('');
 
   _app('<div class="screen">' +
-    _topbar('ðŸ¥ Store Health Monitor', 'renderDashboard()') +
-    '<div style="font-size:12px;color:#6b7280;margin-bottom:8px;text-align:center;">Click a store to view full snapshot Â· Updated on each owner login</div>' +
+    _topbar(' Store Health Monitor', 'renderDashboard()') +
+    '<div style="font-size:12px;color:#6b7280;margin-bottom:8px;text-align:center;">Click a store to view full snapshot  Updated on each owner login</div>' +
     '<div class="card" style="padding:0;">' +
     (rows || '<div class="muted" style="padding:12px;">No stores yet.</div>') +
     '</div></div>');
 }
 
 async function renderStoreSnapshot(storeId) {
-  _app('<div style="text-align:center;padding:60px 20px;color:#6b7280;">Loading store dataâ€¦</div>');
+  _app('<div style="text-align:center;padding:60px 20px;color:#6b7280;">Loading store data</div>');
   var snap;
   try { snap = await ADMIN_API.call('adminGetStoreSnapshot', { storeId: storeId }); } catch(e) {
     _app('<div class="screen">' + _topbar('Store Snapshot', 'renderHealthMonitor()') +
@@ -1163,25 +1163,25 @@ async function renderStoreSnapshot(storeId) {
 
   var recentSalesHtml = (snap.recentSales || []).map(function(s) {
     return '<div style="font-size:12px;padding:4px 0;border-bottom:1px solid #f3f4f6;">' +
-      '<span style="color:#6b7280;">' + s.date + ' ' + s.time + '</span> Â· ' +
-      '<strong>' + _money(s.total) + '</strong> Â· ' + _esc(s.soldBy) +
+      '<span style="color:#6b7280;">' + s.date + ' ' + s.time + '</span>  ' +
+      '<strong>' + _money(s.total) + '</strong>  ' + _esc(s.soldBy) +
       ' <span style="color:#6b7280;font-size:11px;">[' + (s.paymentMethod || '') + ']</span>' +
       '</div>';
   }).join('') || '<div class="muted">No recent sales.</div>';
 
   var recentExpHtml = (snap.recentExpenses || []).map(function(e) {
     return '<div style="font-size:12px;padding:4px 0;border-bottom:1px solid #f3f4f6;">' +
-      '<span style="color:#6b7280;">' + e.date + '</span> Â· ' +
-      _esc(e.category) + ' â€” <em>' + _esc(e.description) + '</em> Â· ' +
+      '<span style="color:#6b7280;">' + e.date + '</span>  ' +
+      _esc(e.category) + '  <em>' + _esc(e.description) + '</em>  ' +
       '<strong>' + _money(e.amount) + '</strong>' +
       '</div>';
   }).join('') || '<div class="muted">No recent expenses.</div>';
 
   _app('<div class="screen">' +
-    _topbar('ðŸ” ' + _esc(st.name || ''), 'renderHealthMonitor()') +
+    _topbar(' ' + _esc(st.name || ''), 'renderHealthMonitor()') +
 
     '<div class="card">' +
-    '<div class="muted" style="font-size:12px;margin-bottom:8px;">' + snap.today + ' Â· Plan: ' + st.plan + '</div>' +
+    '<div class="muted" style="font-size:12px;margin-bottom:8px;">' + snap.today + '  Plan: ' + st.plan + '</div>' +
     '<div class="stat-grid">' +
     '<div class="stat-card"><div class="val" style="font-size:16px;">' + _money(snap.revenueToday) + '</div><div class="lbl">Revenue Today</div></div>' +
     '<div class="stat-card"><div class="val" style="font-size:16px;">' + snap.txToday + '</div><div class="lbl">Transactions</div></div>' +
@@ -1190,28 +1190,28 @@ async function renderStoreSnapshot(storeId) {
     '</div>' +
     '<div style="font-size:13px;line-height:2;margin-top:8px;">' +
     '<div>Revenue (7 days): <strong>' + _money(snap.revenue7Days) + '</strong></div>' +
-    '<div>COGS Today: <strong>' + _money(snap.cogsToday) + '</strong> Â· Expenses: <strong>' + _money(snap.expToday) + '</strong></div>' +
-    '<div>Products: <strong>' + snap.productCount + '</strong> Â· Low stock: <strong style="color:#d97706;">' + snap.lowStockCount + '</strong> Â· Out of stock: <strong style="color:#dc2626;">' + snap.outOfStockCount + '</strong></div>' +
+    '<div>COGS Today: <strong>' + _money(snap.cogsToday) + '</strong>  Expenses: <strong>' + _money(snap.expToday) + '</strong></div>' +
+    '<div>Products: <strong>' + snap.productCount + '</strong>  Low stock: <strong style="color:#d97706;">' + snap.lowStockCount + '</strong>  Out of stock: <strong style="color:#dc2626;">' + snap.outOfStockCount + '</strong></div>' +
     '</div></div>' +
 
     '<div class="card">' +
-    '<div class="section-title">âš ï¸ Low / Out of Stock</div>' +
+    '<div class="section-title"> Low / Out of Stock</div>' +
     lowStockHtml + '</div>' +
 
     '<div class="card">' +
-    '<div class="section-title">ðŸ›’ Recent Sales</div>' +
+    '<div class="section-title"> Recent Sales</div>' +
     recentSalesHtml + '</div>' +
 
     '<div class="card">' +
-    '<div class="section-title">ðŸ’¸ Recent Expenses</div>' +
+    '<div class="section-title"> Recent Expenses</div>' +
     recentExpHtml + '</div>' +
 
     '<div class="card">' +
-    '<button class="btn btn-secondary" onclick="renderSendMessageToStore(\'' + storeId + '\',\'' + _esc(st.name || '') + '\')">âœ‰ Message Owner</button>' +
+    '<button class="btn btn-secondary" onclick="renderSendMessageToStore(\'' + storeId + '\',\'' + _esc(st.name || '') + '\')"> Message Owner</button>' +
     '</div></div>');
 }
 
-// â”€â”€ Messaging â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Messaging 
 
 var _msgPollInterval = null;
 
@@ -1220,13 +1220,13 @@ function _stopMsgPoll() {
 }
 
 async function renderMessagesInbox() {
-  _app('<div style="text-align:center;padding:60px 20px;color:#6b7280;">Loading messagesâ€¦</div>');
+  _app('<div style="text-align:center;padding:60px 20px;color:#6b7280;">Loading messages</div>');
   var unread, allMsgs;
   try {
     unread  = await ADMIN_API.call('adminGetUnreadCount');
     allMsgs = await ADMIN_API.call('adminGetAllMessages');
   } catch(e) {
-    _app('<div class="screen">' + _topbar('ðŸ“¬ Messages', 'renderDashboard()') +
+    _app('<div class="screen">' + _topbar(' Messages', 'renderDashboard()') +
       '<div class="msg-err">Failed to load messages: ' + e.message + '</div></div>');
     return;
   }
@@ -1258,7 +1258,7 @@ async function renderMessagesInbox() {
       '<div style="font-weight:bold;font-size:14px;">' + _esc(t.storeName) +
       (t.unread > 0 ? ' <span style="background:#dc2626;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;">' + t.unread + '</span>' : '') +
       '</div>' +
-      '<div class="muted" style="font-size:12px;">' + _esc(preview) + (preview.length >= 60 ? 'â€¦' : '') + '</div>' +
+      '<div class="muted" style="font-size:12px;">' + _esc(preview) + (preview.length >= 60 ? '' : '') + '</div>' +
       '<div class="muted" style="font-size:11px;">' + time + '</div>' +
       '</div>' +
       '</div></div>';
@@ -1266,13 +1266,13 @@ async function renderMessagesInbox() {
 
   var totalUnread = unread.count || 0;
   _app('<div class="screen">' +
-    _topbar('ðŸ“¬ Messages' + (totalUnread > 0 ? ' (' + totalUnread + ' unread)' : ''), 'renderDashboard()') +
+    _topbar(' Messages' + (totalUnread > 0 ? ' (' + totalUnread + ' unread)' : ''), 'renderDashboard()') +
     '<div class="card" style="padding:0;">' + threadRows + '</div></div>');
 }
 
 async function renderStoreMessageThread(storeId, storeName) {
   _stopMsgPoll();
-  _app('<div style="text-align:center;padding:60px 20px;color:#6b7280;">Loading conversationâ€¦</div>');
+  _app('<div style="text-align:center;padding:60px 20px;color:#6b7280;">Loading conversation</div>');
   var msgs;
   try { msgs = await ADMIN_API.call('adminGetStoreMessages', { storeId: storeId }); } catch(e) {
     _app('<div class="screen">' + _topbar('Messages', 'renderMessagesInbox()') +
@@ -1314,16 +1314,16 @@ function _renderThreadScreen(storeId, storeName, msgs) {
   var bubblesHtml = _buildBubbles(msgs, false);
   _app('<div class="screen">' +
     '<div class="topbar"><div class="title">' + _esc(storeName) + '</div>' +
-    '<button class="small-btn" onclick="_stopMsgPoll();renderMessagesInbox();">â† Back</button></div>' +
+    '<button class="small-btn" onclick="_stopMsgPoll();renderMessagesInbox();"> Back</button></div>' +
 
     '<div id="thread-msgs-' + storeId + '" style="flex:1;overflow-y:auto;padding:12px;background:#f9fafb;min-height:200px;max-height:50vh;border-radius:8px;margin-bottom:8px;">' +
     bubblesHtml + '</div>' +
 
     '<div class="card" style="margin-top:0;">' +
     '<div class="field">' +
-    '<textarea id="admin-msg-text" placeholder="Type a messageâ€¦" rows="3" style="resize:none;"></textarea>' +
+    '<textarea id="admin-msg-text" placeholder="Type a message" rows="3" style="resize:none;"></textarea>' +
     '</div>' +
-    '<button class="btn btn-primary" onclick="_sendAdminMessage(\'' + storeId + '\')">Send âœ‰</button>' +
+    '<button class="btn btn-primary" onclick="_sendAdminMessage(\'' + storeId + '\')">Send </button>' +
     '</div></div>');
 
   // Scroll to bottom
@@ -1361,7 +1361,7 @@ async function _sendAdminMessage(storeId) {
   } catch(e) { _toast(e.message, true); }
 }
 
-// â”€â”€ Escape helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Escape helper 
 
 // Provisioning-aware overrides for the tenant creation flow
 async function renderCreateStore(msg) {
@@ -1395,13 +1395,13 @@ async function renderCreateStore(msg) {
     '<div class="card" id="cs-addons-card"></div>' +
 
     '<div class="card" id="cs-custom-card" style="display:none;">' +
-    '<div class="section-title">Custom Plan â€” Module Selection</div>' +
-    '<div class="hint" style="margin-bottom:10px;">Pick the modules this store needs. All 17 selected = â‚±1,000/mo. Minimum charge: â‚±200/mo.</div>' +
+    '<div class="section-title">Custom Plan  Module Selection</div>' +
+    '<div class="hint" style="margin-bottom:10px;">Pick the modules this store needs. All 17 selected = 1,000/mo. Minimum charge: 200/mo.</div>' +
     '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:14px;display:flex;justify-content:space-between;align-items:center;">' +
-    '<span>Computed monthly fee</span><strong id="cs-custom-modules-fee">â‚±200/mo</strong>' +
+    '<span>Computed monthly fee</span><strong id="cs-custom-modules-fee">200/mo</strong>' +
     '</div>' +
     '<div id="cs-custom-modules"></div>' +
-    '<div class="field" style="margin-top:10px;"><label>Monthly Fee Override (â‚±) â€” 0 = use computed price</label>' +
+    '<div class="field" style="margin-top:10px;"><label>Monthly Fee Override ()  0 = use computed price</label>' +
     '<input id="cs-fee" type="number" min="0" value="0"></div>' +
     '</div>' +
 
@@ -1523,10 +1523,10 @@ function renderProvisionSuccess(r) {
   var seededAddOns = Array.isArray(r.seededAddOns) ? r.seededAddOns : [];
   var lifecycleHtml = r.trialEnd
     ? '<div>Trial ends: <strong>' + _esc(r.trialEnd) + '</strong></div>'
-    : '<div>Billing cycle ends: <strong>' + _esc(r.subscriptionExpires || 'â€”') + '</strong></div>';
+    : '<div>Billing cycle ends: <strong>' + _esc(r.subscriptionExpires || '') + '</strong></div>';
   var dbHtml = r.dbProvider === 'd1'
-    ? '<div>Dedicated DB: <strong>D1</strong> - ' + _esc(r.d1Binding || 'â€”') + '</div>'
-    : '<div>Dedicated DB: <strong>libSQL</strong> - <span style="word-break:break-all;font-size:11px;">' + _esc(r.tursoDbUrl || 'â€”') + '</span></div>';
+    ? '<div>Dedicated DB: <strong>D1</strong> - ' + _esc(r.d1Binding || '') + '</div>'
+    : '<div>Dedicated DB: <strong>libSQL</strong> - <span style="word-break:break-all;font-size:11px;">' + _esc(r.tursoDbUrl || '') + '</span></div>';
 
   _app('<div class="screen">' +
     _topbar('Store Created', 'renderDashboard()') +
@@ -1587,6 +1587,7 @@ async function _changePlan(storeId) {
 function _esc(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
 
 
 
