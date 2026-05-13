@@ -1,6 +1,6 @@
-﻿// app.js â€” Store Management PWA main logic
+﻿// app.js  Store Management PWA main logic
 
-// Platform GCash payment details â€” updated at login from platformSettings
+// Platform GCash payment details  updated at login from platformSettings
 var HUB_GCASH_NUMBER = '09177105930';
 var HUB_GCASH_NAME   = 'Ronilo Saguit';
 
@@ -35,7 +35,7 @@ var state = {
 var execCurrentPeriod = 'last_month';
 var HUB = window.HUBSUITE || null;
 
-// â”€â”€ Boot â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Boot 
 
 async function boot() {
   // Force indicator to upper-left regardless of cached CSS
@@ -50,7 +50,7 @@ async function boot() {
 
   try { await DB.init(); } catch(e) { console.warn('IndexedDB unavailable:', e); }
 
-  // â”€â”€ Step 1: Render instantly from IndexedDB cache (zero network wait) â”€â”€â”€â”€â”€â”€â”€â”€
+  //  Step 1: Render instantly from IndexedDB cache (zero network wait) 
   var cachedSession = localStorage.getItem('store_session');
   if (cachedSession && API.token) {
     try {
@@ -63,13 +63,13 @@ async function boot() {
       };
       _restoreOwnerAddOnsFromCache();
       state.isOffline = !navigator.onLine;
-      routeToDashboard();  // show dashboard immediately â€” no spinner
+      routeToDashboard();  // show dashboard immediately  no spinner
     } catch(e) {}
   } else if (API.token) {
-    showLoading('Loadingâ€¦');
+    showLoading('Loading');
   }
 
-  // â”€â”€ Step 2: Online â€” fetch fresh data in background (single batch call) â”€â”€â”€â”€â”€â”€
+  //  Step 2: Online  fetch fresh data in background (single batch call) 
   if (navigator.onLine && API.token) {
     try {
       var boot = await API.call('getBootData');
@@ -90,11 +90,11 @@ async function boot() {
     } catch(e) {
       console.warn('Boot fetch failed:', e.message);
       if (!cachedSession) { showLoading('No connection. Please connect and try again.'); return; }
-      // Cached session already rendered above â€” stay offline
+      // Cached session already rendered above  stay offline
     }
   }
 
-  // â”€â”€ No session at all â€” show login â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  //  No session at all  show login 
   renderLogin(navigator.onLine ? null : 'No internet. Please connect and log in once first.');
 }
 
@@ -140,7 +140,7 @@ async function syncWhenOnline() {
   } catch(e) { console.warn('Sync error:', e); }
 }
 
-// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Helpers 
 
 function showLoading(text) {
   document.getElementById('app').innerHTML =
@@ -157,7 +157,7 @@ function _showToast(msg, isError) {
     'padding:12px 20px;border-radius:20px;font-weight:bold;z-index:9998;' +
     'white-space:nowrap;font-size:15px;box-shadow:0 4px 12px rgba(0,0,0,.25);' +
     (isError ? 'background:#dc2626;color:#fff;' : 'background:#16a34a;color:#fff;');
-  t.textContent = (isError ? 'âš  ' : 'âœ“ ') + msg;
+  t.textContent = (isError ? ' ' : ' ') + msg;
   document.body.appendChild(t);
   setTimeout(function() { if (t.parentNode) t.parentNode.removeChild(t); }, 3000);
 }
@@ -192,7 +192,7 @@ function _cacheOwnerAddOns(features) {
   } catch(e) {}
 }
 
-// â”€â”€ Auth â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Auth 
 
 function renderLogin(msg) {
   document.getElementById('app').innerHTML =
@@ -219,7 +219,7 @@ async function submitLogin() {
   var password = document.getElementById('login-password').value;
   if (!username || !password) { _showToast('Enter username and password', true); return; }
 
-  // â”€â”€ Fast path: cached credentials â†’ instant dashboard, token in background â”€â”€
+  //  Fast path: cached credentials  instant dashboard, token in background 
   var raw = localStorage.getItem('offline_cred_' + username.toLowerCase());
   if (raw) {
     try {
@@ -228,7 +228,7 @@ async function submitLogin() {
       if (enteredHash === cachedCred.passwordHash) {
         // Do not store reversible login credentials
         // SECURITY: reversible password storage removed.
-        // Credentials match â€” show dashboard NOW from local cache
+        // Credentials match  show dashboard NOW from local cache
         state.session    = JSON.parse(localStorage.getItem('store_session') || 'null')
                            || { loggedIn: true, user: cachedCred.user };
         state.isOffline  = !navigator.onLine;
@@ -236,7 +236,7 @@ async function submitLogin() {
         state.categories = (await DB.getCategories()) || [];
         var sp = localStorage.getItem('store_profile');
         state.storeProfile = sp ? JSON.parse(sp) : null;
-        routeToDashboard();  // instant â€” no network wait
+        routeToDashboard();  // instant  no network wait
 
         // Refresh token & data in background
         if (navigator.onLine) {
@@ -255,7 +255,7 @@ async function submitLogin() {
               DB.saveCategories(state.categories).catch(function(){});
               routeToDashboard();  // silent re-render with fresh data
             }).catch(function(e) {
-              // Wrong password on server (e.g. password changed) â€” force re-login
+              // Wrong password on server (e.g. password changed)  force re-login
               if (e.message && e.message.toLowerCase().includes('password')) {
                 logout();
                 renderLogin('Password changed. Please log in again.');
@@ -267,8 +267,8 @@ async function submitLogin() {
     } catch(e) {}
   }
 
-  // â”€â”€ No cache or wrong password â€” must wait for GAS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  showLoading('Logging inâ€¦');
+  //  No cache or wrong password  must wait for GAS 
+  showLoading('Logging in');
   try {
     var result = await API.call('login', { username: username, password: password });
     API.setToken(result.token);
@@ -352,7 +352,7 @@ function logout() {
   window.location.replace(cleanUrl);
 }
 
-// â”€â”€ Module helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Module helpers 
 
 function _planModules() {
   var plan = state.session && state.session.plan;
@@ -468,8 +468,8 @@ function _renderStaffAllowanceCard(staffCount) {
     '<div style="font-size:13px;line-height:1.7;">' +
     '<div>Included: <strong>' + policy.includedUsers + ' total users</strong> (owner + ' + policy.includedStaff + ' staff)</div>' +
     '<div>Current staff: <strong>' + Number(staffCount || 0) + '</strong></div>' +
-    '<div>Extra staff: <strong>' + billing.extraStaff + '</strong> Ã— â‚±' + policy.extraStaffPrice + '/month</div>' +
-    '<div>Staff overage: <strong>â‚±' + billing.extraAmount + '/month</strong></div>' +
+    '<div>Extra staff: <strong>' + billing.extraStaff + '</strong>  ' + policy.extraStaffPrice + '/month</div>' +
+    '<div>Staff overage: <strong>' + billing.extraAmount + '/month</strong></div>' +
     '</div>' +
     '</div>';
 }
@@ -554,7 +554,7 @@ function _resolveModuleId(moduleId) {
 
 function _hasModule(moduleId) {
   var mods = _planModules();
-  if (!mods) return true; // CUSTOM plan or no plan info â€” allow all
+  if (!mods) return true; // CUSTOM plan or no plan info  allow all
   return mods.indexOf(_resolveModuleId(moduleId)) !== -1 || mods.indexOf(moduleId) !== -1;
 }
 
@@ -565,22 +565,22 @@ function _hasPerm(permCode) {
 }
 
 function _hasPermission(moduleOrPerm, action) {
-  // Two-arg form: _hasPermission('suppliers', 'create') â†’ checks 'suppliers.create'
+  // Two-arg form: _hasPermission('suppliers', 'create')  checks 'suppliers.create'
   if (action) return _hasPerm(moduleOrPerm + '.' + action);
   // One-arg form: _hasPermission('reports.view_advanced')
   return _hasPerm(moduleOrPerm);
 }
 
-// â”€â”€ Dashboards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Dashboards 
 
 function _dashboardHeader_(storeName, subLabel, onlineLabel, isOffline) {
   var statusPill = isOffline
-    ? '<span style="display:inline-block;background:rgba(231,76,60,0.25);color:#e74c3c;border:1px solid rgba(231,76,60,0.5);border-radius:20px;padding:1px 10px;font-size:0.7rem;font-weight:600;letter-spacing:.3px;">ðŸ”´ Offline</span>'
-    : '<span style="display:inline-block;background:rgba(46,204,113,0.2);color:#2ecc71;border:1px solid rgba(46,204,113,0.4);border-radius:20px;padding:1px 10px;font-size:0.7rem;font-weight:600;letter-spacing:.3px;">ðŸŸ¢ Online</span>';
+    ? '<span style="display:inline-block;background:rgba(231,76,60,0.25);color:#e74c3c;border:1px solid rgba(231,76,60,0.5);border-radius:20px;padding:1px 10px;font-size:0.7rem;font-weight:600;letter-spacing:.3px;"> Offline</span>'
+    : '<span style="display:inline-block;background:rgba(46,204,113,0.2);color:#2ecc71;border:1px solid rgba(46,204,113,0.4);border-radius:20px;padding:1px 10px;font-size:0.7rem;font-weight:600;letter-spacing:.3px;"> Online</span>';
   return '<div style="background:var(--primary,#2c3e50);padding:14px 16px 10px;text-align:center;position:relative;">' +
     '<button class="small-btn" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);" onclick="logout()">Logout</button>' +
     '<div style="font-size:1.45rem;font-weight:700;letter-spacing:.3px;line-height:1.15;color:#fff;">' + _escAttr(storeName) + '</div>' +
-    '<div style="font-size:0.78rem;opacity:0.75;color:#fff;margin-top:2px;">ðŸ‘¤ ' + _escAttr(subLabel) + '</div>' +
+    '<div style="font-size:0.78rem;opacity:0.75;color:#fff;margin-top:2px;"> ' + _escAttr(subLabel) + '</div>' +
     '<div style="margin-top:6px;">' + statusPill + '</div>' +
     '</div>';
 }
@@ -594,40 +594,40 @@ function renderOwnerDashboard(msg) {
   var planLine = plan
     ? '<div style="font-size:0.7rem;color:rgba(255,255,255,0.55);margin-top:1px;">' +
       _escAttr(_planLabel(plan.id || plan.name || '')) +
-      (state.session.inTrial ? ' Â· Trial' : '') +
-      (addOnPrice !== null ? ' Â· Add-ons â‚±' + addOnPrice + '/feature' : '') +
+      (state.session.inTrial ? '  Trial' : '') +
+      (addOnPrice !== null ? '  Add-ons ' + addOnPrice + '/feature' : '') +
       '</div>'
     : '';
 
   var btns = '';
-  if (_hasModule('products'))        btns += '<button class="big-btn" onclick="loadProducts()">ðŸ“¦ Products</button>';
-  if (_hasModule('quick_sell'))      btns += '<button class="big-btn" onclick="renderQuickSell()">ðŸ’° Quick Sell</button>';
-  if (_hasModule('quick_sell'))      btns += '<button class="big-btn" onclick="renderSalesHistory()">ðŸ§¾ Sales History</button>';
-  if (_hasModule('inventory'))       btns += '<button class="big-btn" onclick="renderInventoryAdvancedSummary()">ðŸ“¦ Inventory</button>';
-  if (_hasModule('expenses'))        btns += '<button class="big-btn" onclick="renderExpenses()">ðŸ’¸ Expenses</button>';
-  if (_hasModule('reports'))         btns += '<button class="big-btn" onclick="renderReports()">ðŸ“Š Reports</button>';
-  if (_hasModule('reports'))         btns += '<button class="big-btn" onclick="renderAdvancedReportsHome()">ðŸ“Š Advanced Reports</button>';
-  if (_hasModule('suppliers'))       btns += '<button class="big-btn" onclick="renderSuppliers()">ðŸ­ Suppliers</button>';
-  if (_hasModule('purchase_orders')) btns += '<button class="big-btn" onclick="renderPurchaseOrders()">ðŸ“‹ Purchase Orders</button>';
-  if (_hasModule('branch_transfer')) btns += '<button class="big-btn" onclick="renderBranchTransfers()">ðŸ”„ Branch Transfers</button>';
-  if (_hasModule('hq_control_center')) btns += '<button class="big-btn" onclick="renderHQControlCenter()">ðŸ¢ HQ Control</button>';
-  if (_hasModule('internal_chat'))   btns += '<button class="big-btn" onclick="renderChat()">ðŸ’¬ Chat</button>';
-  if (_hasModule('staff_management') || _hasModule('staff')) btns += '<button class="big-btn" onclick="renderStaffList()">ðŸ‘¥ Staff</button>';
-  if (_hasModule('custom_role_builder')) btns += '<button class="big-btn" onclick="renderCustomRoles()">ðŸŽ­ Custom Roles</button>';
-  if (_hasModule('approvals'))       btns += '<button class="big-btn" onclick="renderApprovalsQueue()">âœ… Approvals</button>';
-  if (_hasModule('roi'))             btns += '<button class="big-btn" onclick="renderROIMonitor()">ðŸ“ˆ ROI</button>';
-  if (_hasModule('monitors'))        btns += '<button class="big-btn" onclick="renderMonitors()">ðŸ“¡ Monitors</button>';
-  if (_hasModule('automation_rules'))btns += '<button class="big-btn" onclick="renderAutomationRules()">âš¡ Automation</button>';
-  if (_hasModule('data_import_tools')) btns += '<button class="big-btn" onclick="renderDataImport()">ðŸ“¥ Import Data</button>';
-  if (_hasModule('settings'))        btns += '<button class="big-btn" onclick="renderFullSettings()">âš™ï¸ Settings</button>';
-  btns += '<button class="big-btn" onclick="renderNotificationsCenter()">ðŸ”” Notifications</button>';
-  btns += '<button class="big-btn" onclick="renderAlertsCenter()">ðŸš¨ Alerts</button>';
-  btns += '<button class="big-btn" onclick="renderActivityLog()">ðŸ“œ Staff Activity</button>';
-  if (_hasModule('feature_marketplace')) btns += '<button class="big-btn" onclick="renderFeatureMarketplace()">ðŸ›’ Hub Add-ons</button>';
-  if (_hasModule('hardware_profiles')) btns += '<button class="big-btn" onclick="renderHardwareSetup()">ðŸ–¨ï¸ Hardware</button>';
-  if (_hasModule('sandbox_mode')) btns += '<button class="big-btn" onclick="renderSandboxMode()">ðŸ§ª Sandbox</button>';
-  if (_hasModule('support'))         btns += '<button class="big-btn" onclick="renderSupport()">ðŸ“ž Help</button>';
-  btns += '<button class="big-btn" onclick="renderAddOnsPanel()" style="border:2px dashed rgba(255,255,255,0.28);background:rgba(255,255,255,0.06);">âŠ• Explore Add-Ons</button>';
+  if (_hasModule('products'))        btns += '<button class="big-btn" onclick="loadProducts()"> Products</button>';
+  if (_hasModule('quick_sell'))      btns += '<button class="big-btn" onclick="renderQuickSell()"> Quick Sell</button>';
+  if (_hasModule('quick_sell'))      btns += '<button class="big-btn" onclick="renderSalesHistory()"> Sales History</button>';
+  if (_hasModule('inventory'))       btns += '<button class="big-btn" onclick="renderInventoryAdvancedSummary()"> Inventory</button>';
+  if (_hasModule('expenses'))        btns += '<button class="big-btn" onclick="renderExpenses()"> Expenses</button>';
+  if (_hasModule('reports'))         btns += '<button class="big-btn" onclick="renderReports()"> Reports</button>';
+  if (_hasModule('reports'))         btns += '<button class="big-btn" onclick="renderAdvancedReportsHome()"> Advanced Reports</button>';
+  if (_hasModule('suppliers'))       btns += '<button class="big-btn" onclick="renderSuppliers()"> Suppliers</button>';
+  if (_hasModule('purchase_orders')) btns += '<button class="big-btn" onclick="renderPurchaseOrders()"> Purchase Orders</button>';
+  if (_hasModule('branch_transfer')) btns += '<button class="big-btn" onclick="renderBranchTransfers()"> Branch Transfers</button>';
+  if (_hasModule('hq_control_center')) btns += '<button class="big-btn" onclick="renderHQControlCenter()"> HQ Control</button>';
+  if (_hasModule('internal_chat'))   btns += '<button class="big-btn" onclick="renderChat()"> Chat</button>';
+  if (_hasModule('staff_management') || _hasModule('staff')) btns += '<button class="big-btn" onclick="renderStaffList()"> Staff</button>';
+  if (_hasModule('custom_role_builder')) btns += '<button class="big-btn" onclick="renderCustomRoles()"> Custom Roles</button>';
+  if (_hasModule('approvals'))       btns += '<button class="big-btn" onclick="renderApprovalsQueue()"> Approvals</button>';
+  if (_hasModule('roi'))             btns += '<button class="big-btn" onclick="renderROIMonitor()"> ROI</button>';
+  if (_hasModule('monitors'))        btns += '<button class="big-btn" onclick="renderMonitors()"> Monitors</button>';
+  if (_hasModule('automation_rules'))btns += '<button class="big-btn" onclick="renderAutomationRules()"> Automation</button>';
+  if (_hasModule('data_import_tools')) btns += '<button class="big-btn" onclick="renderDataImport()"> Import Data</button>';
+  if (_hasModule('settings'))        btns += '<button class="big-btn" onclick="renderFullSettings()"> Settings</button>';
+  btns += '<button class="big-btn" onclick="renderNotificationsCenter()"> Notifications</button>';
+  btns += '<button class="big-btn" onclick="renderAlertsCenter()"> Alerts</button>';
+  btns += '<button class="big-btn" onclick="renderActivityLog()"> Staff Activity</button>';
+  if (_hasModule('feature_marketplace')) btns += '<button class="big-btn" onclick="renderFeatureMarketplace()"> Hub Add-ons</button>';
+  if (_hasModule('hardware_profiles')) btns += '<button class="big-btn" onclick="renderHardwareSetup()"> Hardware</button>';
+  if (_hasModule('sandbox_mode')) btns += '<button class="big-btn" onclick="renderSandboxMode()"> Sandbox</button>';
+  if (_hasModule('support'))         btns += '<button class="big-btn" onclick="renderSupport()"> Help</button>';
+  btns += '<button class="big-btn" onclick="renderAddOnsPanel()" style="border:2px dashed rgba(255,255,255,0.28);background:rgba(255,255,255,0.06);"> Explore Add-Ons</button>';
 
   var quickActions = '';
   if (_hasModule('products')) quickActions += '<button class="btn btn-secondary" onclick="renderAddProductForm()">+ Add New Product</button>';
@@ -650,27 +650,27 @@ function renderOwnerDashboard(msg) {
     '</div>';
 }
 
-// â”€â”€ Add-Ons Discovery Panel (Phase 2A/2B) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Add-Ons Discovery Panel (Phase 2A/2B) 
 
 var _MODULE_ICONS = {
-  products: 'ðŸ“¦', quick_sell: 'ðŸ’°', inventory: 'ðŸ“Š', expenses: 'ðŸ’¸',
-  reports: 'ðŸ“ˆ', suppliers: 'ðŸ­', purchase_orders: 'ðŸ“‹',
-  branch_transfer: 'ðŸ”„', hq_control_center: 'ðŸ¢', internal_chat: 'ðŸ’¬',
-  staff_management: 'ðŸ‘¥', custom_role_builder: 'ðŸŽ­', approvals: 'âœ…',
-  roi: 'ðŸ’¹', monitors: 'ðŸ“¡', automation_rules: 'âš¡', data_import_tools: 'ðŸ“¥',
-  settings: 'âš™ï¸', feature_marketplace: 'ðŸ›’', hardware_profiles: 'ðŸ–¨ï¸',
-  sandbox_mode: 'ðŸ§ª', support: 'ðŸ“ž', activity_log: 'ðŸ“œ', alert_rules_engine: 'ðŸ””'
+  products: '', quick_sell: '', inventory: '', expenses: '',
+  reports: '', suppliers: '', purchase_orders: '',
+  branch_transfer: '', hq_control_center: '', internal_chat: '',
+  staff_management: '', custom_role_builder: '', approvals: '',
+  roi: '', monitors: '', automation_rules: '', data_import_tools: '',
+  settings: '', feature_marketplace: '', hardware_profiles: '',
+  sandbox_mode: '', support: '', activity_log: '', alert_rules_engine: ''
 };
 
 function _addonCards(list) {
   if (!list.length) {
     return '<div style="text-align:center;color:#9ca3af;padding:40px 16px;">' +
-      '<div style="font-size:2rem;margin-bottom:8px;">ðŸ”</div>' +
+      '<div style="font-size:2rem;margin-bottom:8px;"></div>' +
       '<div>No add-ons match your search.</div></div>';
   }
   return list.map(function(f) {
-    var icon = _MODULE_ICONS[f.module_code] || 'ðŸ”§';
-    var price = (f.monthly_price != null) ? 'â‚±' + f.monthly_price + '/mo' : '';
+    var icon = _MODULE_ICONS[f.module_code] || '';
+    var price = (f.monthly_price != null) ? '' + f.monthly_price + '/mo' : '';
     var trialBadge = f.is_trial_available
       ? '<span style="background:#16a34a;color:#fff;font-size:0.6rem;padding:2px 6px;border-radius:8px;font-weight:700;letter-spacing:.3px;">FREE TRIAL</span>'
       : '';
@@ -685,7 +685,7 @@ function _addonCards(list) {
             trialBadge +
           '</div>' +
         '</div>' +
-        '<div style="color:#d1d5db;font-size:1.1rem;align-self:center;">â€º</div>' +
+        '<div style="color:#d1d5db;font-size:1.1rem;align-self:center;"></div>' +
       '</div>' +
       '</div>';
   }).join('');
@@ -699,7 +699,7 @@ function renderAddOnsPanel() {
 
   var loading = !state.ownerAddOnsLoaded;
   var body = loading
-    ? '<div style="text-align:center;color:#9ca3af;padding:48px 16px;"><div style="font-size:2rem;margin-bottom:8px;">â³</div><div>Loading add-onsâ€¦</div></div>'
+    ? '<div style="text-align:center;color:#9ca3af;padding:48px 16px;"><div style="font-size:2rem;margin-bottom:8px;"></div><div>Loading add-ons</div></div>'
     : _addonCards(all);
 
   var overlay = document.createElement('div');
@@ -711,8 +711,8 @@ function renderAddOnsPanel() {
     '<div id="addons-sheet" style="background:#f9fafb;border-radius:20px 20px 0 0;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;">' +
       '<div style="padding:14px 16px 10px;background:#fff;border-bottom:1px solid #f0f0f0;flex-shrink:0;">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">' +
-          '<div style="font-size:1.05rem;font-weight:700;color:#111;">âŠ• Explore Add-Ons</div>' +
-          '<button onclick="closeAddOnsPanel()" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:#9ca3af;line-height:1;">âœ•</button>' +
+          '<div style="font-size:1.05rem;font-weight:700;color:#111;"> Explore Add-Ons</div>' +
+          '<button onclick="closeAddOnsPanel()" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:#9ca3af;line-height:1;"></button>' +
         '</div>' +
         '<input id="addons-search" type="text" placeholder="What feature do you need?" ' +
           'style="width:100%;box-sizing:border-box;padding:10px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:0.9rem;outline:none;" ' +
@@ -761,18 +761,18 @@ function renderFeatureDetailModal(moduleCode) {
   var feature = (state.ownerAddOns || []).filter(function(f) { return f.module_code === moduleCode; })[0];
   if (!feature) return;
 
-  var icon = _MODULE_ICONS[moduleCode] || 'ðŸ”§';
-  var price = (feature.monthly_price != null) ? 'â‚±' + feature.monthly_price + '/mo' : 'Contact us';
-  var trialLabel = feature.is_trial_available ? 'ðŸŽ Start 30-Day Free Trial' : null;
+  var icon = _MODULE_ICONS[moduleCode] || '';
+  var price = (feature.monthly_price != null) ? '' + feature.monthly_price + '/mo' : 'Contact us';
+  var trialLabel = feature.is_trial_available ? ' Start 30-Day Free Trial' : null;
   var addOnPrice = _planAddOnPrice();
   var priceLine = addOnPrice !== null
-    ? 'Add-on price: <strong>â‚±' + addOnPrice + '/mo</strong>'
+    ? 'Add-on price: <strong>' + addOnPrice + '/mo</strong>'
     : price;
 
   var recommended = (feature.recommended_users || []).join(', ');
   var whyHtml = feature.why_it_matters
     ? '<div style="background:#eff6ff;border-left:4px solid #3b82f6;border-radius:6px;padding:12px 14px;margin-bottom:16px;font-size:0.88rem;line-height:1.6;color:#1e3a5f;">' +
-        'ðŸ’¡ ' + _escHtml(feature.why_it_matters) +
+        ' ' + _escHtml(feature.why_it_matters) +
       '</div>'
     : '';
 
@@ -795,7 +795,7 @@ function renderFeatureDetailModal(moduleCode) {
         (trialLabel
           ? '<button class="btn btn-primary" style="width:100%;padding:14px;font-size:1rem;margin-bottom:10px;" onclick="_startAddOnTrial(\'' + _escAttr(moduleCode) + '\')">' + trialLabel + '</button>'
           : '<button class="btn btn-primary" style="width:100%;padding:14px;font-size:1rem;margin-bottom:10px;" onclick="renderFeatureMarketplace()">Activate This Feature</button>') +
-        '<button class="btn btn-secondary" style="width:100%;padding:12px;" onclick="closeFeatureDetailModal()">â† Back to Add-Ons</button>' +
+        '<button class="btn btn-secondary" style="width:100%;padding:12px;" onclick="closeFeatureDetailModal()"> Back to Add-Ons</button>' +
       '</div>' +
     '</div>';
 
@@ -809,20 +809,20 @@ function closeFeatureDetailModal() {
 
 async function _startAddOnTrial(moduleCode) {
   var btn = event && event.target;
-  if (btn) { btn.disabled = true; btn.textContent = 'Starting trialâ€¦'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Starting trial'; }
   try {
     await API.call('startTrial', { moduleCode: moduleCode });
     closeFeatureDetailModal();
     closeAddOnsPanel();
     await _refreshOwnerAddOns({ rerender: true });
-    _showToast('30-day free trial started! âœ…', false);
+    _showToast('30-day free trial started! ', false);
   } catch(e) {
-    if (btn) { btn.disabled = false; btn.textContent = 'ðŸŽ Start 30-Day Free Trial'; }
+    if (btn) { btn.disabled = false; btn.textContent = ' Start 30-Day Free Trial'; }
     alert('Could not start trial: ' + (e.message || 'Unknown error'));
   }
 }
 
-// MANAGER â€” operational cockpit (v1)
+// MANAGER  operational cockpit (v1)
 function renderManagerDashboard() {
   _loadManagerDashboard();
 }
@@ -875,7 +875,7 @@ function _renderMgrPage(data, fromCache) {
     ? '<div style="background:#fffbeb;border-bottom:1px solid #fde68a;padding:6px 12px;font-size:0.75rem;color:#92400e;text-align:center;">Showing last available dashboard data</div>'
     : '';
 
-  // â”€â”€ Summary KPIs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  //  Summary KPIs 
   var st  = s.sales_today        || {};
   var tx  = s.transactions_today || {};
   var et  = s.expenses_today     || {};
@@ -896,15 +896,15 @@ function _renderMgrPage(data, fromCache) {
       '', ls.status || 'no_data') +
     '</div></div>';
 
-  // â”€â”€ Operations Status headline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  //  Operations Status headline 
   var critCount  = alerts.filter(function(a) { return a.status === 'critical'; }).length;
   var watchCount = alerts.filter(function(a) { return a.status === 'watch';    }).length;
   var hBg, hBorder, hIcon, hLine;
   if (critCount > 0) {
-    hBg = '#fff5f5'; hBorder = '#dc2626'; hIcon = 'ðŸ”´';
+    hBg = '#fff5f5'; hBorder = '#dc2626'; hIcon = '';
     hLine = critCount + ' critical issue' + (critCount > 1 ? 's' : '') + ' need' + (critCount === 1 ? 's' : '') + ' your attention now.';
   } else if (watchCount > 0) {
-    hBg = '#fffbeb'; hBorder = '#d97706'; hIcon = 'âš ï¸';
+    hBg = '#fffbeb'; hBorder = '#d97706'; hIcon = '';
     hLine = watchCount + ' thing' + (watchCount > 1 ? 's' : '') + ' to watch \u2014 check below.';
   } else {
     var salesV = st.value || 0;
@@ -913,7 +913,7 @@ function _renderMgrPage(data, fromCache) {
       ? '\u20B1' + Number(salesV).toLocaleString('en-PH', {minimumFractionDigits:0,maximumFractionDigits:0}) +
         ' in sales' + (txV > 0 ? ' across ' + txV + ' transaction' + (txV !== 1 ? 's' : '') : '') + '.'
       : 'No issues to flag. Keep monitoring operations.';
-    hBg = '#f0fdf4'; hBorder = '#16a34a'; hIcon = 'âœ…';
+    hBg = '#f0fdf4'; hBorder = '#16a34a'; hIcon = '';
     hLine = goodMsg;
   }
   var headlineHtml =
@@ -922,7 +922,7 @@ function _renderMgrPage(data, fromCache) {
     '<div style="font-size:0.82rem;color:#374151;margin-top:3px;">' + _escAttr(hLine) + '</div>' +
     '</div>';
 
-  // â”€â”€ Needs Attention â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  //  Needs Attention 
   var alertFnMap = {
     no_sales:          'renderQuickSell()',
     out_of_stock:      '_hasModule("inventory") ? renderInventoryMenu() : _showToast("Inventory not enabled", true)',
@@ -930,7 +930,7 @@ function _renderMgrPage(data, fromCache) {
     high_expenses:     'renderExpenses()',
     pending_approvals: '_hasModule("approvals") ? renderApprovalsQueue() : _showToast("Approvals not enabled", true)',
   };
-  var urgIco = { good: 'âœ…', watch: 'âš ï¸', critical: 'ðŸ”´', info: 'â„¹ï¸' };
+  var urgIco = { good: '', watch: '', critical: '', info: '' };
   var alertsHtml = alerts.length === 0
     ? '<div style="margin:6px 12px 4px;padding:10px 12px;background:#f9fafb;border-radius:10px;font-size:0.8rem;color:#6b7280;text-align:center;">No alerts \u2014 operations look normal.</div>'
     : '<div style="padding:4px 12px 2px;">' +
@@ -947,7 +947,7 @@ function _renderMgrPage(data, fromCache) {
           btn + '</div>';
       }).join('') + '</div>';
 
-  // â”€â”€ Quick Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  //  Quick Actions 
   var qaFnMap = {
     quick_sell:    'renderQuickSell()',
     sales_history: 'renderSalesHistory()',
@@ -976,7 +976,7 @@ function _renderMgrPage(data, fromCache) {
       '</div></div>'
     : '';
 
-  // â”€â”€ Inventory Watch â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  //  Inventory Watch 
   var invHtml = '';
   if (inv.is_available) {
     var invLs = inv.low_stock    || { value: 0, status: 'no_data' };
@@ -986,51 +986,51 @@ function _renderMgrPage(data, fromCache) {
       _monMetric('Low Stock',    String(invLs.value) + ' items', '', invLs.status) +
       _monMetric('Out of Stock', String(invOs.value) + ' items', '', invOs.status) +
       '</div>' +
-      (inv.fast_moving ? _monRow('ðŸš€ Fast Moving', _escAttr(inv.fast_moving.name || '\u2014'), inv.fast_moving.qty + ' sold today', 'good') : '') +
-      (inv.slow_moving ? _monRow('ðŸ¢ Slow Moving', _escAttr(inv.slow_moving.name || '\u2014'), inv.slow_moving.stock + ' in stock, ' + inv.slow_moving.qty_sold + ' sold this week', 'watch') : '') +
-      '<div style="margin-top:8px;"><button onclick="renderInventoryMenu()" style="width:100%;background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:8px;padding:8px;font-size:0.75rem;font-weight:600;cursor:pointer;">ðŸ“‹ View Inventory</button></div>';
-    invHtml = _monSection('ðŸ“‹', 'Inventory Watch', invContent);
+      (inv.fast_moving ? _monRow(' Fast Moving', _escAttr(inv.fast_moving.name || '\u2014'), inv.fast_moving.qty + ' sold today', 'good') : '') +
+      (inv.slow_moving ? _monRow(' Slow Moving', _escAttr(inv.slow_moving.name || '\u2014'), inv.slow_moving.stock + ' in stock, ' + inv.slow_moving.qty_sold + ' sold this week', 'watch') : '') +
+      '<div style="margin-top:8px;"><button onclick="renderInventoryMenu()" style="width:100%;background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:8px;padding:8px;font-size:0.75rem;font-weight:600;cursor:pointer;"> View Inventory</button></div>';
+    invHtml = _monSection('', 'Inventory Watch', invContent);
   }
 
-  // â”€â”€ Staff Activity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  //  Staff Activity 
   var staffAc = ss.active_count || { value: 0, status: 'no_data' };
   var staffContent =
     _monRow('Active Staff Today', String(staffAc.value) + ' staff', 'recorded a sale, expense, or stock movement', staffAc.status) +
     (ss.top_staff
-      ? _monRow('ðŸ† Top by Sales', _escAttr(ss.top_staff.name || '\u2014'), '\u20B1' + Number(ss.top_staff.total || 0).toLocaleString('en-PH', {minimumFractionDigits:0,maximumFractionDigits:0}) + ' today', 'good')
+      ? _monRow(' Top by Sales', _escAttr(ss.top_staff.name || '\u2014'), '\u20B1' + Number(ss.top_staff.total || 0).toLocaleString('en-PH', {minimumFractionDigits:0,maximumFractionDigits:0}) + ' today', 'good')
       : _monRow('Top by Sales', '\u2014', 'No sales recorded yet', 'no_data')) +
-    ((_hasModule('staff_management') || _hasModule('staff')) ? '<div style="margin-top:8px;"><button onclick="renderManageStaff()" style="background:#f0fdf4;border:1px solid #86efac;color:#16a34a;border-radius:8px;padding:8px 12px;font-size:0.75rem;font-weight:600;cursor:pointer;">ðŸ‘¥ Manage Staff</button></div>' : '');
-  var staffHtml = _monSection('ðŸ‘¥', 'Staff Activity', staffContent);
+    ((_hasModule('staff_management') || _hasModule('staff')) ? '<div style="margin-top:8px;"><button onclick="renderManageStaff()" style="background:#f0fdf4;border:1px solid #86efac;color:#16a34a;border-radius:8px;padding:8px 12px;font-size:0.75rem;font-weight:600;cursor:pointer;"> Manage Staff</button></div>' : '');
+  var staffHtml = _monSection('', 'Staff Activity', staffContent);
 
-  // â”€â”€ Approvals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  //  Approvals 
   var approvalsHtml = '';
   if (ap.is_available) {
     var apContent = ap.pending_count > 0
-      ? _monRow('â³ Pending', String(ap.pending_count) + ' item' + (ap.pending_count !== 1 ? 's' : ''), 'awaiting your review', 'watch') +
-        '<div style="margin-top:8px;"><button onclick="renderApprovalsQueue()" style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:8px;padding:8px 12px;font-size:0.75rem;font-weight:600;cursor:pointer;">âœ… Review Approvals</button></div>'
+      ? _monRow(' Pending', String(ap.pending_count) + ' item' + (ap.pending_count !== 1 ? 's' : ''), 'awaiting your review', 'watch') +
+        '<div style="margin-top:8px;"><button onclick="renderApprovalsQueue()" style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:8px;padding:8px 12px;font-size:0.75rem;font-weight:600;cursor:pointer;"> Review Approvals</button></div>'
       : '<div style="text-align:center;padding:12px 0;color:#6b7280;font-size:0.8rem;">No pending approvals.</div>';
-    approvalsHtml = _monSection('âœ…', 'Approvals', apContent);
+    approvalsHtml = _monSection('', 'Approvals', apContent);
   }
 
-  // â”€â”€ Insights & Shortcuts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  //  Insights & Shortcuts 
   var insShortcuts = [];
-  if (ins.reports    && ins.reports.available)     insShortcuts.push({ icon: 'ðŸ“Š', label: 'Reports',      fn: 'renderReports()' });
-  if (ins.monitors   && ins.monitors.available)    insShortcuts.push({ icon: 'ðŸ“¡', label: 'Monitors',     fn: 'renderMonitors()' });
-  if (ins.activity_log && ins.activity_log.available) insShortcuts.push({ icon: 'ðŸ“œ', label: 'Activity Log', fn: 'renderAdvancedReportsHome()' });
+  if (ins.reports    && ins.reports.available)     insShortcuts.push({ icon: '', label: 'Reports',      fn: 'renderReports()' });
+  if (ins.monitors   && ins.monitors.available)    insShortcuts.push({ icon: '', label: 'Monitors',     fn: 'renderMonitors()' });
+  if (ins.activity_log && ins.activity_log.available) insShortcuts.push({ icon: '', label: 'Activity Log', fn: 'renderAdvancedReportsHome()' });
   var insightsHtml = insShortcuts.length > 0
-    ? _monSection('ðŸ”', 'Insights & Reports',
+    ? _monSection('', 'Insights & Reports',
         '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
         insShortcuts.map(function(sc) {
           return '<button onclick="' + sc.fn + '" style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px 14px;font-size:0.8rem;font-weight:600;color:#374151;cursor:pointer;">' + sc.icon + ' ' + sc.label + '</button>';
         }).join('') + '</div>')
     : '';
 
-  // â”€â”€ System / Sync Status â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  var sysHtml = _monSection('ðŸ”„', 'System / Sync',
+  //  System / Sync Status 
+  var sysHtml = _monSection('', 'System / Sync',
     _monRow('Last Sync',       '\u2014', (sys.last_sync    && sys.last_sync.note)    || 'Not available yet', 'no_data') +
     _monRow('Pending Records', '\u2014', (sys.pending_count && sys.pending_count.note) || 'Not available yet', 'no_data'));
 
-  // â”€â”€ Recent Activity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  //  Recent Activity 
   var recentHtml = '';
   if (ra.is_available) {
     var actContent = ra.items && ra.items.length > 0
@@ -1045,10 +1045,10 @@ function _renderMgrPage(data, fromCache) {
             '</div>';
         }).join('')
       : '<div style="text-align:center;padding:12px 0;color:#6b7280;font-size:0.8rem;">No recent activity yet.</div>';
-    recentHtml = _monSection('ðŸ“œ', 'Recent Activity', actContent);
+    recentHtml = _monSection('', 'Recent Activity', actContent);
   }
 
-  // â”€â”€ Assemble â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  //  Assemble 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
     _dashboardHeader_(storeName, 'Manager \u00B7 ' + userName, '', state.isOffline) +
@@ -1070,15 +1070,15 @@ function _renderMgrSimple(errMsg) {
   var storeName = (state.storeProfile && (state.storeProfile.storeName || state.storeProfile.Store_Name)) || '';
   var userName  = state.session.user.Full_Name;
   var btns = '';
-  if (_hasModule('quick_sell'))    btns += '<button class="big-btn" onclick="renderQuickSell()">ðŸ’° Quick Sell</button>';
-  if (_hasModule('products'))      btns += '<button class="big-btn" onclick="loadProducts()">ðŸ“¦ Products</button>';
-  if (_hasModule('inventory'))     btns += '<button class="big-btn" onclick="renderInventoryMenu()">ðŸ“‹ Inventory</button>';
-  if (_hasModule('expenses'))      btns += '<button class="big-btn" onclick="renderExpenses()">ðŸ’¸ Expenses</button>';
-  if (_hasModule('reports'))       btns += '<button class="big-btn" onclick="renderReports()">ðŸ“Š Reports</button>';
-  if (_hasModule('monitors'))      btns += '<button class="big-btn" onclick="renderMonitors()">ðŸ“¡ Monitors</button>';
-  if (_hasModule('staff_management') || _hasModule('staff')) btns += '<button class="big-btn" onclick="renderManageStaff()">ðŸ‘¥ Staff</button>';
-  if (_hasModule('internal_chat')) btns += '<button class="big-btn" onclick="renderChat()">ðŸ’¬ Chat</button>';
-  if (_hasModule('support'))       btns += '<button class="big-btn" onclick="renderSupport()">ðŸ“ž Help</button>';
+  if (_hasModule('quick_sell'))    btns += '<button class="big-btn" onclick="renderQuickSell()"> Quick Sell</button>';
+  if (_hasModule('products'))      btns += '<button class="big-btn" onclick="loadProducts()"> Products</button>';
+  if (_hasModule('inventory'))     btns += '<button class="big-btn" onclick="renderInventoryMenu()"> Inventory</button>';
+  if (_hasModule('expenses'))      btns += '<button class="big-btn" onclick="renderExpenses()"> Expenses</button>';
+  if (_hasModule('reports'))       btns += '<button class="big-btn" onclick="renderReports()"> Reports</button>';
+  if (_hasModule('monitors'))      btns += '<button class="big-btn" onclick="renderMonitors()"> Monitors</button>';
+  if (_hasModule('staff_management') || _hasModule('staff')) btns += '<button class="big-btn" onclick="renderManageStaff()"> Staff</button>';
+  if (_hasModule('internal_chat')) btns += '<button class="big-btn" onclick="renderChat()"> Chat</button>';
+  if (_hasModule('support'))       btns += '<button class="big-btn" onclick="renderSupport()"> Help</button>';
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
     _dashboardHeader_(storeName, 'Manager \u00B7 ' + userName, '', state.isOffline) +
@@ -1086,56 +1086,56 @@ function _renderMgrSimple(errMsg) {
     '<div class="grid-buttons">' + btns + '</div></div>';
 }
 
-// CASHIER â€” sell and record expenses only
+// CASHIER  sell and record expenses only
 function renderCashierDashboard(msg) {
   var storeName = (state.storeProfile && (state.storeProfile.storeName || state.storeProfile.Store_Name)) || '';
   var userName  = state.session.user.Full_Name;
   var btns = '';
-  if (_hasModule('quick_sell'))    btns += '<button class="big-btn" onclick="renderQuickSell()">ðŸ’° Quick Sell</button>';
-  if (_hasModule('products'))      btns += '<button class="big-btn" onclick="loadProducts()">ðŸ“¦ Products</button>';
-  if (_hasModule('expenses'))      btns += '<button class="big-btn" onclick="renderExpenses()">ðŸ’¸ Expenses</button>';
-  if (_hasModule('internal_chat')) btns += '<button class="big-btn" onclick="renderChat()">ðŸ’¬ Chat</button>';
-  if (_hasModule('support'))       btns += '<button class="big-btn" onclick="renderSupport()">ðŸ“ž Help</button>';
+  if (_hasModule('quick_sell'))    btns += '<button class="big-btn" onclick="renderQuickSell()"> Quick Sell</button>';
+  if (_hasModule('products'))      btns += '<button class="big-btn" onclick="loadProducts()"> Products</button>';
+  if (_hasModule('expenses'))      btns += '<button class="big-btn" onclick="renderExpenses()"> Expenses</button>';
+  if (_hasModule('internal_chat')) btns += '<button class="big-btn" onclick="renderChat()"> Chat</button>';
+  if (_hasModule('support'))       btns += '<button class="big-btn" onclick="renderSupport()"> Help</button>';
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    _dashboardHeader_(storeName, userName + ' Â· Cashier', '', state.isOffline) +
+    _dashboardHeader_(storeName, userName + '  Cashier', '', state.isOffline) +
     (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
     '<div class="grid-buttons">' + btns + '</div></div>';
 }
 
-// INVENTORY_STAFF â€” products and stock management only
+// INVENTORY_STAFF  products and stock management only
 function renderInventoryDashboard(msg) {
   var storeName = (state.storeProfile && (state.storeProfile.storeName || state.storeProfile.Store_Name)) || '';
   var userName  = state.session.user.Full_Name;
   var btns = '';
-  if (_hasModule('products'))      btns += '<button class="big-btn" onclick="loadProducts()">ðŸ“¦ Products</button>';
-  if (_hasModule('inventory'))     btns += '<button class="big-btn" onclick="renderInventoryMenu()">ðŸ“‹ Inventory</button>';
-  if (_hasModule('internal_chat')) btns += '<button class="big-btn" onclick="renderChat()">ðŸ’¬ Chat</button>';
-  if (_hasModule('support'))       btns += '<button class="big-btn" onclick="renderSupport()">ðŸ“ž Help</button>';
+  if (_hasModule('products'))      btns += '<button class="big-btn" onclick="loadProducts()"> Products</button>';
+  if (_hasModule('inventory'))     btns += '<button class="big-btn" onclick="renderInventoryMenu()"> Inventory</button>';
+  if (_hasModule('internal_chat')) btns += '<button class="big-btn" onclick="renderChat()"> Chat</button>';
+  if (_hasModule('support'))       btns += '<button class="big-btn" onclick="renderSupport()"> Help</button>';
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    _dashboardHeader_(storeName, userName + ' Â· Inventory Staff', '', state.isOffline) +
+    _dashboardHeader_(storeName, userName + '  Inventory Staff', '', state.isOffline) +
     (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
     '<div class="grid-buttons">' + btns + '</div></div>';
 }
 
-// VIEWER / WATCHER â€” read-only reports and monitors
+// VIEWER / WATCHER  read-only reports and monitors
 function renderViewerDashboard(msg) {
   var storeName = (state.storeProfile && (state.storeProfile.storeName || state.storeProfile.Store_Name)) || '';
   var userName  = state.session.user.Full_Name;
   var btns = '';
-  if (_hasModule('reports'))       btns += '<button class="big-btn" onclick="renderReports()">ðŸ“Š Reports</button>';
-  if (_hasModule('monitors'))      btns += '<button class="big-btn" onclick="renderMonitors()">ðŸ“¡ Monitors</button>';
-  if (_hasModule('internal_chat')) btns += '<button class="big-btn" onclick="renderChat()">ðŸ’¬ Chat</button>';
-  if (_hasModule('support'))       btns += '<button class="big-btn" onclick="renderSupport()">ðŸ“ž Help</button>';
+  if (_hasModule('reports'))       btns += '<button class="big-btn" onclick="renderReports()"> Reports</button>';
+  if (_hasModule('monitors'))      btns += '<button class="big-btn" onclick="renderMonitors()"> Monitors</button>';
+  if (_hasModule('internal_chat')) btns += '<button class="big-btn" onclick="renderChat()"> Chat</button>';
+  if (_hasModule('support'))       btns += '<button class="big-btn" onclick="renderSupport()"> Help</button>';
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    _dashboardHeader_(storeName, userName + ' Â· Viewer', '', state.isOffline) +
+    _dashboardHeader_(storeName, userName + '  Viewer', '', state.isOffline) +
     (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
     '<div class="grid-buttons">' + btns + '</div></div>';
 }
 
-// CUSTOM ROLE â€” dynamic dashboard driven by manifest.enabled_modules
+// CUSTOM ROLE  dynamic dashboard driven by manifest.enabled_modules
 function renderStaffDashboard(msg) {
   var storeName = (state.storeProfile && (state.storeProfile.storeName || state.storeProfile.Store_Name)) || '';
   var userName  = state.session.user.Full_Name;
@@ -1145,35 +1145,35 @@ function renderStaffDashboard(msg) {
   var has = function(m) { return modules.indexOf(m) !== -1; };
 
   var btns = '';
-  if (has('quick_sell'))      btns += '<button class="big-btn" onclick="renderQuickSell()">ðŸ’° Quick Sell</button>';
-  if (has('quick_sell'))      btns += '<button class="big-btn" onclick="renderSalesHistory()">ðŸ§¾ Sales History</button>';
-  if (has('products'))        btns += '<button class="big-btn" onclick="loadProducts()">ðŸ“¦ Products</button>';
-  if (has('inventory'))       btns += '<button class="big-btn" onclick="renderInventoryMenu()">ðŸ“‹ Inventory</button>';
-  if (has('expenses'))        btns += '<button class="big-btn" onclick="renderExpenses()">ðŸ’¸ Expenses</button>';
-  if (has('reports'))         btns += '<button class="big-btn" onclick="renderReports()">ðŸ“Š Reports</button>';
-  if (has('reports'))         btns += '<button class="big-btn" onclick="renderAdvancedReportsHome()">ðŸ“Š Advanced Reports</button>';
-  if (has('suppliers'))       btns += '<button class="big-btn" onclick="renderSuppliers()">ðŸ­ Suppliers</button>';
-  if (has('purchase_orders')) btns += '<button class="big-btn" onclick="renderPurchaseOrders()">ðŸ“‹ Purchase Orders</button>';
-  if (has('branch_transfer')) btns += '<button class="big-btn" onclick="renderBranchTransfers()">ðŸ”„ Branch Transfers</button>';
-  if (has('hq_control_center')) btns += '<button class="big-btn" onclick="renderHQControlCenter()">ðŸ¢ HQ Control</button>';
-  if (has('staff_management') || has('staff')) btns += '<button class="big-btn" onclick="renderStaffList()">ðŸ‘¥ Staff</button>';
-  if (has('approvals'))       btns += '<button class="big-btn" onclick="renderApprovalsQueue()">âœ… Approvals</button>';
-  if (has('roi'))             btns += '<button class="big-btn" onclick="renderROIMonitor()">ðŸ“ˆ ROI</button>';
-  if (has('monitors'))        btns += '<button class="big-btn" onclick="renderMonitors()">ðŸ“¡ Monitors</button>';
-  if (has('automation_rules')) btns += '<button class="big-btn" onclick="renderAutomationRules()">âš¡ Automation</button>';
-  if (has('internal_chat'))   btns += '<button class="big-btn" onclick="renderChat()">ðŸ’¬ Chat</button>';
-  if (has('alert_rules_engine')) btns += '<button class="big-btn" onclick="renderAlertsCenter()">ðŸ”” Alerts</button>';
-  if (has('support'))         btns += '<button class="big-btn" onclick="renderSupport()">ðŸ“ž Help</button>';
+  if (has('quick_sell'))      btns += '<button class="big-btn" onclick="renderQuickSell()"> Quick Sell</button>';
+  if (has('quick_sell'))      btns += '<button class="big-btn" onclick="renderSalesHistory()"> Sales History</button>';
+  if (has('products'))        btns += '<button class="big-btn" onclick="loadProducts()"> Products</button>';
+  if (has('inventory'))       btns += '<button class="big-btn" onclick="renderInventoryMenu()"> Inventory</button>';
+  if (has('expenses'))        btns += '<button class="big-btn" onclick="renderExpenses()"> Expenses</button>';
+  if (has('reports'))         btns += '<button class="big-btn" onclick="renderReports()"> Reports</button>';
+  if (has('reports'))         btns += '<button class="big-btn" onclick="renderAdvancedReportsHome()"> Advanced Reports</button>';
+  if (has('suppliers'))       btns += '<button class="big-btn" onclick="renderSuppliers()"> Suppliers</button>';
+  if (has('purchase_orders')) btns += '<button class="big-btn" onclick="renderPurchaseOrders()"> Purchase Orders</button>';
+  if (has('branch_transfer')) btns += '<button class="big-btn" onclick="renderBranchTransfers()"> Branch Transfers</button>';
+  if (has('hq_control_center')) btns += '<button class="big-btn" onclick="renderHQControlCenter()"> HQ Control</button>';
+  if (has('staff_management') || has('staff')) btns += '<button class="big-btn" onclick="renderStaffList()"> Staff</button>';
+  if (has('approvals'))       btns += '<button class="big-btn" onclick="renderApprovalsQueue()"> Approvals</button>';
+  if (has('roi'))             btns += '<button class="big-btn" onclick="renderROIMonitor()"> ROI</button>';
+  if (has('monitors'))        btns += '<button class="big-btn" onclick="renderMonitors()"> Monitors</button>';
+  if (has('automation_rules')) btns += '<button class="big-btn" onclick="renderAutomationRules()"> Automation</button>';
+  if (has('internal_chat'))   btns += '<button class="big-btn" onclick="renderChat()"> Chat</button>';
+  if (has('alert_rules_engine')) btns += '<button class="big-btn" onclick="renderAlertsCenter()"> Alerts</button>';
+  if (has('support'))         btns += '<button class="big-btn" onclick="renderSupport()"> Help</button>';
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    _dashboardHeader_(storeName, userName + ' Â· ' + _esc(roleLabel), '', state.isOffline) +
+    _dashboardHeader_(storeName, userName + '  ' + _esc(roleLabel), '', state.isOffline) +
     (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
     '<div class="grid-buttons">' + btns + '</div></div>';
 }
 
-// EXECUTIVE â€” read-only access to reports, ROI, monitors, expenses overview
-// â”€â”€ Executive Dashboard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// EXECUTIVE  read-only access to reports, ROI, monitors, expenses overview
+//  Executive Dashboard 
 
 // Removed duplicate declaration; already declared at top
 
@@ -1192,7 +1192,7 @@ async function renderExecutiveDashboard(msg) {
     }
   }
 
-  showLoading('Loading executive dashboardâ€¦');
+  showLoading('Loading executive dashboard');
   try {
     var data = await API.call('getExecutiveDashboard', { period: execCurrentPeriod });
     try {
@@ -1221,7 +1221,7 @@ async function _renderExecutivePage(data, fromCache) {
       var bg = a.status === 'critical' ? '#fee2e2' : a.status === 'watch' ? '#fef3c7' : '#dbeafe';
       var border = a.status === 'critical' ? '#dc2626' : a.status === 'watch' ? '#d97706' : '#1d4ed8';
       var actionBtn = a.action_label
-        ? '<button onclick="_execAction(\''+a.action_target+'\')" style="margin-top:6px;background:#fff;border:1px solid '+border+';color:'+border+';padding:4px 10px;border-radius:6px;font-size:0.7rem;font-weight:700;cursor:pointer;">'+a.action_label+' â†’</button>'
+        ? '<button onclick="_execAction(\''+a.action_target+'\')" style="margin-top:6px;background:#fff;border:1px solid '+border+';color:'+border+';padding:4px 10px;border-radius:6px;font-size:0.7rem;font-weight:700;cursor:pointer;">'+a.action_label+' </button>'
         : '';
       return '<div style="background:'+bg+';border-left:3px solid '+border+';border-radius:8px;padding:10px;margin-bottom:6px;">'+
         '<div style="font-weight:700;font-size:0.8rem;color:#111827;">'+_escAttr(a.title)+'</div>'+
@@ -1268,11 +1268,11 @@ async function _renderExecutivePage(data, fromCache) {
   }
 
   var summaryHtml = '<div class="card">'+
-    '<div class="subtitle">Executive Summary â€” '+_escAttr(data.period)+'</div>'+
+    '<div class="subtitle">Executive Summary  '+_escAttr(data.period)+'</div>'+
     '<div class="grid-buttons" style="grid-template-columns:repeat(3,1fr);gap:8px;">'+
-      _execMetricCard('Sales',      _esc(salesVal, 'â‚±'),     salesPct, salesStatus)+
-      _execMetricCard('Expenses',   _esc(expVal, 'â‚±'),       expPct,   expStatus)+
-      _execMetricCard('Profit',     _esc(profitVal, 'â‚±'),    profitPct, profitStatus, (data.meta && data.meta.profit_label) ? data.meta.profit_label : '')+
+      _execMetricCard('Sales',      _esc(salesVal, ''),     salesPct, salesStatus)+
+      _execMetricCard('Expenses',   _esc(expVal, ''),       expPct,   expStatus)+
+      _execMetricCard('Profit',     _esc(profitVal, ''),    profitPct, profitStatus, (data.meta && data.meta.profit_label) ? data.meta.profit_label : '')+
     '</div>';
 
   // Optional KPIs
@@ -1303,8 +1303,8 @@ async function _renderExecutivePage(data, fromCache) {
   if (data.trends) {
     var tr = data.trends;
     var trendItem = function(label, pct, dir, color) {
-      var arrow = pct !== null ? (pct > 0 ? 'â†‘' : pct < 0 ? 'â†“' : 'â†’') : 'â†’';
-      var pctStr = pct !== null ? pct.toFixed(1)+'%' : 'â€”';
+      var arrow = pct !== null ? (pct > 0 ? '' : pct < 0 ? '' : '') : '';
+      var pctStr = pct !== null ? pct.toFixed(1)+'%' : '';
       var col = pct !== null ? (pct > 0 ? '#16a34a' : pct < 0 ? '#dc2626' : '#6b7280') : '#6b7280';
       return '<div style="background:#f9fafb;padding:10px;border-radius:10px;text-align:center;">'+
              '<div style="font-size:11px;color:#6b7280;">'+label+'</div>'+
@@ -1328,14 +1328,14 @@ async function _renderExecutivePage(data, fromCache) {
   };
   var salesHtml = '<div class="card"><div class="subtitle">Sales & Profit Snapshot</div>'+
     '<div class="grid-buttons" style="grid-template-columns:1fr 1fr;gap:8px;">'+
-      '<div><strong>Transactions</strong><br><span style="font-size:16px;font-weight:700;">'+(sp.transactions && sp.transactions.value!==undefined ? Number(sp.transactions.value).toLocaleString() : 'â€”')+'</span></div>'+
-      '<div><strong>Avg Sale</strong><br><span style="font-size:16px;font-weight:700;">â‚±'+(sp.avg_sale && sp.avg_sale.value !== null ? Number(sp.avg_sale.value).toFixed(2) : 'â€”')+'</span></div>'+
-      '<div><strong>Top Product</strong><br><span style="font-size:12px;">'+(sp.top_product && sp.top_product.name ? _escAttr(sp.top_product.name) : 'â€”')+'</span></div>'+
+      '<div><strong>Transactions</strong><br><span style="font-size:16px;font-weight:700;">'+(sp.transactions && sp.transactions.value!==undefined ? Number(sp.transactions.value).toLocaleString() : '')+'</span></div>'+
+      '<div><strong>Avg Sale</strong><br><span style="font-size:16px;font-weight:700;">'+(sp.avg_sale && sp.avg_sale.value !== null ? Number(sp.avg_sale.value).toFixed(2) : '')+'</span></div>'+
+      '<div><strong>Top Product</strong><br><span style="font-size:12px;">'+(sp.top_product && sp.top_product.name ? _escAttr(sp.top_product.name) : '')+'</span></div>'+
     '</div>'+
     '<div style="margin-top:10px;padding-top:10px;border-top:1px solid #f3f4f6;">'+
-      '<div style="display:flex;justify-content:space-between;"><strong>Total Sales</strong><span style="font-weight:700;color:#16a34a;font-size:18px;">â‚±'+_esc(salesVal)+'</span></div>'+
-      '<div style="display:flex;justify-content:space-between;margin-top:6px;"><strong>Est. Profit</strong><span style="font-weight:700;color:'+cProfitStatus(profitVal)+';font-size:16px;">â‚±'+_esc(profitVal)+'</span></div>'+
-      '<div style="display:flex;justify-content:space-between;margin-top:6px;"><strong>Margin</strong><span style="font-weight:600;">'+(marginVal!==null?marginVal.toFixed(1)+'%':'â€”')+'</span></div>'+
+      '<div style="display:flex;justify-content:space-between;"><strong>Total Sales</strong><span style="font-weight:700;color:#16a34a;font-size:18px;">'+_esc(salesVal)+'</span></div>'+
+      '<div style="display:flex;justify-content:space-between;margin-top:6px;"><strong>Est. Profit</strong><span style="font-weight:700;color:'+cProfitStatus(profitVal)+';font-size:16px;">'+_esc(profitVal)+'</span></div>'+
+      '<div style="display:flex;justify-content:space-between;margin-top:6px;"><strong>Margin</strong><span style="font-weight:600;">'+(marginVal!==null?marginVal.toFixed(1)+'%':'')+'</span></div>'+
     '</div></div>';
 
   // Expense Snapshot
@@ -1348,15 +1348,15 @@ async function _renderExecutivePage(data, fromCache) {
     var hasExpTrend = expTrendPct !== null && expTrendPct !== undefined;
     var expPressure = es.pressure_alert || false;
     expPressureHtml = '<div class="card"><div class="subtitle">Expense Snapshot</div>'+
-      '<div style="display:flex;justify-content:space-between;"><strong>Total Expenses</strong><span style="font-weight:700;color:#dc2626;font-size:18px;">â‚±'+_esc(expTotalVal)+'</span></div>'+
-      '<div class="muted" style="margin-top:4px;">Top category: <strong>'+(es.top_category && es.top_category.name ? _escAttr(es.top_category.name) : 'â€”')+'</strong></div>'+
+      '<div style="display:flex;justify-content:space-between;"><strong>Total Expenses</strong><span style="font-weight:700;color:#dc2626;font-size:18px;">'+_esc(expTotalVal)+'</span></div>'+
+      '<div class="muted" style="margin-top:4px;">Top category: <strong>'+(es.top_category && es.top_category.name ? _escAttr(es.top_category.name) : '')+'</strong></div>'+
       (hasExpTrend
         ? '<div style="margin-top:6px;font-size:0.75rem;color:'+(expPressure?'#dc2626':'#16a34a')+';font-weight:700;">'+
-           (expTrendPct > 0 ? 'â†‘ '+expTrendPct.toFixed(1)+'% vs prior' : 'â†“ '+Math.abs(expTrendPct).toFixed(1)+'% vs prior')+
+           (expTrendPct > 0 ? ' '+expTrendPct.toFixed(1)+'% vs prior' : ' '+Math.abs(expTrendPct).toFixed(1)+'% vs prior')+
           '</div>'
         : '')+
       '<div style="margin-top:'+(hasExpTrend?'6px':'10px')+';padding:8px;background:'+(expPressure?'#fef2f2':'#f0fdf4')+';border-radius:6px;font-size:0.75rem;color:'+(expPressure?'#dc2626':'#16a34a')+';">'+
-        (expPressure ? 'ðŸ’¸ Expenses rising faster than revenue' : 'âœ… Expense growth is in check')+
+        (expPressure ? ' Expenses rising faster than revenue' : ' Expense growth is in check')+
       '</div>'+
     '</div>';
   }
@@ -1371,12 +1371,12 @@ async function _renderExecutivePage(data, fromCache) {
     var slow   = inv.slow_moving  || {};
     invHtml = '<div class="card"><div class="subtitle">Inventory Health</div>'+
       '<div class="grid-buttons" style="grid-template-columns:1fr 1fr;gap:8px;">'+
-        '<div><strong>Low Stock</strong><br><span style="font-size:16px;font-weight:700;color:#d97706;">'+(lowVal!==null?lowVal:'â€”')+' items</span></div>'+
-        '<div><strong>Out of Stock</strong><br><span style="font-size:16px;font-weight:700;color:#dc2626;">'+(outVal!==null?outVal:'â€”')+' items</span></div>'+
+        '<div><strong>Low Stock</strong><br><span style="font-size:16px;font-weight:700;color:#d97706;">'+(lowVal!==null?lowVal:'')+' items</span></div>'+
+        '<div><strong>Out of Stock</strong><br><span style="font-size:16px;font-weight:700;color:#dc2626;">'+(outVal!==null?outVal:'')+' items</span></div>'+
       '</div>'+
       '<div class="muted" style="margin-top:10px;">'+
-        'ðŸš€ <strong>Fast:</strong> '+_esc(fast.name)+' ('+(fast.qty||0)+' sold)<br>'+
-        'ðŸ¢ <strong>Slow:</strong> '+_esc(slow.name)+' ('+(slow.qty_sold||0)+' sold, '+(slow.stock||0)+' in stock)'+
+        ' <strong>Fast:</strong> '+_esc(fast.name)+' ('+(fast.qty||0)+' sold)<br>'+
+        ' <strong>Slow:</strong> '+_esc(slow.name)+' ('+(slow.qty_sold||0)+' sold, '+(slow.stock||0)+' in stock)'+
       '</div></div>';
   }
 
@@ -1389,15 +1389,15 @@ async function _renderExecutivePage(data, fromCache) {
     var expTrendPct = es.expenses_total ? es.expenses_total.trend_pct : null;
     var hasExpTrend = expTrendPct !== null;
     expPressureHtml = '<div class="card"><div class="subtitle">Expense Snapshot</div>'+
-      '<div style="display:flex;justify-content:space-between;"><strong>Total Expenses</strong><span style="font-weight:700;color:#dc2626;font-size:18px;">â‚±'+_esc(expTotalVal)+'</span></div>'+
-      '<div class="muted" style="margin-top:4px;">Top category: <strong>'+_esc(es.top_category ? es.top_category.name : 'â€”')+'</strong></div>'+
+      '<div style="display:flex;justify-content:space-between;"><strong>Total Expenses</strong><span style="font-weight:700;color:#dc2626;font-size:18px;">'+_esc(expTotalVal)+'</span></div>'+
+      '<div class="muted" style="margin-top:4px;">Top category: <strong>'+_esc(es.top_category ? es.top_category.name : '')+'</strong></div>'+
       (hasExpTrend
         ? '<div style="margin-top:6px;font-size:0.75rem;color:'+expStatusColor+';font-weight:700;">'+
-           (expTrendPct > 0 ? 'â†‘ '+expTrendPct.toFixed(1)+'% vs prior' : 'â†“ '+Math.abs(expTrendPct).toFixed(1)+'% vs prior')+
+           (expTrendPct > 0 ? ' '+expTrendPct.toFixed(1)+'% vs prior' : ' '+Math.abs(expTrendPct).toFixed(1)+'% vs prior')+
           '</div>'
         : '')+
       '<div style="margin-top:'+(hasExpTrend?'6px':'10px')+';padding:8px;background:'+(es.pressure_alert?'#fef2f2':'#f0fdf4')+';border-radius:6px;font-size:0.75rem;color:'+(es.pressure_alert?'#dc2626':'#16a34a')+';">'+
-        (es.pressure_alert ? 'ðŸ’¸ Expenses rising faster than revenue' : 'âœ… Expense growth is in check')+
+        (es.pressure_alert ? ' Expenses rising faster than revenue' : ' Expense growth is in check')+
       '</div>'+
     '</div>';
   } else {
@@ -1410,12 +1410,12 @@ async function _renderExecutivePage(data, fromCache) {
   if (inv.is_available) {
     invHtml = '<div class="card"><div class="subtitle">Inventory Health</div>'+
       '<div class="grid-buttons" style="grid-template-columns:1fr 1fr;gap:8px;">'+
-        '<div><strong>Low Stock</strong><br><span style="font-size:16px;font-weight:700;color:#d97706;">'+(lowVal!==null?lowVal:'â€”')+' items</span></div>'+
-        '<div><strong>Out of Stock</strong><br><span style="font-size:16px;font-weight:700;color:#dc2626;">'+(outVal!==null?outVal:'â€”')+' items</span></div>'+
+        '<div><strong>Low Stock</strong><br><span style="font-size:16px;font-weight:700;color:#d97706;">'+(lowVal!==null?lowVal:'')+' items</span></div>'+
+        '<div><strong>Out of Stock</strong><br><span style="font-size:16px;font-weight:700;color:#dc2626;">'+(outVal!==null?outVal:'')+' items</span></div>'+
       '</div>'+
       '<div class="muted" style="margin-top:10px;">'+
-        'ðŸš€ <strong>Fast:</strong> '+_esc(fast.name)+' ('+(fast.qty||0)+' sold)<br>'+
-        'ðŸ¢ <strong>Slow:</strong> '+_esc(slow.name)+' ('+(slow.qty_sold||0)+' sold, '+(slow.stock||0)+' in stock)'+
+        ' <strong>Fast:</strong> '+_esc(fast.name)+' ('+(fast.qty||0)+' sold)<br>'+
+        ' <strong>Slow:</strong> '+_esc(slow.name)+' ('+(slow.qty_sold||0)+' sold, '+(slow.stock||0)+' in stock)'+
       '</div></div>';
   }
 
@@ -1425,7 +1425,7 @@ async function _renderExecutivePage(data, fromCache) {
   if (sf.top_staff) {
     staffHtml += '<div style="padding:8px;background:#f9fafb;border-radius:8px;margin-bottom:8px;">'+
       '<div style="font-weight:700;font-size:0.9rem;">'+_esc(sf.top_staff.name)+'</div>'+
-      '<div style="font-size:0.8rem;color:#6b7280;">Top performer â€” â‚±'+Number(sf.top_staff.total||0).toLocaleString()+' sales</div>'+
+      '<div style="font-size:0.8rem;color:#6b7280;">Top performer  '+Number(sf.top_staff.total||0).toLocaleString()+' sales</div>'+
     '</div>';
   }
    staffHtml += '<div class="grid-buttons" style="grid-template-columns:1fr 1fr;gap:8px;">'+
@@ -1454,7 +1454,7 @@ async function _renderExecutivePage(data, fromCache) {
     syncHtml += '<div class="muted">Last sync: '+(lastSync?new Date(Number(lastSync)).toLocaleString():'Never')+'</div>'+
                 '<div class="muted">Pending: '+(pending.length)+' records</div>';
     if (pending.length > 10) {
-      syncHtml += '<div class="message message-offline" style="margin-top:6px;">âš ï¸ '+pending.length+' items pending sync</div>';
+      syncHtml += '<div class="message message-offline" style="margin-top:6px;"> '+pending.length+' items pending sync</div>';
     }
   } catch(e) {
     syncHtml += '<div class="muted">Sync status unavailable</div>';
@@ -1480,13 +1480,13 @@ async function _renderExecutivePage(data, fromCache) {
   var supportHtml = '';
   if (data.support && data.support.available) {
     supportHtml = '<div style="text-align:center;padding:12px 0;">'+
-      '<button class="btn btn-secondary" onclick="renderChat()">ðŸ“ž Contact Support</button></div>';
+      '<button class="btn btn-secondary" onclick="renderChat()"> Contact Support</button></div>';
   }
 
   // Assemble
   document.getElementById('app').innerHTML =
     '<div class="screen">'+
-    _dashboardHeader_(storeName, userName+' Â· Executive', '', state.isOffline) +
+    _dashboardHeader_(storeName, userName+'  Executive', '', state.isOffline) +
     cacheBanner +
     periodHtml +
     alertsHtml +
@@ -1505,20 +1505,20 @@ async function _renderExecutivePage(data, fromCache) {
 
 // Helper: format number safely
 function _esc(val, prefix='') {
-  if (val === null || val === undefined || val === '') return 'â€”';
+  if (val === null || val === undefined || val === '') return '';
   if (typeof val === 'number') return prefix + Number(val).toLocaleString('en-PH', {minimumFractionDigits:0,maximumFractionDigits:0});
   return val;
 }
 
 function _execMetricCard(label, value, pct, status, subLabel) {
   var color = status === 'good' ? '#16a34a' : status === 'watch' ? '#d97706' : status === 'critical' ? '#dc2626' : '#6b7280';
-  var displayVal = (value===null || value===undefined || value==='') ? 'â€”' : value;
+  var displayVal = (value===null || value===undefined || value==='') ? '' : value;
   return '<div style="background:#f9fafb;padding:10px;border-radius:10px;text-align:center;">'+
     '<div style="font-size:11px;color:#6b7280;text-transform:uppercase;">'+label+'</div>'+
     '<div style="font-size:18px;font-weight:700;color:#111827;margin:4px 0;">'+displayVal+'</div>'+
     (subLabel ? '<div style="font-size:0.65rem;color:#6b7280;margin-top:2px;">'+subLabel+'</div>':'')+
     (pct !== null ? '<div style="font-size:0.7rem;color:'+color+';font-weight:700;">'+
-       (pct > 0 ? 'â†‘'+pct.toFixed(1)+'%': pct < 0 ? 'â†“'+Math.abs(pct).toFixed(1)+'%' : 'â†’0%')+
+       (pct > 0 ? ''+pct.toFixed(1)+'%': pct < 0 ? ''+Math.abs(pct).toFixed(1)+'%' : '0%')+
       '</div>':'')+
     '</div>';
 }
@@ -1566,13 +1566,13 @@ function _execAction(target) {
    else { window[fn](); }
  }
 
- // Legacy alias â€” keep in case
+ // Legacy alias  keep in case
 function renderExecutiveDashboardLegacy(msg) { renderExecutiveDashboard(msg); }
 
 // Legacy alias (kept for any residual direct calls during transition)
 function renderWatcherDashboard(msg) { renderViewerDashboard(msg); }
 
-// â”€â”€ Staff Management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Staff Management 
 
 function _isStaffAccessGateError(err) {
   var msg = String((err && err.message) || err || '').toLowerCase();
@@ -1722,7 +1722,7 @@ async function _loadManageStaffUsers() {
 
 async function renderManageStaff() {
   try {
-  showLoading('Loading staffâ€¦');
+  showLoading('Loading staff');
   var staffLoad = await _loadManageStaffUsers();
   var users = staffLoad.users;
 
@@ -1744,9 +1744,9 @@ async function renderManageStaff() {
       '</div>' +
       '<div style="display:flex;gap:8px;margin-top:8px;padding-left:56px;">' +
       '<button onclick="promptResetPassword(\'' + _escAttr(u.User_ID) + '\',\'' + _escAttr(u.Full_Name || u.Username) + '\')" ' +
-        'style="flex:1;background:#f0fdf4;border:1px solid #86efac;color:#16a34a;border-radius:8px;padding:6px 10px;font-size:0.75rem;font-weight:600;cursor:pointer;">ðŸ”‘ Set Password</button>' +
+        'style="flex:1;background:#f0fdf4;border:1px solid #86efac;color:#16a34a;border-radius:8px;padding:6px 10px;font-size:0.75rem;font-weight:600;cursor:pointer;"> Set Password</button>' +
       '<button onclick="removeStaffUser(\'' + _escAttr(u.User_ID) + '\',\'' + _escAttr(u.Full_Name || u.Username) + '\')" ' +
-        'style="flex:1;background:none;border:1px solid #e74c3c;color:#e74c3c;border-radius:8px;padding:6px 10px;font-size:0.75rem;font-weight:600;cursor:pointer;">âœ• Remove</button>' +
+        'style="flex:1;background:none;border:1px solid #e74c3c;color:#e74c3c;border-radius:8px;padding:6px 10px;font-size:0.75rem;font-weight:600;cursor:pointer;"> Remove</button>' +
       '</div>' +
       '</div>';
   }).join('');
@@ -1758,15 +1758,15 @@ async function renderManageStaff() {
   var staffSection = staff.length
     ? '<div style="padding:0 4px;">' + staffCards + '</div>'
     : '<div style="text-align:center;padding:24px 16px;">' +
-        '<div style="font-size:2.5rem;margin-bottom:8px;">ðŸ‘¤</div>' +
+        '<div style="font-size:2.5rem;margin-bottom:8px;"></div>' +
         '<div style="font-weight:600;color:#374151;">No staff yet</div>' +
         '<div style="font-size:0.82rem;color:#9ca3af;margin-top:4px;">Add your first staff member below</div>' +
       '</div>';
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">ðŸ‘¥ Manage Staff</div>' +
-    '<button class="small-btn" onclick="goHome()">â† Back</button></div>' +
+    '<div class="topbar"><div class="title" style="margin:0;"> Manage Staff</div>' +
+    '<button class="small-btn" onclick="goHome()"> Back</button></div>' +
     staffLoadNotice +
     _renderStaffAllowanceCard(staff.length) +
     _renderStaffRoleGuide() +
@@ -1782,7 +1782,7 @@ async function renderManageStaff() {
 
     // Owner password change card
     '<div class="card" style="margin-bottom:12px;">' +
-    '<div style="font-weight:700;font-size:1rem;color:#1a1a2e;margin-bottom:12px;">ðŸ” Change Your Password</div>' +
+    '<div style="font-weight:700;font-size:1rem;color:#1a1a2e;margin-bottom:12px;"> Change Your Password</div>' +
     '<input id="owner-current-pw" class="input" type="password" placeholder="Current password" style="margin-bottom:8px;" autocomplete="current-password">' +
     '<input id="owner-new-pw" class="input" type="password" placeholder="New password (min. 4 chars)" style="margin-bottom:8px;" autocomplete="new-password">' +
     '<input id="owner-confirm-pw" class="input" type="password" placeholder="Confirm new password" style="margin-bottom:12px;" autocomplete="new-password">' +
@@ -1791,10 +1791,10 @@ async function renderManageStaff() {
 
     // Add staff form card
     '<div class="card">' +
-    '<div style="font-weight:700;font-size:1rem;color:#1a1a2e;margin-bottom:4px;">âž• Add New Staff</div>' +
+    '<div style="font-weight:700;font-size:1rem;color:#1a1a2e;margin-bottom:4px;"> Add New Staff</div>' +
     '<div style="font-size:0.8rem;color:#6b7280;margin-bottom:16px;">Staff can record sales and expenses.</div>' +
     '<div style="position:relative;margin-bottom:10px;">' +
-    '<span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:1rem;">ðŸ‘¤</span>' +
+    '<span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:1rem;"></span>' +
     '<input id="staff-fullname" class="input" style="padding-left:36px;" placeholder="Full Name (e.g. Maria Santos)">' +
     '</div>' +
     '<div style="position:relative;margin-bottom:10px;">' +
@@ -1807,7 +1807,7 @@ async function renderManageStaff() {
     '<div style="font-size:0.74rem;color:#6b7280;margin-top:4px;">Role controls which dashboard and features this staff member sees.</div>' +
     '</div>' +
     '<div style="position:relative;margin-bottom:16px;">' +
-    '<span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:1rem;">ðŸ”’</span>' +
+    '<span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:1rem;"></span>' +
     '<input id="staff-password" class="input" style="padding-left:36px;" type="password" placeholder="Password (min. 4 characters)" autocomplete="new-password">' +
     '</div>' +
     '<button class="btn" style="width:100%;font-size:1rem;padding:14px;border-radius:12px;font-weight:700;letter-spacing:.3px;" onclick="submitAddStaff()">Create Staff Account</button>' +
@@ -1817,8 +1817,8 @@ async function renderManageStaff() {
     try { console.error('[Staff Screen Error]', err); } catch(e) {}
     document.getElementById('app').innerHTML =
       '<div class="screen">' +
-      '<div class="topbar"><div class="title" style="margin:0;">ðŸ‘¥ Manage Staff</div>' +
-      '<button class="small-btn" onclick="goHome()">â† Back</button></div>' +
+      '<div class="topbar"><div class="title" style="margin:0;"> Manage Staff</div>' +
+      '<button class="small-btn" onclick="goHome()"> Back</button></div>' +
       '<div class="card"><div class="message message-error">' + _escAttr(_friendlyStaffAccessMessage(err)) + '</div></div>' +
       '</div>';
   }
@@ -1826,7 +1826,7 @@ async function renderManageStaff() {
 
 async function removeStaffUser(userId, name) {
   if (!confirm('Remove staff account "' + name + '"?')) return;
-  showLoading('Removingâ€¦');
+  showLoading('Removing');
   try {
     await API.call('deleteStoreUser', { userId: userId });
     renderManageStaff();
@@ -1838,7 +1838,7 @@ async function promptResetPassword(userId, name) {
   var newPw = prompt('Set new password for ' + name + ':');
   if (!newPw) return;
   if (newPw.length < 4) { _showToast('Password must be at least 4 characters.', true); return; }
-  showLoading('Updating passwordâ€¦');
+  showLoading('Updating password');
   try {
     await API.call('resetStaffPassword', { userId: userId, newPassword: newPw });
     renderManageStaff();
@@ -1853,7 +1853,7 @@ async function submitOwnerPasswordChange() {
   if (!current || !newPw) { _showToast('Fill in all password fields.', true); return; }
   if (newPw !== confirm)  { _showToast('New passwords do not match.', true); return; }
   if (newPw.length < 4)   { _showToast('Password must be at least 4 characters.', true); return; }
-  showLoading('Updating passwordâ€¦');
+  showLoading('Updating password');
   try {
     await API.call('changePassword', { currentPassword: current, newPassword: newPw });
     renderManageStaff();
@@ -1861,7 +1861,7 @@ async function submitOwnerPasswordChange() {
   } catch(err) { _showToast('Error: ' + err.message, true); renderManageStaff(); }
 }
 
-// â”€â”€ Products â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Products 
 
 async function loadProducts() {
   // Render instantly from state, then refresh in background
@@ -1875,7 +1875,7 @@ async function loadProducts() {
     }
     return;
   }
-  showLoading('Loading productsâ€¦');
+  showLoading('Loading products');
   try {
     var [prods, cats] = await Promise.all([API.call('getProducts'), API.call('getCategories')]);
     state.products   = prods;
@@ -1889,12 +1889,12 @@ function renderProductsList() {
     var pImg = _productImage(p);
     var imgEl = pImg
       ? _thumbHtml(pImg, 44)
-      : '<div style="width:44px;height:44px;border-radius:6px;background:#f3f4f6;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px;">ðŸ“¦</div>';
+      : '<div style="width:44px;height:44px;border-radius:6px;background:#f3f4f6;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px;"></div>';
     return '<div style="display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid #f3f4f6;">' +
       imgEl +
       '<div style="flex:1;min-width:0;"><strong>' + p.Product_Name + '</strong>' +
-      (p._pending ? ' <span style="color:#d97706;font-size:11px;">â³pending</span>' : '') + '<br>' +
-      '<span class="muted">â‚±' + Number(p.Selling_Price).toFixed(2) + ' | Stock: ' + p.Current_Stock + '</span></div>' +
+      (p._pending ? ' <span style="color:#d97706;font-size:11px;">pending</span>' : '') + '<br>' +
+      '<span class="muted">' + Number(p.Selling_Price).toFixed(2) + ' | Stock: ' + p.Current_Stock + '</span></div>' +
       '<button class="small-btn" onclick="editProduct(\'' + p.Product_ID + '\')">Edit</button>' +
       '</div>';
   }).join('');
@@ -1929,20 +1929,20 @@ async function renderAddProductForm(msg, scannedCode, existingImage) {
     (msg ? showError(msg) : '') +
     '<div class="card">' +
       '<div class="field">' +
-        '<button class="btn btn-primary" style="background:#7c3aed;margin:0 0 10px 0;" onclick="openScannerModal(\'addProduct\')">ðŸ“· Scan Barcode</button>' +
+        '<button class="btn btn-primary" style="background:#7c3aed;margin:0 0 10px 0;" onclick="openScannerModal(\'addProduct\')"> Scan Barcode</button>' +
         '<input id="p-barcode" value="' + initialCode + '" placeholder="Barcode number">' +
       '</div>' +
       '<div class="field"><label>Product Name *</label>' +
         '<div style="display:flex;gap:6px;align-items:stretch;">' +
           '<input id="p-name" placeholder="Full product name" style="flex:1;min-width:0;">' +
           '<button id="voice-btn-p-name" onclick="startVoiceInput(\'p-name\')" title="Speak product name" ' +
-            'style="background:#7c3aed;color:#fff;border:none;padding:0 12px;border-radius:8px;font-size:20px;cursor:pointer;flex-shrink:0;">ðŸŽ¤</button>' +
+            'style="background:#7c3aed;color:#fff;border:none;padding:0 12px;border-radius:8px;font-size:20px;cursor:pointer;flex-shrink:0;"></button>' +
         '</div>' +
       '</div>' +
       '<div class="field"><label>Product Photo</label>' +
         '<div style="display:flex;gap:10px;align-items:center;">' +
           '<button onclick="openProductCamera()" ' +
-            'style="background:#0891b2;color:#fff;border:none;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">ðŸ“· Take Photo</button>' +
+            'style="background:#0891b2;color:#fff;border:none;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;"> Take Photo</button>' +
           imgPreview +
         '</div>' +
       '</div>' +
@@ -1952,10 +1952,10 @@ async function renderAddProductForm(msg, scannedCode, existingImage) {
           '<button class="small-btn" onclick="showCategoryModal()" style="background:#dbeafe;padding:10px;">+ New</button>' +
         '</div>' +
       '</div>' +
-      '<div class="field"><label>Cost Price (â‚±)</label><input id="p-cost" type="number" step="0.01" placeholder="0.00" oninput="calcSellingPrice()"></div>' +
+      '<div class="field"><label>Cost Price ()</label><input id="p-cost" type="number" step="0.01" placeholder="0.00" oninput="calcSellingPrice()"></div>' +
       '<div class="field"><label>Profit Margin (%)</label><input id="p-margin" type="number" value="20" oninput="calcSellingPrice()"></div>' +
-      '<div class="field"><label>Selling Price (â‚±) *</label><input id="p-price" type="number" step="0.01" placeholder="Auto-calculated"></div>' +
-      '<div class="field"><label>Starting Stock</label><input id="p-stock" type="number" value="0" disabled><div class="hint">For now, add stock after saving the product using Inventory â†’ Add Stock.</div></div>' +
+      '<div class="field"><label>Selling Price () *</label><input id="p-price" type="number" step="0.01" placeholder="Auto-calculated"></div>' +
+      '<div class="field"><label>Starting Stock</label><input id="p-stock" type="number" value="0" disabled><div class="hint">For now, add stock after saving the product using Inventory  Add Stock.</div></div>' +
       '<div class="field"><label>Reorder Level</label><input id="p-reorder" type="number" value="5"></div>' +
       '<button class="btn btn-primary" onclick="submitProduct()">Save Product</button>' +
     '</div>' +
@@ -1963,7 +1963,7 @@ async function renderAddProductForm(msg, scannedCode, existingImage) {
     '</div>';
 }
 
-// â”€â”€ Voice to Text â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Voice to Text 
 
 var _voiceRec = null;
 
@@ -1974,7 +1974,7 @@ function startVoiceInput(fieldId) {
 
   var btn   = document.getElementById('voice-btn-' + fieldId);
   var field = document.getElementById(fieldId);
-  if (btn) { btn.textContent = 'ðŸ”´'; btn.style.background = '#dc2626'; }
+  if (btn) { btn.textContent = ''; btn.style.background = '#dc2626'; }
 
   _voiceRec = new SR();
   _voiceRec.lang = 'en-PH';
@@ -1990,14 +1990,14 @@ function startVoiceInput(fieldId) {
     _showToast('Voice error: ' + e.error, true);
   };
   _voiceRec.onend = function() {
-    if (btn) { btn.textContent = 'ðŸŽ¤'; btn.style.background = '#7c3aed'; }
+    if (btn) { btn.textContent = ''; btn.style.background = '#7c3aed'; }
     _voiceRec = null;
   };
   _voiceRec.start();
-  _showToast('Listeningâ€¦ speak now', false);
+  _showToast('Listening speak now', false);
 }
 
-// â”€â”€ Product Photo / Thumbnail â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Product Photo / Thumbnail 
 
 var _pendingProductImage = null;
 
@@ -2077,7 +2077,7 @@ async function submitProduct() {
   if (!name.trim())       { _showToast('Product name is required', true); return; }
   if (Number(price) <= 0) { _showToast('Selling price must be greater than zero', true); return; }
 
-  // â”€â”€ Strict duplicate check â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  //  Strict duplicate check 
   var nameLower = name.trim().toLowerCase();
   var duplicate = (state.products || []).find(function(p) {
     return String(p.Product_Name || '').trim().toLowerCase() === nameLower;
@@ -2085,17 +2085,17 @@ async function submitProduct() {
   if (duplicate) {
     document.getElementById('app').innerHTML =
       '<div class="screen">' +
-      '<div class="topbar"><div class="title" style="margin:0;">âš  Product Exists</div>' +
+      '<div class="topbar"><div class="title" style="margin:0;"> Product Exists</div>' +
       '<button class="small-btn" onclick="renderAddProductForm()">Back</button></div>' +
       '<div class="card" style="text-align:center;padding:24px;">' +
-        '<div style="font-size:48px;margin-bottom:12px;">ðŸ“¦</div>' +
+        '<div style="font-size:48px;margin-bottom:12px;"></div>' +
         '<div style="font-size:18px;font-weight:bold;margin-bottom:8px;">' + duplicate.Product_Name + '</div>' +
         '<div style="color:#6b7280;margin-bottom:6px;">already exists in your products.</div>' +
         '<div style="color:#6b7280;font-size:14px;margin-bottom:20px;">Current stock: <strong>' + (duplicate.Current_Stock || 0) + ' pcs</strong></div>' +
         '<div style="background:#fef3c7;border-radius:10px;padding:14px;margin-bottom:20px;color:#92400e;font-size:14px;">' +
-          'If you received new stocks, go to <strong>Inventory â†’ Add Stock</strong> to update the quantity.' +
+          'If you received new stocks, go to <strong>Inventory  Add Stock</strong> to update the quantity.' +
         '</div>' +
-        '<button class="btn btn-primary" style="margin-bottom:10px;" onclick="renderAddStock()">âž• Add Stock to this Product</button>' +
+        '<button class="btn btn-primary" style="margin-bottom:10px;" onclick="renderAddStock()"> Add Stock to this Product</button>' +
         '<button class="btn btn-secondary" onclick="renderAddProductForm()">Go Back</button>' +
       '</div></div>';
     return;
@@ -2113,7 +2113,7 @@ async function submitProduct() {
     Image:         _pendingProductImage || ''
   };
 
-  // â”€â”€ Offline path: queue locally, sync when back online â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  //  Offline path: queue locally, sync when back online 
   if (!navigator.onLine) {
     try {
       await DB.addToSyncQueue({ action: 'createProduct', data: payload });
@@ -2124,15 +2124,15 @@ async function submitProduct() {
       });
       state.products.push(tempProduct);
       try { await DB.saveProducts(state.products); } catch(e) {}
-      _showToast('Product saved offline â€” will sync when online.', false); routeToDashboard();
+      _showToast('Product saved offline  will sync when online.', false); routeToDashboard();
     } catch(e) {
       renderAddProductForm('Failed to save offline: ' + (e.message || String(e)));
     }
     return;
   }
 
-  // â”€â”€ Online path â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  showLoading('Saving productâ€¦');
+  //  Online path 
+  showLoading('Saving product');
   try {
     await API.call('createProduct', payload);
     state.products = await API.call('getProducts');
@@ -2162,7 +2162,7 @@ async function editProduct(id) {
   if (sel && p.Category_Name) sel.value = p.Category_Name;
 }
 
-// â”€â”€ Categories â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Categories 
 
 function _renderCategoryModalHtml() {
   var cats = state.categories || [];
@@ -2177,7 +2177,7 @@ function _renderCategoryModalHtml() {
 
   return '<div id="category-modal" class="modal">' +
     '<div class="modal-content">' +
-    '<button class="modal-close" onclick="closeCategoryModal()">Ã—</button>' +
+    '<button class="modal-close" onclick="closeCategoryModal()"></button>' +
     '<div class="modal-title">Manage Categories</div>' +
     '<div class="field">' +
       '<input id="new-category-name" placeholder="New category name">' +
@@ -2220,7 +2220,7 @@ async function addNewCategory() {
   var name = inp ? inp.value.trim() : '';
   if (!name) { _showToast('Enter a category name', true); return; }
 
-  // â”€â”€ Strict duplicate check â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  //  Strict duplicate check 
   var nameLower = name.toLowerCase();
   var existing = (state.categories || []).find(function(c) {
     return String(c.Category_Name || '').trim().toLowerCase() === nameLower;
@@ -2310,7 +2310,7 @@ async function deleteCategory(name) {
   } catch(err) { _showToast('Error: ' + (err.message || String(err)), true); }
 }
 
-// â”€â”€ Quick Sell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Quick Sell 
 
 function renderQuickSell(msg) {
   var prodsHtml = state.products.map(function(p) {
@@ -2319,12 +2319,12 @@ function renderQuickSell(msg) {
     var imgEl = pImg
       ? '<img src="' + pImg + '" loading="lazy" onclick="event.stopPropagation();openImageLightbox(\'' + safeImg + '\')" ' +
         'style="width:44px;height:44px;object-fit:cover;border-radius:6px;flex-shrink:0;border:1px solid #e5e7eb;">'
-      : '<div style="width:44px;height:44px;border-radius:6px;background:#f3f4f6;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px;">ðŸ“¦</div>';
+      : '<div style="width:44px;height:44px;border-radius:6px;background:#f3f4f6;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px;"></div>';
     return '<button class="product-btn" onclick="addToCart(\'' + p.Product_ID + '\')" style="display:flex;align-items:center;gap:8px;padding:10px;">' +
       imgEl +
       '<div style="flex:1;min-width:0;text-align:left;">' +
         '<div class="product-name" style="font-size:13px;line-height:1.3;white-space:normal;">' + p.Product_Name + '</div>' +
-        '<div class="product-price" style="font-size:13px;">â‚±' + Number(p.Selling_Price).toFixed(2) + '</div>' +
+        '<div class="product-price" style="font-size:13px;">' + Number(p.Selling_Price).toFixed(2) + '</div>' +
         '<div class="muted" style="font-size:11px;">Stock: ' + p.Current_Stock + '</div>' +
       '</div>' +
       '</button>';
@@ -2333,8 +2333,8 @@ function renderQuickSell(msg) {
   var cartHtml = state.cart.map(function(item, idx) {
     return '<div class="cart-row">' +
       '<div><strong>' + item.name + '</strong><br>' +
-      '<span class="muted">' + item.qty + ' x â‚±' + item.price.toFixed(2) + '</span></div>' +
-      '<div><strong>â‚±' + item.total.toFixed(2) + '</strong><br>' +
+      '<span class="muted">' + item.qty + ' x ' + item.price.toFixed(2) + '</span></div>' +
+      '<div><strong>' + item.total.toFixed(2) + '</strong><br>' +
       '<button class="small-btn" onclick="removeCartItem(' + idx + ')">Remove</button></div>' +
       '</div>';
   }).join('');
@@ -2343,17 +2343,17 @@ function renderQuickSell(msg) {
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">ðŸ’° Quick Sell</div>' +
+    '<div class="topbar"><div class="title" style="margin:0;"> Quick Sell</div>' +
     '<button class="small-btn" onclick="goHome()">Back</button></div>' +
-    '<button class="btn btn-primary" style="background:#7c3aed;margin-bottom:12px;" onclick="openScannerModal(\'quickSell\')">ðŸ“· Scan to Sell</button>' +
+    '<button class="btn btn-primary" style="background:#7c3aed;margin-bottom:12px;" onclick="openScannerModal(\'quickSell\')"> Scan to Sell</button>' +
     (msg ? showError(msg) : '') +
     '<div class="card"><div class="subtitle">Tap product to add to cart</div>' +
     '<div class="products-grid">' + (prodsHtml || '<div class="muted">No products.</div>') + '</div></div>' +
     '<div class="card">' +
     '<div class="title" style="font-size:20px;">Cart (' + state.cart.length + ' items)</div>' +
     (cartHtml || '<div class="muted">No items yet.</div>') +
-    '<div class="cart-total">â‚±' + total.toFixed(2) + '</div>' +
-    '<div class="field"><label>Amount Paid (â‚±)</label>' +
+    '<div class="cart-total">' + total.toFixed(2) + '</div>' +
+    '<div class="field"><label>Amount Paid ()</label>' +
     '<input id="amount-paid" type="number" step="0.01" value="' + total.toFixed(2) + '"></div>' +
     '<div class="field"><label>Payment Method</label>' +
     '<select id="payment-method"><option>Cash</option><option>GCash</option><option>Maya</option><option>Bank Transfer</option></select></div>' +
@@ -2379,7 +2379,7 @@ async function checkoutSale() {
   var method = document.getElementById('payment-method').value;
   if (paid < total) { _showToast('Amount paid is less than total', true); return; }
 
-  showLoading('Processing saleâ€¦');
+  showLoading('Processing sale');
 
   // Capture cart snapshot BEFORE clearing for receipt printing
   var cartSnapshot = state.cart.slice();
@@ -2420,7 +2420,7 @@ function renderReceiptModal(cartItems, total, paid, method, saleResult) {
   var timeStr   = now.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' });
   var cashier   = state.session && state.session.user ? state.session.user.Full_Name : '';
 
-  function money(v) { return 'â‚±' + Number(v||0).toFixed(2); }
+  function money(v) { return '' + Number(v||0).toFixed(2); }
 
   var itemRows = cartItems.map(function(i) {
     return '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:14px;">' +
@@ -2430,7 +2430,7 @@ function renderReceiptModal(cartItems, total, paid, method, saleResult) {
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">ðŸ§¾ Receipt</div></div>' +
+    '<div class="topbar"><div class="title" style="margin:0;"> Receipt</div></div>' +
 
     '<div class="card" style="font-family:monospace;">' +
     '<div style="text-align:center;margin-bottom:10px;">' +
@@ -2457,17 +2457,17 @@ function renderReceiptModal(cartItems, total, paid, method, saleResult) {
     '<div style="text-align:center;font-size:11px;color:#9ca3af;">*UNOFFICIAL RECEIPT*<br>Not a BIR official receipt</div>' +
     '</div>' +
 
-    '<button class="btn btn-primary" style="margin-top:4px;" onclick="printLastReceipt()">ðŸ–¨ï¸ Print / Save as PDF</button>' +
-    '<button class="btn btn-secondary" onclick="renderQuickSell()">âœ… New Sale</button>' +
+    '<button class="btn btn-primary" style="margin-top:4px;" onclick="printLastReceipt()"> Print / Save as PDF</button>' +
+    '<button class="btn btn-secondary" onclick="renderQuickSell()"> New Sale</button>' +
     '</div>';
 }
 
-// â”€â”€ Inventory â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Inventory 
 
 function renderInventoryMenu() {
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title">ðŸ“‹ Inventory</div>' +
+    '<div class="topbar"><div class="title"> Inventory</div>' +
     '<button class="small-btn" onclick="goHome()">Back</button></div>' +
     '<div class="card">' +
     '<button class="btn btn-secondary" onclick="renderAddStock()">Add Stock</button>' +
@@ -2498,7 +2498,7 @@ async function submitStock() {
   var qty    = Number(document.getElementById('stock-qty').value);
   var reason = document.getElementById('stock-reason').value;
   if (!pid || qty <= 0) { _showToast('Invalid input', true); return; }
-  showLoading('Adding stockâ€¦');
+  showLoading('Adding stock');
   try {
     await API.call('addProductStock', { productId: pid, qty: qty, reason: reason, notes: '' });
     state.products = await API.call('getProducts');
@@ -2507,19 +2507,19 @@ async function submitStock() {
   } catch(err) { _showToast('Error: ' + err.message, true); renderInventoryMenu(); }
 }
 
-// â”€â”€ Expenses â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Expenses 
 
 // Category list with descriptions shown in the form
 var EXPENSE_CATEGORIES = [
-  { value: 'Inventory Purchase', label: 'Inventory Purchase', hint: 'Products you bought to sell (Coke, rice, snacksâ€¦)' },
-  { value: 'Store Supplies',     label: 'Store Supplies',     hint: 'Items the store uses up but does not sell (bags, ice for display, tapeâ€¦)' },
-  { value: 'Utilities',          label: 'Utilities',          hint: 'Electricity, water, internet, loadâ€¦' },
-  { value: 'Store Rental',       label: 'Store Rental',       hint: 'Monthly rent for the store spaceâ€¦' },
-  { value: 'Salaries/Wages',     label: 'Salaries/Wages',     hint: 'Staff pay â€” salbahis, daily wage, or monthly salaryâ€¦' },
-  { value: 'Transportation',     label: 'Transportation',     hint: 'Fare, fuel, delivery costâ€¦' },
-  { value: 'Repairs',            label: 'Repairs',            hint: 'Fixing equipment, shelves, appliancesâ€¦' },
-  { value: 'Food',               label: 'Food (Staff)',       hint: 'Meals or snacks for the store staffâ€¦' },
-  { value: 'Others',             label: 'Others',             hint: 'Anything that does not fit aboveâ€¦' }
+  { value: 'Inventory Purchase', label: 'Inventory Purchase', hint: 'Products you bought to sell (Coke, rice, snacks)' },
+  { value: 'Store Supplies',     label: 'Store Supplies',     hint: 'Items the store uses up but does not sell (bags, ice for display, tape)' },
+  { value: 'Utilities',          label: 'Utilities',          hint: 'Electricity, water, internet, load' },
+  { value: 'Store Rental',       label: 'Store Rental',       hint: 'Monthly rent for the store space' },
+  { value: 'Salaries/Wages',     label: 'Salaries/Wages',     hint: 'Staff pay  salbahis, daily wage, or monthly salary' },
+  { value: 'Transportation',     label: 'Transportation',     hint: 'Fare, fuel, delivery cost' },
+  { value: 'Repairs',            label: 'Repairs',            hint: 'Fixing equipment, shelves, appliances' },
+  { value: 'Food',               label: 'Food (Staff)',       hint: 'Meals or snacks for the store staff' },
+  { value: 'Others',             label: 'Others',             hint: 'Anything that does not fit above' }
 ];
 
 async function renderExpenses() {
@@ -2534,13 +2534,13 @@ async function renderExpenses() {
     }
     return;
   }
-  showLoading('Loading expensesâ€¦');
+  showLoading('Loading expenses');
   var items = [];
   try {
     items = await API.call('getTodayExpenses');
     state.todayExpenses = items;
   } catch(e) {
-    // Offline â€” show queued expenses from today
+    // Offline  show queued expenses from today
     try {
       var queue = await DB.getSyncQueue();
       var today = new Date().toISOString().substring(0, 10);
@@ -2560,22 +2560,22 @@ function _renderExpensesUI(items) {
       'padding:10px 0;border-bottom:1px solid #f3f4f6;">' +
       '<div style="flex:1;min-width:0;">' +
         '<div style="font-weight:bold;font-size:14px;">' + x.Description +
-          (x._pending ? ' <span style="color:#d97706;font-size:11px;">â³</span>' : '') + '</div>' +
+          (x._pending ? ' <span style="color:#d97706;font-size:11px;"></span>' : '') + '</div>' +
         '<div class="muted" style="font-size:12px;">' + (x.Expense_Category || 'Others') +
-          ' Â· ' + (x.Expense_Date || '').substring(0,10) +
-          ' Â· ' + (x.Recorded_By_Name || '') + '</div>' +
+          '  ' + (x.Expense_Date || '').substring(0,10) +
+          '  ' + (x.Recorded_By_Name || '') + '</div>' +
       '</div>' +
-      '<div style="font-weight:bold;color:#dc2626;font-size:15px;margin-left:10px;">â‚±' +
+      '<div style="font-weight:bold;color:#dc2626;font-size:15px;margin-left:10px;">' +
         Number(x.Amount).toFixed(2) + '</div>' +
       '</div>';
   }).join('') : '<div class="muted" style="padding:16px 0;text-align:center;">No expenses recorded today.</div>';
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">ðŸ’¸ Expenses</div>' +
+    '<div class="topbar"><div class="title" style="margin:0;"> Expenses</div>' +
     '<button class="small-btn" onclick="goHome()">Back</button></div>' +
     '<div class="card" style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;">' +
       '<div><div class="muted" style="font-size:12px;">TODAY\'S TOTAL</div>' +
-        '<div style="font-size:26px;font-weight:bold;color:#dc2626;">â‚±' + total.toFixed(2) + '</div></div>' +
+        '<div style="font-size:26px;font-weight:bold;color:#dc2626;">' + total.toFixed(2) + '</div></div>' +
       '<button class="btn btn-primary" style="width:auto;padding:12px 18px;margin:0;" onclick="renderAddExpenseForm()">+ Add</button>' +
     '</div>' +
     '<div class="card">' + listHtml + '</div>' +
@@ -2608,20 +2608,20 @@ function renderAddExpenseForm(msg) {
         '<div style="display:flex;gap:6px;align-items:stretch;">' +
           '<input id="exp-desc" placeholder="e.g. Bought ice, Meralco bill" style="flex:1;min-width:0;">' +
           '<button id="voice-btn-exp-desc" onclick="startVoiceInput(\'exp-desc\')" ' +
-            'style="background:#7c3aed;color:#fff;border:none;padding:0 12px;border-radius:8px;font-size:20px;cursor:pointer;flex-shrink:0;">ðŸŽ¤</button>' +
+            'style="background:#7c3aed;color:#fff;border:none;padding:0 12px;border-radius:8px;font-size:20px;cursor:pointer;flex-shrink:0;"></button>' +
         '</div></div>' +
 
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">' +
         '<div class="field" style="margin:0;"><label>Quantity</label>' +
           '<input id="exp-qty" type="number" step="1" min="1" value="1" inputmode="numeric" ' +
             'oninput="calcExpenseAmount()"></div>' +
-        '<div class="field" style="margin:0;"><label>Unit Price (â‚±)</label>' +
+        '<div class="field" style="margin:0;"><label>Unit Price ()</label>' +
           '<input id="exp-unit-price" type="number" step="0.01" placeholder="0.00" inputmode="decimal" ' +
             'oninput="calcExpenseAmount()"></div>' +
       '</div>' +
 
       '<div class="field">' +
-        '<label>Total Amount (â‚±) *</label>' +
+        '<label>Total Amount () *</label>' +
         '<input id="exp-amount" type="number" step="0.01" placeholder="Auto-calculated or enter directly" ' +
           'inputmode="decimal" style="font-size:18px;font-weight:bold;background:#f0fdf4;"></div>' +
 
@@ -2660,7 +2660,7 @@ async function submitExpense() {
   // Build description suffix if qty/unit price were filled
   var descFull = desc.trim();
   if (qty > 1 || uPrice > 0) {
-    descFull += ' (' + qty + ' Ã— â‚±' + uPrice.toFixed(2) + ')';
+    descFull += ' (' + qty + '  ' + uPrice.toFixed(2) + ')';
   }
 
   var payload = {
@@ -2678,14 +2678,14 @@ async function submitExpense() {
     try {
       await DB.addToSyncQueue({ action: 'createExpense', data: payload });
       state.todayExpenses = null;
-      _showToast('Expense saved offline â€” will sync when online', false);
+      _showToast('Expense saved offline  will sync when online', false);
       renderExpenses();
     } catch(e) { _showToast('Failed to save offline', true); }
     return;
   }
 
   // Online path
-  showLoading('Saving expenseâ€¦');
+  showLoading('Saving expense');
   try {
     await API.call('createExpense', payload);
     state.todayExpenses = null;  // bust cache so next open re-fetches
@@ -2694,10 +2694,10 @@ async function submitExpense() {
   } catch(err) { renderAddExpenseForm(err.message || String(err)); }
 }
 
-// â”€â”€ Approvals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Approvals 
 
 async function renderApprovalsQueue() {
-  showLoading('Loading approvalsâ€¦');
+  showLoading('Loading approvals');
   try {
     var approvals = await API.getApprovals({ status: 'pending' });
     _renderApprovalsUI(approvals);
@@ -2708,13 +2708,13 @@ async function renderApprovalsQueue() {
 
 function _renderApprovalsUI(approvals, error) {
   var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
-  var header = '<div class="topbar"><div class="title" style="margin:0;">âœ… Approvals</div><button class="small-btn" onclick="goHome()">â† Back</button></div>';
+  var header = '<div class="topbar"><div class="title" style="margin:0;"> Approvals</div><button class="small-btn" onclick="goHome()"> Back</button></div>';
   var content = '';
 
   if (error) {
     content = '<div class="message message-error">' + error + '</div>';
   } else if (!approvals.length) {
-    content = '<div class="card"><div class="title">âœ… No Pending Approvals</div><div class="subtitle">All requests have been reviewed.</div></div>';
+    content = '<div class="card"><div class="title"> No Pending Approvals</div><div class="subtitle">All requests have been reviewed.</div></div>';
   } else {
     content = approvals.map(function(a) {
       var typeLabel = a.approval_type === 'expense' ? 'Expense Approval' : 'Stock Adjustment Approval';
@@ -2732,7 +2732,7 @@ function _renderApprovalsUI(approvals, error) {
 }
 
 async function renderApprovalDetail(approvalId) {
-  showLoading('Loading approval detailsâ€¦');
+  showLoading('Loading approval details');
   try {
     var data = await API.getApproval(approvalId);
     _renderApprovalDetailUI(data.approval, data.sourceRecord);
@@ -2743,7 +2743,7 @@ async function renderApprovalDetail(approvalId) {
 
 function _renderApprovalDetailUI(approval, sourceRecord, error) {
   var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
-  var header = '<div class="topbar"><div class="title" style="margin:0;">âœ… Approval Detail</div><button class="small-btn" onclick="renderApprovalsQueue()">â† Back</button></div>';
+  var header = '<div class="topbar"><div class="title" style="margin:0;"> Approval Detail</div><button class="small-btn" onclick="renderApprovalsQueue()"> Back</button></div>';
   var content = '';
 
   if (error) {
@@ -2761,7 +2761,7 @@ function _renderApprovalDetailUI(approval, sourceRecord, error) {
       '<div class="field"><label>Status:</label> <span style="background:#f59e0b;color:#fff;padding:4px 8px;border-radius:12px;">' + approval.status + '</span></div>';
 
     if (approval.approval_type === 'expense') {
-      content += '<div class="field"><label>Amount:</label> â‚±' + Number(payload.amount || payload.Amount).toFixed(2) + '</div>' +
+      content += '<div class="field"><label>Amount:</label> ' + Number(payload.amount || payload.Amount).toFixed(2) + '</div>' +
         '<div class="field"><label>Category:</label> ' + _escAttr(payload.expenseCategory || payload.Expense_Category) + '</div>' +
         '<div class="field"><label>Description:</label> ' + _escAttr(payload.description || payload.Description) + '</div>';
     } else {
@@ -2771,9 +2771,9 @@ function _renderApprovalDetailUI(approval, sourceRecord, error) {
     }
 
     if (approval.status === 'pending') {
-      content += '<div class="field"><label>Decision Note:</label><textarea id="decision-note" placeholder="Optional noteâ€¦"></textarea></div>' +
-        '<button class="btn btn-primary" onclick="approveRequest(' + approval.id + ')">âœ… Approve</button>' +
-        '<button class="btn btn-secondary" onclick="rejectRequest(' + approval.id + ')">âŒ Reject</button>';
+      content += '<div class="field"><label>Decision Note:</label><textarea id="decision-note" placeholder="Optional note"></textarea></div>' +
+        '<button class="btn btn-primary" onclick="approveRequest(' + approval.id + ')"> Approve</button>' +
+        '<button class="btn btn-secondary" onclick="rejectRequest(' + approval.id + ')"> Reject</button>';
     } else {
       if (approval.decision_note) {
         content += '<div class="field"><label>Decision Note:</label> ' + _escAttr(approval.decision_note) + '</div>';
@@ -2809,10 +2809,10 @@ async function rejectRequest(id) {
   }
 }
 
-// â”€â”€ Staff Management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Staff Management 
 
 async function renderStaffList() {
-  showLoading('Loading staffâ€¦');
+  showLoading('Loading staff');
   try {
     var staff = await API.getStaff();
     _renderStaffListUI(staff);
@@ -2823,13 +2823,13 @@ async function renderStaffList() {
 
 function _renderStaffListUI(staff, error) {
   var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
-  var header = '<div class="topbar"><div class="title" style="margin:0;">ðŸ‘¥ Staff</div><button class="small-btn" onclick="goHome()">â† Back</button></div>';
+  var header = '<div class="topbar"><div class="title" style="margin:0;"> Staff</div><button class="small-btn" onclick="goHome()"> Back</button></div>';
   var content = '';
 
   if (error) {
     content = '<div class="message message-error">' + error + '</div>';
   } else if (!staff.length) {
-    content = '<div class="card"><div class="title">ðŸ‘¥ No Staff Yet</div><div class="subtitle">Add your first staff member to get started.</div></div>';
+    content = '<div class="card"><div class="title"> No Staff Yet</div><div class="subtitle">Add your first staff member to get started.</div></div>';
   } else {
     content = staff.map(function(s) {
       var isActive = s.is_active !== false && s.is_active !== 0 && s.employment_status !== 'inactive';
@@ -2857,7 +2857,7 @@ function _renderStaffListUI(staff, error) {
 }
 
 async function renderStaffDetail(staffId) {
-  showLoading('Loading staff detailsâ€¦');
+  showLoading('Loading staff details');
   try {
     var staff = await API.getStaffById(staffId);
     _renderStaffDetailUI(staff);
@@ -2868,7 +2868,7 @@ async function renderStaffDetail(staffId) {
 
 function _renderStaffDetailUI(staff, error) {
   var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
-  var header = '<div class="topbar"><div class="title" style="margin:0;">ðŸ‘¤ Staff Detail</div><button class="small-btn" onclick="renderStaffList()">â† Back</button></div>';
+  var header = '<div class="topbar"><div class="title" style="margin:0;"> Staff Detail</div><button class="small-btn" onclick="renderStaffList()"> Back</button></div>';
   var content = '';
 
   if (error) {
@@ -2918,7 +2918,7 @@ function _renderStaffDetailUI(staff, error) {
 
 function renderAddStaffForm() {
   var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
-  var header = '<div class="topbar"><div class="title" style="margin:0;">âž• Add Staff</div><button class="small-btn" onclick="renderStaffList()">â† Back</button></div>';
+  var header = '<div class="topbar"><div class="title" style="margin:0;"> Add Staff</div><button class="small-btn" onclick="renderStaffList()"> Back</button></div>';
 
   var content = '<div class="card">' +
     _renderStaffRoleGuide() +
@@ -2972,12 +2972,12 @@ async function submitAddStaff() {
   var nextBilling = _staffBillingState(staffCount + 1);
   var currentBilling = _staffBillingState(staffCount);
   if (nextBilling.extraAmount > currentBilling.extraAmount) {
-    var extraMsg = 'This staff member is beyond your included allowance and will add â‚±' +
+    var extraMsg = 'This staff member is beyond your included allowance and will add ' +
       nextBilling.policy.extraStaffPrice + '/month. Continue?';
     if (!confirm(extraMsg)) return;
   }
 
-  showLoading('Creating accountâ€¦');
+  showLoading('Creating account');
   try {
     try {
       await API.call('createStoreUser', {
@@ -3014,7 +3014,7 @@ async function submitAddStaff() {
 }
 
 async function renderEditStaffForm(staffId) {
-  showLoading('Loading staffâ€¦');
+  showLoading('Loading staff');
   try {
     var r = await API.call('getStaffById', { id: staffId });
     var s = r.staff || r;
@@ -3027,13 +3027,13 @@ async function renderEditStaffForm(staffId) {
 
 function _renderEditStaffFormUI(staffId, s) {
   var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
-  var header = '<div class="topbar"><div class="title" style="margin:0;">Edit Staff</div><button class="small-btn" onclick="goHome()">â† Back</button></div>';
+  var header = '<div class="topbar"><div class="title" style="margin:0;">Edit Staff</div><button class="small-btn" onclick="goHome()"> Back</button></div>';
   var status = s.status || s.Status || 'ACTIVE';
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' + header +
-    '<div class="topbar"><div class="title" style="margin:0;">âœï¸ Edit Staff</div>' +
-    '<button class="small-btn" onclick="renderStaffDetail(\'' + staffId + '\')">â† Back</button></div>' +
+    '<div class="topbar"><div class="title" style="margin:0;"> Edit Staff</div>' +
+    '<button class="small-btn" onclick="renderStaffDetail(\'' + staffId + '\')"> Back</button></div>' +
     '<div class="card">' +
     '<div class="field"><label>Full Name</label>' +
     '<input id="edit-sf-name" value="' + _escAttr(s.full_name || s.Full_Name || '') + '" placeholder="Full name"></div>' +
@@ -3046,7 +3046,7 @@ function _renderEditStaffFormUI(staffId, s) {
       '<option value="ACTIVE"' + (status === 'ACTIVE' ? ' selected' : '') + '>Active</option>' +
       '<option value="INACTIVE"' + (status === 'INACTIVE' ? ' selected' : '') + '>Inactive</option>' +
     '</select></div>' +
-    '<button class="btn btn-primary" onclick="submitEditStaff(\'' + staffId + '\')">ðŸ’¾ Save Changes</button>' +
+    '<button class="btn btn-primary" onclick="submitEditStaff(\'' + staffId + '\')"> Save Changes</button>' +
     '<button class="btn btn-secondary" style="margin-top:8px;" onclick="renderStaffDetail(\'' + staffId + '\')">Cancel</button>' +
     '</div></div>';
 }
@@ -3057,7 +3057,7 @@ async function submitEditStaff(staffId) {
   var phone    = document.getElementById('edit-sf-phone').value.trim();
   var status   = document.getElementById('edit-sf-status').value;
   if (!name) { _showToast('Full name is required', true); return; }
-  showLoading('Savingâ€¦');
+  showLoading('Saving');
   try {
     await API.call('updateStaff', { id: staffId, full_name: name, username: username, phone: phone, status: status });
     _showToast('Staff updated!');
@@ -3069,7 +3069,7 @@ async function submitEditStaff(staffId) {
 
 function renderAssignRoleForm(staffId, currentRole) {
   var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
-  var header = '<div class="topbar"><div class="title" style="margin:0;">Change Role</div><button class="small-btn" onclick="goHome()">â† Back</button></div>';
+  var header = '<div class="topbar"><div class="title" style="margin:0;">Change Role</div><button class="small-btn" onclick="goHome()"> Back</button></div>';
 
   var content = '<div class="card">' +
     _renderStaffRoleGuide() +
@@ -3094,7 +3094,7 @@ async function submitAssignRole(staffId) {
 
 function renderSetPasswordForm(staffId) {
   var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
-  var header = '<div class="topbar"><div class="title" style="margin:0;">Set Password</div><button class="small-btn" onclick="goHome()">â† Back</button></div>';
+  var header = '<div class="topbar"><div class="title" style="margin:0;">Set Password</div><button class="small-btn" onclick="goHome()"> Back</button></div>';
 
   var content = '<div class="card">' +
     '<div class="field"><label>New Password</label><input id="new-password" type="password" placeholder="Enter new password"></div>' +
@@ -3135,11 +3135,11 @@ async function toggleStaffStatus(staffId, currentStatus) {
   }
 }
 
-// â”€â”€ Advanced Reports â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Advanced Reports 
 
 async function renderAdvancedReportsHome() {
   var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
-  var header = '<div class="topbar"><div class="title" style="margin:0;">Advanced Reports</div><button class="small-btn" onclick="goHome()">â† Back</button></div>';
+  var header = '<div class="topbar"><div class="title" style="margin:0;">Advanced Reports</div><button class="small-btn" onclick="goHome()"> Back</button></div>';
 
   var reportTypes = [
     { id: 'sales_analysis', title: 'Sales Analysis', desc: 'Deep sales performance insights' },
@@ -3159,7 +3159,7 @@ async function renderAdvancedReportsHome() {
 
 function selectAdvancedReportPeriod(reportType, reportTitle) {
   var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
-  var header = '<div class="topbar"><div class="title" style="margin:0;">' + reportTitle + '</div><button class="small-btn" onclick="renderAdvancedReportsHome()">â† Back</button></div>';
+  var header = '<div class="topbar"><div class="title" style="margin:0;">' + reportTitle + '</div><button class="small-btn" onclick="renderAdvancedReportsHome()"> Back</button></div>';
 
   var periods = [
     { id: 'today', label: 'Today' },
@@ -3177,13 +3177,13 @@ function selectAdvancedReportPeriod(reportType, reportTitle) {
 }
 
 async function loadAdvancedReport(reportType, period, reportTitle) {
-  showLoading('Generating reportâ€¦');
+  showLoading('Generating report');
   try {
     var report = await API.getAdvancedReport(reportType, period);
     _renderAdvancedReport(report, reportTitle);
   } catch(err) {
     var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
-    var header = '<div class="topbar"><div class="title" style="margin:0;">' + reportTitle + '</div><button class="small-btn" onclick="renderAdvancedReportsHome()">â† Back</button></div>';
+    var header = '<div class="topbar"><div class="title" style="margin:0;">' + reportTitle + '</div><button class="small-btn" onclick="renderAdvancedReportsHome()"> Back</button></div>';
     var content = '<div class="card"><div class="message message-error">' + (err.message || 'Failed to load report') + '</div></div>';
     document.getElementById('app').innerHTML = '<div class="screen">' + header + content + '</div>';
   }
@@ -3191,14 +3191,14 @@ async function loadAdvancedReport(reportType, period, reportTitle) {
 
 function _renderAdvancedReport(report, reportTitle) {
   var storeName = (state.storeProfile && state.storeProfile.storeName) || '';
-  var header = '<div class="topbar"><div class="title" style="margin:0;">' + reportTitle + '</div><button class="small-btn" onclick="renderAdvancedReportsHome()">â† Back</button></div>';
+  var header = '<div class="topbar"><div class="title" style="margin:0;">' + reportTitle + '</div><button class="small-btn" onclick="renderAdvancedReportsHome()"> Back</button></div>';
 
   var summaryHtml = '';
   if (report.summary) {
     var s = report.summary;
     summaryHtml = '<div class="card"><div class="title">Summary</div>';
-    if (s.sales_total !== undefined) summaryHtml += '<div>Sales: â‚±' + Number(s.sales_total).toLocaleString() + '</div>';
-    if (s.expense_total !== undefined) summaryHtml += '<div>Expenses: â‚±' + Number(s.expense_total).toLocaleString() + '</div>';
+    if (s.sales_total !== undefined) summaryHtml += '<div>Sales: ' + Number(s.sales_total).toLocaleString() + '</div>';
+    if (s.expense_total !== undefined) summaryHtml += '<div>Expenses: ' + Number(s.expense_total).toLocaleString() + '</div>';
     if (s.transactions_count !== undefined) summaryHtml += '<div>Transactions: ' + s.transactions_count + '</div>';
     if (s.active_staff_count !== undefined) summaryHtml += '<div>Active Staff: ' + s.active_staff_count + '</div>';
     summaryHtml += '</div>';
@@ -3219,10 +3219,10 @@ function _renderAdvancedReport(report, reportTitle) {
   document.getElementById('app').innerHTML = '<div class="screen">' + header + content + '</div>';
 }
 
-// â”€â”€ Inventory Advanced â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Inventory Advanced 
 
 async function renderInventoryAdvancedSummary() {
-  showLoading('Loading inventory summaryâ€¦');
+  showLoading('Loading inventory summary');
   try {
     var summary = await API.getInventoryAdvancedSummary();
     _renderInventorySummaryUI(summary);
@@ -3232,7 +3232,7 @@ async function renderInventoryAdvancedSummary() {
 }
 
 function _renderInventorySummaryUI(summary, error) {
-  var header = '<div class="topbar"><div class="title" style="margin:0;">ðŸ“¦ Inventory</div><button class="small-btn" onclick="goHome()">â† Back</button></div>';
+  var header = '<div class="topbar"><div class="title" style="margin:0;"> Inventory</div><button class="small-btn" onclick="goHome()"> Back</button></div>';
 
   var content = '';
   if (error) {
@@ -3257,9 +3257,9 @@ function _renderInventorySummaryUI(summary, error) {
     }
 
     content += '<div class="card">' +
-      '<button class="btn btn-primary" onclick="renderInventoryMovements()">ðŸ“‹ View Movements</button>' +
-      '<button class="btn btn-secondary" onclick="renderRestockForm()">âž• Restock</button>' +
-      '<button class="btn btn-secondary" onclick="renderStockAdjustmentForm()">âš–ï¸ Adjust Stock</button>' +
+      '<button class="btn btn-primary" onclick="renderInventoryMovements()"> View Movements</button>' +
+      '<button class="btn btn-secondary" onclick="renderRestockForm()"> Restock</button>' +
+      '<button class="btn btn-secondary" onclick="renderStockAdjustmentForm()"> Adjust Stock</button>' +
       '</div>';
   }
 
@@ -3267,7 +3267,7 @@ function _renderInventorySummaryUI(summary, error) {
 }
 
 async function renderInventoryMovements() {
-  showLoading('Loading movementsâ€¦');
+  showLoading('Loading movements');
   try {
     var movements = await API.getInventoryMovements({ limit: 50 });
     _renderMovementsUI(movements);
@@ -3277,13 +3277,13 @@ async function renderInventoryMovements() {
 }
 
 function _renderMovementsUI(movements, error) {
-  var header = '<div class="topbar"><div class="title" style="margin:0;">ðŸ“‹ Stock Movements</div><button class="small-btn" onclick="renderInventoryAdvancedSummary()">â† Back</button></div>';
+  var header = '<div class="topbar"><div class="title" style="margin:0;"> Stock Movements</div><button class="small-btn" onclick="renderInventoryAdvancedSummary()"> Back</button></div>';
 
   var content = '';
   if (error) {
     content = '<div class="message message-error">' + error + '</div>';
   } else if (!movements.length) {
-    content = '<div class="card"><div class="title">ðŸ“‹ No Movements Yet</div><div class="subtitle">Stock movements will appear here.</div></div>';
+    content = '<div class="card"><div class="title"> No Movements Yet</div><div class="subtitle">Stock movements will appear here.</div></div>';
   } else {
     content = movements.map(m => {
       var statusColor = m.status === 'effective' ? '#10b981' : m.status === 'pending_approval' ? '#f59e0b' : '#ef4444';
@@ -3297,7 +3297,7 @@ function _renderMovementsUI(movements, error) {
     }).join('');
   }
 
-  content += '<div class="card"><button class="btn btn-secondary" onclick="renderInventoryAdvancedSummary()">â† Back to Summary</button></div>';
+  content += '<div class="card"><button class="btn btn-secondary" onclick="renderInventoryAdvancedSummary()"> Back to Summary</button></div>';
 
   document.getElementById('app').innerHTML = '<div class="screen">' + header + content + '</div>';
 }
@@ -3309,7 +3309,7 @@ async function renderMovementDetail(movementId) {
 }
 
 async function renderRestockForm() {
-  var header = '<div class="topbar"><div class="title" style="margin:0;">âž• Restock Product</div><button class="small-btn" onclick="renderInventoryAdvancedSummary()">â† Back</button></div>';
+  var header = '<div class="topbar"><div class="title" style="margin:0;"> Restock Product</div><button class="small-btn" onclick="renderInventoryAdvancedSummary()"> Back</button></div>';
 
   // Get products for dropdown
   if (!state.products || !state.products.length) {
@@ -3359,7 +3359,7 @@ async function submitRestock() {
 }
 
 async function renderStockAdjustmentForm() {
-  var header = '<div class="topbar"><div class="title" style="margin:0;">âš–ï¸ Adjust Stock</div><button class="small-btn" onclick="renderInventoryAdvancedSummary()">â† Back</button></div>';
+  var header = '<div class="topbar"><div class="title" style="margin:0;"> Adjust Stock</div><button class="small-btn" onclick="renderInventoryAdvancedSummary()"> Back</button></div>';
 
   if (!state.products || !state.products.length) {
     await boot();
@@ -3418,14 +3418,14 @@ async function submitStockAdjustment() {
   }
 }
 
-// â”€â”€ Reports â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Reports 
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
 // SALES HISTORY
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
 
 async function renderSalesHistory(msg) {
-  showLoading('Loading salesâ€¦');
+  showLoading('Loading sales');
   try {
     var r = await API.call('getRecentSales', { limit: 50 });
     var sales = r.sales || r || [];
@@ -3437,7 +3437,7 @@ async function renderSalesHistory(msg) {
 }
 
 function _renderSalesHistoryUI(sales, msg) {
-  function money(v) { return 'â‚±' + Number(v||0).toLocaleString('en-PH', {minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function money(v) { return '' + Number(v||0).toLocaleString('en-PH', {minimumFractionDigits:2,maximumFractionDigits:2}); }
 
   var rows = sales.length === 0
     ? '<div class="muted" style="text-align:center;padding:24px;">No sales recorded yet.</div>'
@@ -3454,30 +3454,30 @@ function _renderSalesHistoryUI(sales, msg) {
           '<div style="font-weight:600;font-size:14px;">' + money(total) + '</div>' +
           '<div class="muted" style="font-size:12px;">' +
             (itemCount ? itemCount + ' item' + (itemCount !== 1 ? 's' : '') : '') +
-            (method ? ' Â· ' + _escAttr(method) : '') +
-            (cashier ? ' Â· ' + _escAttr(cashier) : '') +
+            (method ? '  ' + _escAttr(method) : '') +
+            (cashier ? '  ' + _escAttr(cashier) : '') +
           '</div>' +
           '</div>' +
           '<div style="text-align:right;">' +
           '<div class="muted" style="font-size:12px;">' + _escAttr(timeStr) + '</div>' +
-          '<div style="font-size:11px;color:#2563eb;">View â€º</div>' +
+          '<div style="font-size:11px;color:#2563eb;">View </div>' +
           '</div>' +
           '</div>';
       }).join('');
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">ðŸ§¾ Sales History</div>' +
-    '<button class="small-btn" onclick="goHome()">â† Home</button></div>' +
+    '<div class="topbar"><div class="title" style="margin:0;"> Sales History</div>' +
+    '<button class="small-btn" onclick="goHome()"> Home</button></div>' +
     (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
-    '<div class="muted" style="font-size:12px;margin-bottom:8px;">Last 50 sales Â· tap to view receipt</div>' +
+    '<div class="muted" style="font-size:12px;margin-bottom:8px;">Last 50 sales  tap to view receipt</div>' +
     '<div class="card">' + rows + '</div>' +
     '</div>';
 }
 
 async function viewSaleReceipt(saleId) {
   if (!saleId) { _showToast('Invalid sale', true); return; }
-  showLoading('Loading receiptâ€¦');
+  showLoading('Loading receipt');
   try {
     var r = await API.call('getSaleReceipt', { saleId: saleId });
     var sale  = r.sale || r;
@@ -3492,9 +3492,9 @@ async function viewSaleReceipt(saleId) {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
 // REPORTS
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
 
 function renderReports() {
   var today   = new Date();
@@ -3511,17 +3511,17 @@ function renderReports() {
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">ðŸ“Š Reports</div>' +
+    '<div class="topbar"><div class="title" style="margin:0;"> Reports</div>' +
     '<button class="small-btn" onclick="goHome()">Back</button></div>' +
 
     '<div class="card">' +
       '<div class="subtitle" style="margin-bottom:10px;">Select Report Period</div>' +
-      '<button class="big-btn" style="margin-bottom:8px;" onclick="loadReport(\'daily\',\'' + todayStr + '\')">ðŸ“… Daily â€” Today</button>' +
-      '<button class="big-btn" style="margin-bottom:8px;" onclick="loadReport(\'weekly\')">ðŸ“† Weekly â€” This Week</button>' +
-      '<button class="big-btn" style="margin-bottom:8px;" onclick="loadReport(\'monthly\',' + yyyy + ',' + (today.getMonth()+1) + ')">ðŸ—“ Monthly â€” This Month</button>' +
-      '<button class="big-btn" style="margin-bottom:8px;" onclick="loadReport(\'period\',\'' + qFrom + '\',\'' + qTo + '\')">ðŸ“Š Quarterly â€” Q' + q + ' ' + yyyy + '</button>' +
-      '<button class="big-btn" style="margin-bottom:8px;" onclick="loadReport(\'period\',\'' + yyyy + '-01-01\',\'' + yyyy + '-12-31\')">ðŸ“ˆ Yearly â€” ' + yyyy + '</button>' +
-      '<button class="big-btn" style="margin-bottom:8px;background:#1e3a5f;color:#fff;" onclick="renderBIRData()">ðŸ›ï¸ BIR Filing Data</button>' +
+      '<button class="big-btn" style="margin-bottom:8px;" onclick="loadReport(\'daily\',\'' + todayStr + '\')"> Daily  Today</button>' +
+      '<button class="big-btn" style="margin-bottom:8px;" onclick="loadReport(\'weekly\')"> Weekly  This Week</button>' +
+      '<button class="big-btn" style="margin-bottom:8px;" onclick="loadReport(\'monthly\',' + yyyy + ',' + (today.getMonth()+1) + ')"> Monthly  This Month</button>' +
+      '<button class="big-btn" style="margin-bottom:8px;" onclick="loadReport(\'period\',\'' + qFrom + '\',\'' + qTo + '\')"> Quarterly  Q' + q + ' ' + yyyy + '</button>' +
+      '<button class="big-btn" style="margin-bottom:8px;" onclick="loadReport(\'period\',\'' + yyyy + '-01-01\',\'' + yyyy + '-12-31\')"> Yearly  ' + yyyy + '</button>' +
+      '<button class="big-btn" style="margin-bottom:8px;background:#1e3a5f;color:#fff;" onclick="renderBIRData()"> BIR Filing Data</button>' +
     '</div>' +
 
     '<div class="card">' +
@@ -3537,7 +3537,7 @@ function renderReports() {
 }
 
 async function loadReport(type, a, b) {
-  showLoading('Generating reportâ€¦');
+  showLoading('Generating report');
   try {
     var raw, fixedCosts;
     if      (type === 'daily')   raw = await API.call('getDailyReport',   { date: a });
@@ -3634,30 +3634,30 @@ function renderReportScreen(type, d, fixedCosts) {
     }).sort(function(a, b) { return a.date < b.date ? -1 : 1; });
   }
 
-  var title  = type === 'daily'   ? 'ðŸ“… ' + d.date
-             : type === 'weekly'  ? 'ðŸ“† ' + d.dateFrom + ' â†’ ' + d.dateTo
-             : type === 'monthly' ? 'ðŸ—“ ' + _monthName(d.month) + ' ' + d.year
-             : 'ðŸ“Š ' + d.dateFrom + ' â†’ ' + d.dateTo;
+  var title  = type === 'daily'   ? ' ' + d.date
+             : type === 'weekly'  ? ' ' + d.dateFrom + '  ' + d.dateTo
+             : type === 'monthly' ? ' ' + _monthName(d.month) + ' ' + d.year
+             : ' ' + d.dateFrom + '  ' + d.dateTo;
 
   fixedCosts = fixedCosts || { rent: 0, salaries: [], otherFixed: 0 };
 
-  function money(v) { return 'â‚±' + Number(v || 0).toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+  function money(v) { return '' + Number(v || 0).toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2}); }
   function pct(v)   { return (v || 0).toFixed(1) + '%'; }
 
-  // â”€â”€ Summary cards â”€â”€
+  //  Summary cards 
   var summaryHtml =
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">' +
-      _rptCard('ðŸ’° Revenue',      money(s.revenue),      '#16a34a') +
-      _rptCard('ðŸ§¾ Transactions', s.txCount + ' sales',  '#2563eb') +
-      _rptCard('ðŸ“¦ Items Sold',   s.totalQty + ' pcs',   '#7c3aed') +
-      _rptCard('ðŸ“Š Avg Sale',     money(s.avgTx),        '#0891b2') +
-      _rptCard('ðŸ­ Cost of Goods', money(s.cogs),        '#6b7280') +
-      _rptCard('ðŸ’š Gross Profit', money(s.grossProfit),  '#16a34a') +
-      _rptCard('ðŸ’¸ Expenses',     money(s.totalExpenses),'#dc2626') +
-      _rptCard('ðŸ† Net Profit',   money(s.netProfit), s.netProfit >= 0 ? '#16a34a' : '#dc2626') +
+      _rptCard(' Revenue',      money(s.revenue),      '#16a34a') +
+      _rptCard(' Transactions', s.txCount + ' sales',  '#2563eb') +
+      _rptCard(' Items Sold',   s.totalQty + ' pcs',   '#7c3aed') +
+      _rptCard(' Avg Sale',     money(s.avgTx),        '#0891b2') +
+      _rptCard(' Cost of Goods', money(s.cogs),        '#6b7280') +
+      _rptCard(' Gross Profit', money(s.grossProfit),  '#16a34a') +
+      _rptCard(' Expenses',     money(s.totalExpenses),'#dc2626') +
+      _rptCard(' Net Profit',   money(s.netProfit), s.netProfit >= 0 ? '#16a34a' : '#dc2626') +
     '</div>';
 
-  // â”€â”€ Health Indicators â”€â”€
+  //  Health Indicators 
   var salaryTotal = (fixedCosts.salaries || []).reduce(function(t, x) { return t + Number(x.amount || 0); }, 0);
   var monthlyFixed = Number(fixedCosts.rent || 0) + salaryTotal + Number(fixedCosts.otherFixed || 0);
 
@@ -3685,20 +3685,20 @@ function renderReportScreen(type, d, fixedCosts) {
   function npmColor(v)  { return v >= 10 ? '#16a34a' : v >= 0  ? '#d97706' : '#dc2626'; }
   function exrColor(v)  { return v <= 40 ? '#16a34a' : v <= 60 ? '#d97706' : '#dc2626'; }
   function beColor(st)  { return st === 'ABOVE' ? '#16a34a' : st === 'BELOW' ? '#dc2626' : '#6b7280'; }
-  function beEmoji(st)  { return st === 'ABOVE' ? 'ðŸŸ¢' : st === 'BELOW' ? 'ðŸ”´' : 'âšª'; }
+  function beEmoji(st)  { return st === 'ABOVE' ? '' : st === 'BELOW' ? '' : ''; }
 
-  var healthHtml = '<div class="card"><div class="title" style="font-size:15px;margin-bottom:10px;">ðŸ“ˆ Business Health Indicators</div>';
+  var healthHtml = '<div class="card"><div class="title" style="font-size:15px;margin-bottom:10px;"> Business Health Indicators</div>';
 
   if (monthlyFixed <= 0) {
     healthHtml += '<div style="background:#fef9c3;border-radius:8px;padding:10px;font-size:13px;color:#854d0e;margin-bottom:10px;">' +
-      'âš™ï¸ <strong>Set your Monthly Fixed Costs</strong> in Settings to unlock Break-Even analysis.</div>';
+      ' <strong>Set your Monthly Fixed Costs</strong> in Settings to unlock Break-Even analysis.</div>';
   }
 
   healthHtml += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
-    _rptCard('ðŸ“Š Gross Margin',   pct(gpm),  gpmColor(gpm), gpm >= 30 ? 'Healthy (â‰¥30%)' : gpm >= 15 ? 'Moderate (â‰¥15%)' : 'Low (<15%)') +
-    _rptCard('ðŸ’¹ Net Margin',     pct(npm),  npmColor(npm), npm >= 10 ? 'Healthy (â‰¥10%)' : npm >= 0  ? 'Slim (â‰¥0%)'     : 'Loss!') +
-    _rptCard('ðŸ’¸ Expense Ratio',  pct(exr),  exrColor(exr), exr <= 40 ? 'Controlled (â‰¤40%)' : exr <= 60 ? 'High (â‰¤60%)' : 'Very High') +
-    _rptCard('ðŸŽ¯ Break-Even',     monthlyFixed > 0 ? money(breakEven) : 'â€”', beColor(beStatus),
+    _rptCard(' Gross Margin',   pct(gpm),  gpmColor(gpm), gpm >= 30 ? 'Healthy (30%)' : gpm >= 15 ? 'Moderate (15%)' : 'Low (<15%)') +
+    _rptCard(' Net Margin',     pct(npm),  npmColor(npm), npm >= 10 ? 'Healthy (10%)' : npm >= 0  ? 'Slim (0%)'     : 'Loss!') +
+    _rptCard(' Expense Ratio',  pct(exr),  exrColor(exr), exr <= 40 ? 'Controlled (40%)' : exr <= 60 ? 'High (60%)' : 'Very High') +
+    _rptCard(' Break-Even',     monthlyFixed > 0 ? money(breakEven) : '', beColor(beStatus),
              monthlyFixed > 0 ? beEmoji(beStatus) + ' ' + (beStatus === 'N/A' ? 'Set fixed costs' : beStatus + ' break-even') : 'Set fixed costs in Settings') +
   '</div>';
 
@@ -3722,15 +3722,15 @@ function renderReportScreen(type, d, fixedCosts) {
   }
   healthHtml += '</div>';
 
-  // â”€â”€ Top Products â”€â”€
-  var topHtml = '<div class="card"><div class="title" style="font-size:16px;margin-bottom:10px;">ðŸ† Top Products</div>';
+  //  Top Products 
+  var topHtml = '<div class="card"><div class="title" style="font-size:16px;margin-bottom:10px;"> Top Products</div>';
   if (d.topProducts && d.topProducts.length) {
     d.topProducts.forEach(function(p, i) {
       topHtml += '<div style="display:flex;justify-content:space-between;align-items:center;' +
         'padding:8px 0;border-bottom:1px solid #f3f4f6;">' +
         '<div><span style="color:#9ca3af;font-size:12px;">#' + (i+1) + ' </span>' +
         '<strong style="font-size:13px;">' + p.name + '</strong>' +
-        '<span class="muted" style="font-size:12px;"> Â· ' + p.qty + ' pcs</span></div>' +
+        '<span class="muted" style="font-size:12px;">  ' + p.qty + ' pcs</span></div>' +
         '<div style="text-align:right;">' +
           '<div style="font-size:13px;font-weight:bold;color:#16a34a;">' + money(p.revenue) + '</div>' +
           '<div style="font-size:11px;color:#6b7280;">profit ' + money(p.profit) + '</div>' +
@@ -3739,8 +3739,8 @@ function renderReportScreen(type, d, fixedCosts) {
   } else { topHtml += '<div class="muted">No sales in this period.</div>'; }
   topHtml += '</div>';
 
-  // â”€â”€ Expense Breakdown â”€â”€
-  var expHtml = '<div class="card"><div class="title" style="font-size:16px;margin-bottom:10px;">ðŸ’¸ Expenses by Category</div>';
+  //  Expense Breakdown 
+  var expHtml = '<div class="card"><div class="title" style="font-size:16px;margin-bottom:10px;"> Expenses by Category</div>';
   if (d.expenseBreakdown && d.expenseBreakdown.length) {
     d.expenseBreakdown.forEach(function(e) {
       expHtml += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3f4f6;">' +
@@ -3752,20 +3752,20 @@ function renderReportScreen(type, d, fixedCosts) {
   } else { expHtml += '<div class="muted">No expenses in this period.</div>'; }
   expHtml += '</div>';
 
-  // â”€â”€ Period breakdown (daily â†’ hourly, weekly â†’ daily, monthly/period â†’ monthly) â”€â”€
+  //  Period breakdown (daily  hourly, weekly  daily, monthly/period  monthly) 
   var breakdownHtml = '';
   if (type === 'daily' && d.hourlySales && d.hourlySales.length) {
-    breakdownHtml = '<div class="card"><div class="title" style="font-size:16px;margin-bottom:10px;">ðŸ• Sales by Hour</div>';
+    breakdownHtml = '<div class="card"><div class="title" style="font-size:16px;margin-bottom:10px;"> Sales by Hour</div>';
     d.hourlySales.forEach(function(h) {
       breakdownHtml += '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f3f4f6;">' +
         '<span style="font-size:13px;">' + h.hour + '</span>' +
-        '<span style="font-size:13px;">' + h.count + ' tx Â· <strong>' + money(h.revenue) + '</strong></span></div>';
+        '<span style="font-size:13px;">' + h.count + ' tx  <strong>' + money(h.revenue) + '</strong></span></div>';
     });
     breakdownHtml += '</div>';
   } else if (type === 'weekly' && d.dailyBreakdown) {
-    breakdownHtml = '<div class="card"><div class="title" style="font-size:16px;margin-bottom:10px;">ðŸ“† Daily Breakdown</div>';
+    breakdownHtml = '<div class="card"><div class="title" style="font-size:16px;margin-bottom:10px;"> Daily Breakdown</div>';
     if (d.bestDay) breakdownHtml += '<div style="background:#dcfce7;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:13px;">' +
-      'ðŸ† Best day: <strong>' + d.bestDay.date + '</strong> â€” ' + money(d.bestDay.revenue) + '</div>';
+      ' Best day: <strong>' + d.bestDay.date + '</strong>  ' + money(d.bestDay.revenue) + '</div>';
     d.dailyBreakdown.forEach(function(day) {
       breakdownHtml += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3f4f6;">' +
         '<div><div style="font-size:13px;font-weight:bold;">' + _formatDate(day.date) + '</div>' +
@@ -3775,9 +3775,9 @@ function renderReportScreen(type, d, fixedCosts) {
     });
     breakdownHtml += '</div>';
   } else if ((type === 'monthly' || type === 'period') && d.monthlyBreakdown) {
-    breakdownHtml = '<div class="card"><div class="title" style="font-size:16px;margin-bottom:10px;">ðŸ“… Monthly Breakdown</div>';
-    if (d.bestMonth) breakdownHtml += '<div style="background:#dcfce7;border-radius:8px;padding:8px 10px;margin-bottom:4px;font-size:13px;">ðŸ† Best: <strong>' + d.bestMonth.month + '</strong> â€” ' + money(d.bestMonth.revenue) + '</div>';
-    if (d.worstMonth && d.monthlyBreakdown.length > 1) breakdownHtml += '<div style="background:#fee2e2;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:13px;">ðŸ“‰ Lowest: <strong>' + d.worstMonth.month + '</strong> â€” ' + money(d.worstMonth.revenue) + '</div>';
+    breakdownHtml = '<div class="card"><div class="title" style="font-size:16px;margin-bottom:10px;"> Monthly Breakdown</div>';
+    if (d.bestMonth) breakdownHtml += '<div style="background:#dcfce7;border-radius:8px;padding:8px 10px;margin-bottom:4px;font-size:13px;"> Best: <strong>' + d.bestMonth.month + '</strong>  ' + money(d.bestMonth.revenue) + '</div>';
+    if (d.worstMonth && d.monthlyBreakdown.length > 1) breakdownHtml += '<div style="background:#fee2e2;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:13px;"> Lowest: <strong>' + d.worstMonth.month + '</strong>  ' + money(d.worstMonth.revenue) + '</div>';
     d.monthlyBreakdown.forEach(function(m) {
       breakdownHtml += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3f4f6;">' +
         '<div><div style="font-size:13px;font-weight:bold;">' + m.month + '</div>' +
@@ -3788,10 +3788,10 @@ function renderReportScreen(type, d, fixedCosts) {
     breakdownHtml += '</div>';
   }
 
-  // â”€â”€ Low stock â”€â”€
+  //  Low stock 
   var lowStockHtml = '';
   if (type === 'daily' && d.lowStock && d.lowStock.length) {
-    lowStockHtml = '<div class="card"><div class="title" style="font-size:16px;margin-bottom:10px;">âš  Low Stock Alert</div>';
+    lowStockHtml = '<div class="card"><div class="title" style="font-size:16px;margin-bottom:10px;"> Low Stock Alert</div>';
     d.lowStock.forEach(function(p) {
       var color = p.stock === 0 ? '#dc2626' : '#d97706';
       lowStockHtml += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3f4f6;">' +
@@ -3802,10 +3802,10 @@ function renderReportScreen(type, d, fixedCosts) {
     lowStockHtml += '</div>';
   }
 
-  // â”€â”€ Dead stock (monthly only) â”€â”€
+  //  Dead stock (monthly only) 
   var deadStockHtml = '';
   if (type === 'monthly' && d.deadStock && d.deadStock.length) {
-    deadStockHtml = '<div class="card"><div class="title" style="font-size:16px;margin-bottom:6px;">ðŸ’¤ No Sales This Month</div>' +
+    deadStockHtml = '<div class="card"><div class="title" style="font-size:16px;margin-bottom:6px;"> No Sales This Month</div>' +
       '<div class="muted" style="font-size:12px;margin-bottom:8px;">Consider discounting or removing these items:</div>';
     d.deadStock.slice(0, 10).forEach(function(p) {
       deadStockHtml += '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f3f4f6;">' +
@@ -3822,8 +3822,8 @@ function renderReportScreen(type, d, fixedCosts) {
     '<div class="topbar" style="flex-wrap:wrap;gap:4px;">' +
       '<div style="font-size:14px;font-weight:bold;">' + title + '</div>' +
       '<div style="display:flex;gap:6px;">' +
-        '<button class="small-btn" onclick="printLastReport()">ðŸ“„ PDF</button>' +
-        '<button class="small-btn" onclick="renderReports()">â† Back</button>' +
+        '<button class="small-btn" onclick="printLastReport()"> PDF</button>' +
+        '<button class="small-btn" onclick="renderReports()"> Back</button>' +
       '</div>' +
     '</div>' +
     '<div class="card">' + summaryHtml + '</div>' +
@@ -3855,7 +3855,7 @@ function _formatDate(dateStr) {
 }
 
 async function renderSettings() {
-  showLoading('Loading settingsâ€¦');
+  showLoading('Loading settings');
   var fc = { rent: 0, salaries: [], otherFixed: 0 };
   try { fc = await API.call('getFixedCosts'); } catch(e) {}
   _renderFixedCostsForm(fc);
@@ -3867,17 +3867,17 @@ function _renderFixedCostsForm(fc) {
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">âš™ï¸ Settings</div>' +
+    '<div class="topbar"><div class="title" style="margin:0;"> Settings</div>' +
     '<button class="small-btn" onclick="goHome()">Back</button></div>' +
 
     '<div class="card">' +
     '<div class="subtitle" style="margin-bottom:4px;">Monthly Fixed Costs</div>' +
     '<div class="muted" style="font-size:12px;margin-bottom:14px;">These are costs the store pays every month regardless of sales. Used to compute Break-Even.</div>' +
 
-    '<div class="field"><label>Store Rent (â‚±/month)</label>' +
+    '<div class="field"><label>Store Rent (/month)</label>' +
     '<input id="fc-rent" type="number" min="0" step="1" value="' + (fc.rent || 0) + '" placeholder="0"></div>' +
 
-    '<div class="field"><label>Other Fixed Costs (â‚±/month)</label>' +
+    '<div class="field"><label>Other Fixed Costs (/month)</label>' +
     '<input id="fc-other" type="number" min="0" step="1" value="' + (fc.otherFixed || 0) + '" placeholder="0">' +
     '<div class="muted" style="font-size:12px;margin-top:4px;">e.g. loan amortization, annual fees averaged monthly</div></div>' +
 
@@ -3885,26 +3885,26 @@ function _renderFixedCostsForm(fc) {
     '<div id="fc-salary-list">' + salaryRows + '</div>' +
     '<button class="btn btn-secondary" style="margin-top:8px;" onclick="_addSalaryRow()">+ Add Person</button></div>' +
 
-    '<button class="btn btn-primary" style="margin-top:8px;" onclick="saveFixedCostsSettings()">ðŸ’¾ Save Fixed Costs</button>' +
+    '<button class="btn btn-primary" style="margin-top:8px;" onclick="saveFixedCostsSettings()"> Save Fixed Costs</button>' +
     '</div>' +
 
     '<div class="card">' +
-    '<div class="subtitle" style="margin-bottom:4px;">ðŸ” Change Password</div>' +
+    '<div class="subtitle" style="margin-bottom:4px;"> Change Password</div>' +
     '<div class="field"><label>Current Password</label>' +
     '<input id="pw-current" type="password" placeholder="Enter current password"></div>' +
     '<div class="field"><label>New Password</label>' +
     '<input id="pw-new" type="password" placeholder="At least 4 characters"></div>' +
     '<div class="field"><label>Confirm New Password</label>' +
     '<input id="pw-confirm" type="password" placeholder="Repeat new password"></div>' +
-    '<button class="btn btn-secondary" onclick="submitChangePassword()">ðŸ” Change Password</button>' +
+    '<button class="btn btn-secondary" onclick="submitChangePassword()"> Change Password</button>' +
     '</div></div>';
 }
 
 function _salaryRowHtml(i, name, amount) {
   return '<div id="fc-sal-' + i + '" style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">' +
     '<input placeholder="Name (e.g. Ate Nena)" style="flex:2;padding:10px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;" value="' + (name || '') + '" id="fc-sal-name-' + i + '">' +
-    '<input type="number" min="0" step="1" placeholder="â‚±/mo" style="flex:1;padding:10px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;" value="' + (amount || '') + '" id="fc-sal-amt-' + i + '">' +
-    '<button onclick="_removeSalaryRow(' + i + ')" style="padding:8px 12px;background:#fee2e2;border:none;border-radius:8px;cursor:pointer;font-size:16px;color:#dc2626;">âœ•</button>' +
+    '<input type="number" min="0" step="1" placeholder="/mo" style="flex:1;padding:10px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;" value="' + (amount || '') + '" id="fc-sal-amt-' + i + '">' +
+    '<button onclick="_removeSalaryRow(' + i + ')" style="padding:8px 12px;background:#fee2e2;border:none;border-radius:8px;cursor:pointer;font-size:16px;color:#dc2626;"></button>' +
     '</div>';
 }
 
@@ -3959,7 +3959,7 @@ async function submitChangePassword() {
   } catch(e) { _showToast(e.message, true); }
 }
 
-// â”€â”€ Print / PDF utilities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Print / PDF utilities 
 
 function _openPrintWindow(title, htmlBody, extraStyles) {
   var w = window.open('', '_blank');
@@ -3984,14 +3984,14 @@ function _openPrintWindow(title, htmlBody, extraStyles) {
     '<title>' + title + '</title>' +
     '<style>' + css + '</style></head><body>' +
     '<div style="text-align:right;margin-bottom:12px;" class="no-print">' +
-    '<button onclick="window.print()" style="padding:8px 16px;background:#1e3a5f;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;">ðŸ–¨ï¸ Print / Save as PDF</button>' +
+    '<button onclick="window.print()" style="padding:8px 16px;background:#1e3a5f;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;"> Print / Save as PDF</button>' +
     '</div>' + htmlBody + '</body></html>'
   );
   w.document.close();
   w.focus();
 }
 
-// â”€â”€ Receipt printing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Receipt printing 
 
 function printLastReceipt() {
   var r = state.lastReceipt;
@@ -4008,7 +4008,7 @@ function _printReceiptHtml(cartItems, total, paid, method, saleResult) {
   var timeStr   = now.toLocaleTimeString('en-PH', { hour:'2-digit', minute:'2-digit' });
   var cashier   = state.session && state.session.user ? state.session.user.Full_Name : '';
 
-  function money(v) { return 'â‚±' + Number(v||0).toFixed(2); }
+  function money(v) { return '' + Number(v||0).toFixed(2); }
 
   var itemRows = cartItems.map(function(i) {
     return '<tr><td>' + i.qty + 'x ' + i.name + '</td><td class="right">' + money(i.total) + '</td></tr>';
@@ -4047,17 +4047,17 @@ function _printReceiptHtml(cartItems, total, paid, method, saleResult) {
     '@media print { @page { size: 80mm auto; margin: 4mm; } body { width:80mm; } }');
 }
 
-// â”€â”€ Report printing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Report printing 
 
 function printReport(type, d) {
   function money(v) { return '&#8369;' + Number(v||0).toLocaleString('en-PH', {minimumFractionDigits:2}); }
   function pct(v)   { return Number(v||0).toFixed(1) + '%'; }
 
   var sp    = state.storeProfile || {};
-  var title = type === 'daily'   ? 'Daily Report â€” '   + d.date
-            : type === 'weekly'  ? 'Weekly Report â€” '  + d.dateFrom + ' to ' + d.dateTo
-            : type === 'monthly' ? 'Monthly Report â€” ' + _monthName(d.month) + ' ' + d.year
-            : 'Period Report â€” ' + d.dateFrom + ' to ' + d.dateTo;
+  var title = type === 'daily'   ? 'Daily Report  '   + d.date
+            : type === 'weekly'  ? 'Weekly Report  '  + d.dateFrom + ' to ' + d.dateTo
+            : type === 'monthly' ? 'Monthly Report  ' + _monthName(d.month) + ' ' + d.year
+            : 'Period Report  ' + d.dateFrom + ' to ' + d.dateTo;
   var s = d.summary;
 
   // Header
@@ -4131,14 +4131,14 @@ function printLastReport() {
   printReport(state.lastReport.type, state.lastReport.d);
 }
 
-// â”€â”€ BIR Data screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  BIR Data screen 
 
 function renderBIRData() {
   var year = new Date().getFullYear();
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">ðŸ›ï¸ BIR Filing Data</div>' +
-    '<button class="small-btn" onclick="renderReports()">â† Back</button></div>' +
+    '<div class="topbar"><div class="title" style="margin:0;"> BIR Filing Data</div>' +
+    '<button class="small-btn" onclick="renderReports()"> Back</button></div>' +
     '<div class="card">' +
     '<div class="subtitle" style="margin-bottom:8px;">Annual Summary for Income Tax Filing</div>' +
     '<div class="muted" style="font-size:12px;margin-bottom:12px;">Generates monthly/quarterly sales and expense summaries required for BIR Form 1701A and related schedules.</div>' +
@@ -4146,12 +4146,12 @@ function renderBIRData() {
     '<select id="bir-year">' +
     [year, year-1, year-2].map(function(y) { return '<option value="' + y + '">' + y + '</option>'; }).join('') +
     '</select></div>' +
-    '<button class="btn btn-primary" onclick="loadBIRData(document.getElementById(\'bir-year\').value)">ðŸ“Š Generate BIR Data</button>' +
+    '<button class="btn btn-primary" onclick="loadBIRData(document.getElementById(\'bir-year\').value)"> Generate BIR Data</button>' +
     '</div></div>';
 }
 
 async function loadBIRData(year) {
-  showLoading('Generating BIR data for ' + year + 'â€¦');
+  showLoading('Generating BIR data for ' + year + '');
   try {
     var d = await API.call('getBIRData', { year: Number(year) });
     state.lastBIRData = d;
@@ -4163,7 +4163,7 @@ async function loadBIRData(year) {
 }
 
 function renderBIRScreen(d) {
-  function money(v) { return 'â‚±' + Number(v||0).toLocaleString('en-PH', {minimumFractionDigits:2}); }
+  function money(v) { return '' + Number(v||0).toLocaleString('en-PH', {minimumFractionDigits:2}); }
 
   var monthRows = d.months.map(function(m) {
     return '<tr>' +
@@ -4190,8 +4190,8 @@ function renderBIRScreen(d) {
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
     '<div class="topbar" style="flex-wrap:wrap;gap:4px;">' +
-    '<div style="font-size:14px;font-weight:bold;">ðŸ›ï¸ BIR Data â€” ' + d.year + '</div>' +
-    '<button class="small-btn" onclick="renderBIRData()">â† Back</button></div>' +
+    '<div style="font-size:14px;font-weight:bold;"> BIR Data  ' + d.year + '</div>' +
+    '<button class="small-btn" onclick="renderBIRData()"> Back</button></div>' +
 
     // Store info
     '<div class="card">' +
@@ -4203,7 +4203,7 @@ function renderBIRScreen(d) {
     // Monthly table (scrollable)
     '<div class="card" style="overflow-x:auto;">' +
     '<div style="font-size:13px;font-weight:bold;margin-bottom:8px;">Monthly & Quarterly Sales Summary</div>' +
-    '<div class="muted" style="font-size:11px;margin-bottom:8px;">For BIR Form 1701A Schedule 1 â€” Summary of Sales/Revenues</div>' +
+    '<div class="muted" style="font-size:11px;margin-bottom:8px;">For BIR Form 1701A Schedule 1  Summary of Sales/Revenues</div>' +
     '<table style="font-size:12px;min-width:420px;">' +
     '<thead><tr><th>Month</th><th>Gross Sales</th><th>Cost of Sales</th><th>Gross Profit</th><th>Expenses</th><th>Net Income</th></tr></thead>' +
     '<tbody>' + monthRows + qRows +
@@ -4230,7 +4230,7 @@ function renderBIRScreen(d) {
       : '<div class="muted">No expenses recorded for ' + d.year + '.</div>') +
     '</div>' +
 
-    '<button class="btn btn-primary" onclick="printBIRData(state.lastBIRData)">ðŸ“„ Export as PDF / Print</button>' +
+    '<button class="btn btn-primary" onclick="printBIRData(state.lastBIRData)"> Export as PDF / Print</button>' +
     '</div>';
 }
 
@@ -4245,8 +4245,8 @@ function printBIRData(d) {
     (d.store.phone     ? d.store.phone : '') + '</div>' +
     '<div style="color:#666;font-size:12px;margin-bottom:16px;">Printed: ' + new Date().toLocaleDateString('en-PH') + '</div>' +
 
-    '<h3 style="margin-bottom:8px;">Summary of Sales for BIR Form 1701A â€” Year ' + d.year + '</h3>' +
-    '<div style="font-size:11px;color:#888;margin-bottom:8px;">Schedule 1 â€” Summary of Gross Sales/Revenues and Cost of Sales</div>' +
+    '<h3 style="margin-bottom:8px;">Summary of Sales for BIR Form 1701A  Year ' + d.year + '</h3>' +
+    '<div style="font-size:11px;color:#888;margin-bottom:8px;">Schedule 1  Summary of Gross Sales/Revenues and Cost of Sales</div>' +
     '<table>' +
     '<thead><tr><th>Month/Quarter</th><th class="right">Gross Sales</th><th class="right">Cost of Sales</th><th class="right">Gross Profit</th><th class="right">Operating Expenses</th><th class="right">Net Income/(Loss)</th></tr></thead>' +
     '<tbody>' +
@@ -4274,7 +4274,7 @@ function printBIRData(d) {
     '<td class="right">' + money(d.annual.netProfit) + '</td></tr>' +
     '</tbody></table>' +
 
-    '<h3 style="margin:20px 0 8px;">Schedule of Deductible Expenses â€” Year ' + d.year + '</h3>' +
+    '<h3 style="margin:20px 0 8px;">Schedule of Deductible Expenses  Year ' + d.year + '</h3>' +
     '<table>' +
     '<thead><tr><th>Expense Category</th><th class="right">Annual Amount</th></tr></thead><tbody>' +
     (d.expenseSummary || []).map(function(e) {
@@ -4292,7 +4292,7 @@ function printBIRData(d) {
   _openPrintWindow('BIR Filing Data ' + d.year, html);
 }
 
-// â”€â”€ Health snapshot (silent, fire-and-forget) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Health snapshot (silent, fire-and-forget) 
 
 async function _submitHealthSnapshot() {
   if (!navigator.onLine || !state.session || state.session.user.Role !== 'OWNER') return;
@@ -4313,7 +4313,7 @@ async function _submitHealthSnapshot() {
   try { localStorage.setItem('last_sync_at', Date.now().toString()); } catch(e){}
 }
 
-// â”€â”€ Capital & ROI Monitor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Capital & ROI Monitor 
 
 var CAPITAL_CATEGORIES = [
   'Initial Inventory','Store Fixtures & Shelving','Equipment & Appliances',
@@ -4322,12 +4322,12 @@ var CAPITAL_CATEGORIES = [
 ];
 
 async function renderROIMonitor() {
-  showLoading('Loading ROI dataâ€¦');
+  showLoading('Loading ROI data');
   var d;
   try {
     d = await API.call('getROIData');
   } catch(e) {
-    document.getElementById('app').innerHTML = '<div class="screen"><div class="topbar"><div class="title">ðŸ“ˆ ROI Monitor</div><button class="small-btn" onclick="goHome()">Back</button></div><div class="card"><div class="message message-error">Error: ' + _esc(e.message) + '</div></div></div>';
+    document.getElementById('app').innerHTML = '<div class="screen"><div class="topbar"><div class="title"> ROI Monitor</div><button class="small-btn" onclick="goHome()">Back</button></div><div class="card"><div class="message message-error">Error: ' + _esc(e.message) + '</div></div></div>';
     return;
   }
 
@@ -4338,10 +4338,10 @@ async function renderROIMonitor() {
   var prog    = perf.progressPercent;
   var hasCapital = summary.totalCostOfCapital > 0;
 
-  // â”€â”€ Progress bar color â”€â”€
+  //  Progress bar color 
   var barColor = prog >= 75 ? '#16a34a' : prog >= 40 ? '#d97706' : '#dc2626';
 
-  // â”€â”€ Monthly chart (last 6 months) â”€â”€
+  //  Monthly chart (last 6 months) 
   var last6     = (d.monthly || []).slice(-6);
   var maxAbs    = last6.reduce(function(m, r) { return Math.max(m, Math.abs(r.netProfit)); }, 1);
   var chartBars = last6.map(function(m) {
@@ -4355,10 +4355,10 @@ async function renderROIMonitor() {
       '</div>';
   }).join('');
 
-  // â”€â”€ Loan pill â”€â”€
+  //  Loan pill 
   var loanHtml = summary.loanPrincipal > 0
     ? '<div style="background:#fef9c3;border:1px solid #fde047;border-radius:8px;padding:10px;margin-bottom:10px;font-size:13px;">' +
-      '<div style="font-weight:bold;margin-bottom:4px;">ðŸ’³ Loan / Financing</div>' +
+      '<div style="font-weight:bold;margin-bottom:4px;"> Loan / Financing</div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;color:#374151;">' +
       '<div>Principal: <strong>' + _money(summary.loanPrincipal) + '</strong></div>' +
       '<div>Rate: <strong>' + summary.loanRateAnnual + '% / yr</strong></div>' +
@@ -4368,13 +4368,13 @@ async function renderROIMonitor() {
       '</div></div>'
     : '';
 
-  // â”€â”€ Projection block â”€â”€
+  //  Projection block 
   var projHtml;
   if (!hasCapital) {
     projHtml = '<div class="muted" style="text-align:center;padding:12px;">Set up your initial capital below to enable projections.</div>';
   } else if (proj.projectedMonths === 0) {
     projHtml = '<div style="text-align:center;padding:16px;background:#f0fdf4;border-radius:8px;">' +
-      '<div style="font-size:32px;">ðŸŽ‰</div>' +
+      '<div style="font-size:32px;"></div>' +
       '<div style="font-weight:bold;color:#16a34a;font-size:16px;">ROI Already Achieved!</div>' +
       '<div class="muted" style="margin-top:4px;">Your business has fully recovered its capital investment.</div></div>';
   } else if (proj.projectedMonths !== null) {
@@ -4383,7 +4383,7 @@ async function renderROIMonitor() {
       '<div class="val" style="font-size:18px;color:#1d4ed8;">' + proj.projectedMonths + '</div>' +
       '<div class="lbl">Months to ROI</div></div>' +
       '<div class="stat-card" style="background:#f0fdf4;">' +
-      '<div class="val" style="font-size:15px;color:#16a34a;">' + (proj.projectedDate || 'â€”') + '</div>' +
+      '<div class="val" style="font-size:15px;color:#16a34a;">' + (proj.projectedDate || '') + '</div>' +
       '<div class="lbl">Projected Date</div></div>' +
       '<div class="stat-card">' +
       '<div class="val" style="font-size:16px;">' + _money(proj.avgMonthlyNet) + '</div>' +
@@ -4398,10 +4398,10 @@ async function renderROIMonitor() {
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title">ðŸ“ˆ ROI Monitor</div>' +
+    '<div class="topbar"><div class="title"> ROI Monitor</div>' +
     '<button class="small-btn" onclick="goHome()">Back</button></div>' +
 
-    // â”€â”€ Progress â”€â”€
+    //  Progress 
     (hasCapital ? '<div class="card">' +
       '<div style="display:flex;justify-content:space-between;margin-bottom:6px;">' +
       '<span style="font-weight:bold;">Capital Recovery</span>' +
@@ -4409,12 +4409,12 @@ async function renderROIMonitor() {
       '<div style="background:#e5e7eb;border-radius:999px;height:14px;overflow:hidden;">' +
       '<div style="width:' + prog + '%;height:100%;background:' + barColor + ';border-radius:999px;transition:width .4s;"></div></div>' +
       '<div style="display:flex;justify-content:space-between;font-size:12px;margin-top:4px;color:#6b7280;">' +
-      '<span>â‚±0</span><span>' + _money(summary.totalCostOfCapital) + ' total cost</span></div>' +
+      '<span>0</span><span>' + _money(summary.totalCostOfCapital) + ' total cost</span></div>' +
       '</div>' : '') +
 
-    // â”€â”€ Key numbers â”€â”€
+    //  Key numbers 
     '<div class="card">' +
-    '<div class="section-title">ðŸ’° Capital Overview</div>' +
+    '<div class="section-title"> Capital Overview</div>' +
     '<div style="font-size:13px;line-height:2.2;">' +
     '<div style="display:flex;justify-content:space-between;border-bottom:1px solid #f3f4f6;"><span>Items invested</span><strong>' + _money(summary.totalCapital) + '</strong></div>' +
     (summary.loanPrincipal > 0 ? '<div style="display:flex;justify-content:space-between;border-bottom:1px solid #f3f4f6;"><span>+ Total interest cost</span><strong style="color:#d97706;">+' + _money(summary.totalInterestCost) + '</strong></div>' : '') +
@@ -4423,9 +4423,9 @@ async function renderROIMonitor() {
     loanHtml +
     '<div style="font-size:13px;line-height:2.2;margin-top:8px;">' +
     '<div style="display:flex;justify-content:space-between;border-bottom:1px solid #f3f4f6;"><span>All-time Revenue</span><strong>' + _money(perf.totalRevenue) + '</strong></div>' +
-    '<div style="display:flex;justify-content:space-between;border-bottom:1px solid #f3f4f6;"><span>â€” Cost of Goods Sold</span><span style="color:#dc2626;">âˆ’' + _money(perf.totalCOGS) + '</span></div>' +
-    '<div style="display:flex;justify-content:space-between;border-bottom:1px solid #f3f4f6;"><span>â€” Total Expenses</span><span style="color:#dc2626;">âˆ’' + _money(perf.totalExpenses) + '</span></div>' +
-    (perf.interestPaid > 0 ? '<div style="display:flex;justify-content:space-between;border-bottom:1px solid #f3f4f6;"><span>â€” Interest Paid</span><span style="color:#dc2626;">âˆ’' + _money(perf.interestPaid) + '</span></div>' : '') +
+    '<div style="display:flex;justify-content:space-between;border-bottom:1px solid #f3f4f6;"><span> Cost of Goods Sold</span><span style="color:#dc2626;">' + _money(perf.totalCOGS) + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;border-bottom:1px solid #f3f4f6;"><span> Total Expenses</span><span style="color:#dc2626;">' + _money(perf.totalExpenses) + '</span></div>' +
+    (perf.interestPaid > 0 ? '<div style="display:flex;justify-content:space-between;border-bottom:1px solid #f3f4f6;"><span> Interest Paid</span><span style="color:#dc2626;">' + _money(perf.interestPaid) + '</span></div>' : '') +
     '<div style="display:flex;justify-content:space-between;padding-top:2px;"><span style="font-weight:bold;">Cumulative Net Profit</span>' +
     '<strong style="color:' + (perf.cumulativeNetProfit >= 0 ? '#16a34a' : '#dc2626') + ';">' + _money(perf.cumulativeNetProfit) + '</strong></div>' +
     '</div>' +
@@ -4433,26 +4433,26 @@ async function renderROIMonitor() {
     '<span>Capital Still to Recover</span><strong style="color:' + (perf.capitalRemaining > 0 ? '#dc2626' : '#16a34a') + ';">' + _money(perf.capitalRemaining) + '</strong></div>' +
     '</div>' +
 
-    // â”€â”€ Projection â”€â”€
-    '<div class="card"><div class="section-title">ðŸ”­ Projection</div>' + projHtml + '</div>' +
+    //  Projection 
+    '<div class="card"><div class="section-title"> Projection</div>' + projHtml + '</div>' +
 
-    // â”€â”€ Monthly chart â”€â”€
-    (last6.length > 0 ? '<div class="card"><div class="section-title">ðŸ“Š Monthly Net Profit (last 6 mo.)</div>' +
+    //  Monthly chart 
+    (last6.length > 0 ? '<div class="card"><div class="section-title"> Monthly Net Profit (last 6 mo.)</div>' +
       '<div style="display:flex;align-items:flex-end;height:100px;gap:4px;padding-bottom:4px;border-bottom:1px solid #e5e7eb;">' +
       chartBars + '</div></div>' : '') +
 
-    // â”€â”€ Actions â”€â”€
+    //  Actions 
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:24px;">' +
-    '<button class="btn btn-primary" onclick="renderCapitalSetup()">âœï¸ Edit Capital</button>' +
-    '<button class="btn btn-secondary" onclick="renderROIMonitor()">ðŸ”„ Refresh</button>' +
+    '<button class="btn btn-primary" onclick="renderCapitalSetup()"> Edit Capital</button>' +
+    '<button class="btn btn-secondary" onclick="renderROIMonitor()"> Refresh</button>' +
     '</div></div>';
   } catch(renderErr) {
-    document.getElementById('app').innerHTML = '<div class="screen"><div class="topbar"><div class="title">ðŸ“ˆ ROI Monitor</div><button class="small-btn" onclick="goHome()">Back</button></div><div class="card"><div class="message message-error">Render error: ' + _esc(renderErr.message) + '</div></div></div>';
+    document.getElementById('app').innerHTML = '<div class="screen"><div class="topbar"><div class="title"> ROI Monitor</div><button class="small-btn" onclick="goHome()">Back</button></div><div class="card"><div class="message message-error">Render error: ' + _esc(renderErr.message) + '</div></div></div>';
   }
 }
 
 async function renderCapitalSetup() {
-  showLoading('Loading capital setupâ€¦');
+  showLoading('Loading capital setup');
   var items, loan;
   try {
     items = await API.call('getCapitalItems');
@@ -4469,11 +4469,11 @@ function _renderCapitalSetupScreen(items, loan, msg) {
     ? items.map(function(c) {
         return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f3f4f6;">' +
           '<div><div style="font-size:13px;font-weight:bold;">' + _escHtml(c.Category) + '</div>' +
-          '<div class="muted" style="font-size:12px;">' + _escHtml(c.Description) + (c.Date_Added ? ' Â· ' + String(c.Date_Added).substring(0,10) : '') + '</div>' +
+          '<div class="muted" style="font-size:12px;">' + _escHtml(c.Description) + (c.Date_Added ? '  ' + String(c.Date_Added).substring(0,10) : '') + '</div>' +
           '</div>' +
           '<div style="display:flex;align-items:center;gap:8px;">' +
           '<span style="font-weight:bold;">' + _money(c.Amount) + '</span>' +
-          '<button class="small-btn" style="background:#fee2e2;color:#dc2626;" onclick="deleteCapitalItem(\'' + c.Capital_ID + '\')">âœ•</button>' +
+          '<button class="small-btn" style="background:#fee2e2;color:#dc2626;" onclick="deleteCapitalItem(\'' + c.Capital_ID + '\')"></button>' +
           '</div></div>';
       }).join('')
     : '<div class="muted" style="padding:8px;">No capital items yet. Add your startup costs below.</div>';
@@ -4484,37 +4484,37 @@ function _renderCapitalSetupScreen(items, loan, msg) {
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title">ðŸ’° Capital Setup</div>' +
-    '<button class="small-btn" onclick="renderROIMonitor()">â† Back</button></div>' +
+    '<div class="topbar"><div class="title"> Capital Setup</div>' +
+    '<button class="small-btn" onclick="renderROIMonitor()"> Back</button></div>' +
     (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
 
     '<div class="card">' +
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
-    '<div class="section-title" style="margin:0;">ðŸ“¦ Itemized Capital</div>' +
+    '<div class="section-title" style="margin:0;"> Itemized Capital</div>' +
     '<div style="font-weight:bold;color:#1d4ed8;">' + _money(totalCapital) + ' total</div></div>' +
     itemRows + '</div>' +
 
     '<div class="card">' +
-    '<div class="section-title">âž• Add Capital Item</div>' +
+    '<div class="section-title"> Add Capital Item</div>' +
     '<div class="field"><label>Category</label><select id="cap-cat">' + catsHtml + '</select></div>' +
-    '<div class="field"><label>Description *</label><input id="cap-desc" placeholder="e.g. Refrigerator, opening stockâ€¦"></div>' +
-    '<div class="field"><label>Amount (â‚±) *</label><input id="cap-amt" type="number" min="0" placeholder="0.00"></div>' +
+    '<div class="field"><label>Description *</label><input id="cap-desc" placeholder="e.g. Refrigerator, opening stock"></div>' +
+    '<div class="field"><label>Amount () *</label><input id="cap-amt" type="number" min="0" placeholder="0.00"></div>' +
     '<div class="field"><label>Date invested</label><input id="cap-date" type="date" value="' + _todayInput() + '"></div>' +
     '<div class="field"><label>Notes</label><input id="cap-notes" placeholder="Optional"></div>' +
     '<button class="btn btn-primary" onclick="addCapitalItem()">+ Add Item</button>' +
     '</div>' +
 
     '<div class="card">' +
-    '<div class="section-title">ðŸ’³ Loan / Financing (optional)</div>' +
+    '<div class="section-title"> Loan / Financing (optional)</div>' +
     '<div class="muted" style="font-size:12px;margin-bottom:10px;">If any of your capital was borrowed, enter the loan details here so interest cost is included in your ROI calculation.</div>' +
-    '<div class="field"><label>Loan Description</label><input id="loan-desc" placeholder="e.g. SSS Salary Loan, 5/6 loanâ€¦" value="' + _escAttr(loan.loanDescription) + '"></div>' +
-    '<div class="field"><label>Principal Amount (â‚±)</label><input id="loan-principal" type="number" min="0" value="' + (loan.loanPrincipal || 0) + '"></div>' +
+    '<div class="field"><label>Loan Description</label><input id="loan-desc" placeholder="e.g. SSS Salary Loan, 5/6 loan" value="' + _escAttr(loan.loanDescription) + '"></div>' +
+    '<div class="field"><label>Principal Amount ()</label><input id="loan-principal" type="number" min="0" value="' + (loan.loanPrincipal || 0) + '"></div>' +
     '<div class="field"><label>Annual Interest Rate (%)</label><input id="loan-rate" type="number" min="0" step="0.1" value="' + (loan.loanRateAnnual || 0) + '" placeholder="e.g. 12 for 12%/year"></div>' +
     '<div class="field"><label>Loan Term (months)</label><input id="loan-term" type="number" min="0" value="' + (loan.loanTermMonths || 0) + '" placeholder="e.g. 12 for 1 year"></div>' +
     '<div class="field"><label>Loan Start Date</label><input id="loan-start" type="date" value="' + (loan.loanStartDate || _todayInput()) + '"></div>' +
     '<div id="loan-preview" style="font-size:12px;color:#6b7280;margin-bottom:8px;"></div>' +
-    '<button class="btn btn-secondary" onclick="previewLoanCost()">ðŸ’¡ Preview Cost</button>' +
-    '<button class="btn btn-primary" style="margin-top:8px;" onclick="saveLoanSettings()">ðŸ’¾ Save Loan Settings</button>' +
+    '<button class="btn btn-secondary" onclick="previewLoanCost()"> Preview Cost</button>' +
+    '<button class="btn btn-primary" style="margin-top:8px;" onclick="saveLoanSettings()"> Save Loan Settings</button>' +
     '</div>' +
 
     '<div style="height:24px;"></div></div>';
@@ -4536,7 +4536,7 @@ async function addCapitalItem() {
     await API.call('saveCapitalItem', data);
     var items = await API.call('getCapitalItems');
     var loan  = await API.call('getLoanSettings');
-    _renderCapitalSetupScreen(items, loan, 'âœ“ Item added!');
+    _renderCapitalSetupScreen(items, loan, ' Item added!');
   } catch(e) { _showToast('Error: ' + e.message, true); }
 }
 
@@ -4563,8 +4563,8 @@ function previewLoanCost() {
   var monthly       = principal * (rate / 100 / 12);
   var totalInterest = monthly * term;
   var totalCost     = principal + totalInterest;
-  el.innerHTML = '<strong>Monthly interest: ' + _money(monthly) + '</strong> Â· ' +
-    'Total interest over ' + term + ' months: <strong>' + _money(totalInterest) + '</strong> Â· ' +
+  el.innerHTML = '<strong>Monthly interest: ' + _money(monthly) + '</strong>  ' +
+    'Total interest over ' + term + ' months: <strong>' + _money(totalInterest) + '</strong>  ' +
     'Total repayment: <strong>' + _money(totalCost) + '</strong>';
 }
 
@@ -4580,17 +4580,17 @@ async function saveLoanSettings() {
     await API.call('saveLoanSettings', data);
     _showToast('Loan settings saved!');
     var items = await API.call('getCapitalItems');
-    _renderCapitalSetupScreen(items, data, 'âœ“ Loan settings saved!');
+    _renderCapitalSetupScreen(items, data, ' Loan settings saved!');
   } catch(e) { _showToast('Error: ' + e.message, true); }
 }
 
 function _money(v) {
-  return 'â‚±' + Number(v || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return '' + Number(v || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 function _moneyShort(v) {
   var n = Number(v || 0);
-  if (n >= 1000) return 'â‚±' + (n / 1000).toFixed(1) + 'k';
-  return 'â‚±' + n.toFixed(0);
+  if (n >= 1000) return '' + (n / 1000).toFixed(1) + 'k';
+  return '' + n.toFixed(0);
 }
 
 function _todayInput() {
@@ -4604,7 +4604,7 @@ function _escAttr(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
 }
 
-// â”€â”€ Business Monitors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Business Monitors 
 
 var _monitorPeriod = 'today';
 
@@ -4612,7 +4612,7 @@ function renderMonitors() { _loadMonitors('today'); }
 
 async function _loadMonitors(period) {
   _monitorPeriod = period;
-  showLoading('Loading Business Monitorsâ€¦');
+  showLoading('Loading Business Monitors');
   var cacheKey = 'mon_' + period;
   var data = null;
   var fromCache = false;
@@ -4631,10 +4631,10 @@ async function _loadMonitors(period) {
     try { data = JSON.parse(localStorage.getItem(cacheKey) || 'null'); fromCache = true; } catch(e) {}
     if (!data) {
       document.getElementById('app').innerHTML =
-        '<div class="screen"><div class="topbar"><div class="title" style="margin:0;">ðŸ“¡ Monitors</div>' +
-        '<button class="small-btn" onclick="goHome()">â† Back</button></div>' +
+        '<div class="screen"><div class="topbar"><div class="title" style="margin:0;"> Monitors</div>' +
+        '<button class="small-btn" onclick="goHome()"> Back</button></div>' +
         '<div class="card" style="text-align:center;padding:32px 16px;">' +
-        '<div style="font-size:2rem;margin-bottom:8px;">ðŸ“µ</div>' +
+        '<div style="font-size:2rem;margin-bottom:8px;"></div>' +
         '<div style="font-weight:600;color:#374151;">Offline</div>' +
         '<div style="font-size:0.82rem;color:#6b7280;margin-top:6px;">No cached monitor data.<br>Connect and try again.</div>' +
         '</div></div>';
@@ -4646,33 +4646,33 @@ async function _loadMonitors(period) {
 
 function _renderMonitorLocked() {
   document.getElementById('app').innerHTML =
-    '<div class="screen"><div class="topbar"><div class="title" style="margin:0;">ðŸ“¡ Business Monitors</div>' +
-    '<button class="small-btn" onclick="goHome()">â† Back</button></div>' +
+    '<div class="screen"><div class="topbar"><div class="title" style="margin:0;"> Business Monitors</div>' +
+    '<button class="small-btn" onclick="goHome()"> Back</button></div>' +
     '<div class="card" style="text-align:center;padding:40px 16px;">' +
-    '<div style="font-size:2.5rem;margin-bottom:12px;">ðŸ”’</div>' +
+    '<div style="font-size:2.5rem;margin-bottom:12px;"></div>' +
     '<div style="font-weight:700;font-size:1.1rem;color:#111827;margin-bottom:8px;">Business Monitors</div>' +
     '<div style="font-size:0.85rem;color:#6b7280;max-width:260px;margin:0 auto 20px;">See sales trends, expense alerts, and business insights.<br>Available on Growth plan and above.</div>' +
     '<button class="btn btn-primary" onclick="_showToast(\'Contact your HubSuite admin to upgrade your plan.\', false)">Upgrade to Unlock</button>' +
     '</div></div>';
 }
 
-// â”€â”€ Monitor render helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Monitor render helpers 
 
 function _monSC(s) {
   return ({ good: '#16a34a', watch: '#d97706', critical: '#dc2626', info: '#2563eb', no_data: '#9ca3af' })[s] || '#9ca3af';
 }
 
 function _monTB(pct, dir, higherIsBetter) {
-  if (pct === null || pct === undefined) return '<span style="font-size:0.72rem;color:#9ca3af;">â€” no prior data</span>';
+  if (pct === null || pct === undefined) return '<span style="font-size:0.72rem;color:#9ca3af;"> no prior data</span>';
   var pos = higherIsBetter ? dir === 'up' : dir === 'down';
   var col = dir === 'flat' ? '#6b7280' : (pos ? '#16a34a' : '#dc2626');
-  var arrow = dir === 'up' ? 'â†‘' : dir === 'down' ? 'â†“' : 'â†’';
+  var arrow = dir === 'up' ? '' : dir === 'down' ? '' : '';
   return '<span style="font-size:0.75rem;font-weight:600;color:' + col + ';">' + arrow + ' ' + (pct > 0 ? '+' : '') + pct.toFixed(1) + '%</span>';
 }
 
 function _monCur(v) {
-  if (v === null || v === undefined) return 'â€”';
-  return 'â‚±' + Number(v).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (v === null || v === undefined) return '';
+  return '' + Number(v).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function _monMetric(label, value, trendBadge, status) {
@@ -4705,7 +4705,7 @@ function _monSection(icon, title, content) {
     '</div>';
 }
 
-// â”€â”€ Monitor page renderer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Monitor page renderer 
 
 function _renderMonitorPage(data, period, fromCache) {
   var s = data.summary    || {};
@@ -4732,7 +4732,7 @@ function _renderMonitorPage(data, period, fromCache) {
       'white-space:nowrap;">' + p.l + '</button>';
   }).join('');
 
-  // Summary strip (2Ã—2 grid)
+  // Summary strip (22 grid)
   var sTs = s.sales_total      || {};
   var sEs = s.expenses_total   || {};
   var sEp = s.estimated_profit || {};
@@ -4746,27 +4746,27 @@ function _renderMonitorPage(data, period, fromCache) {
     _monMetric('Transactions', (sTx.value || 0) + ' tx', _monTB(sTx.trend_pct, sTx.trend_dir, true), sTx.status) +
     '</div></div>';
 
-  // â”€â”€ Health headline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  //  Health headline 
   var alerts = data.alerts || [];
   var critCount  = alerts.filter(function(a) { return a.urgency === 'critical'; }).length;
   var watchCount = alerts.filter(function(a) { return a.urgency === 'watch';    }).length;
   var healthBg, healthBorder, healthIcon, healthLine;
   if (critCount > 0) {
-    healthBg = '#fff5f5'; healthBorder = '#dc2626'; healthIcon = 'ðŸ”´';
+    healthBg = '#fff5f5'; healthBorder = '#dc2626'; healthIcon = '';
     healthLine = critCount + ' critical issue' + (critCount > 1 ? 's' : '') + ' need' + (critCount === 1 ? 's' : '') + ' your attention now.';
   } else if (watchCount > 0) {
-    healthBg = '#fffbeb'; healthBorder = '#d97706'; healthIcon = 'âš ï¸';
-    healthLine = watchCount + ' thing' + (watchCount > 1 ? 's' : '') + ' to watch â€” check below.';
+    healthBg = '#fffbeb'; healthBorder = '#d97706'; healthIcon = '';
+    healthLine = watchCount + ' thing' + (watchCount > 1 ? 's' : '') + ' to watch  check below.';
   } else {
     var salesV = (s.sales_total || {}).value || 0;
     var txV    = (s.transactions || {}).value || 0;
     var pctV   = (s.sales_total || {}).trend_pct;
     var goodMsg = salesV > 0
-      ? 'â‚±' + Number(salesV).toLocaleString('en-PH', {minimumFractionDigits:0,maximumFractionDigits:0}) + ' in sales' +
+      ? '' + Number(salesV).toLocaleString('en-PH', {minimumFractionDigits:0,maximumFractionDigits:0}) + ' in sales' +
         (txV > 0 ? ' across ' + txV + ' transaction' + (txV !== 1 ? 's' : '') : '') +
-        (pctV !== null && pctV > 0 ? ' â€” up ' + pctV.toFixed(0) + '% from ' + (data.comparison_period || 'previous') + '.' : '.')
+        (pctV !== null && pctV > 0 ? '  up ' + pctV.toFixed(0) + '% from ' + (data.comparison_period || 'previous') + '.' : '.')
       : 'No issues to flag. Keep monitoring.';
-    healthBg = '#f0fdf4'; healthBorder = '#16a34a'; healthIcon = 'âœ…';
+    healthBg = '#f0fdf4'; healthBorder = '#16a34a'; healthIcon = '';
     healthLine = goodMsg;
   }
   var headlineHtml =
@@ -4775,8 +4775,8 @@ function _renderMonitorPage(data, period, fromCache) {
     '<div style="font-size:0.82rem;color:#374151;margin-top:3px;">' + _escAttr(healthLine) + '</div>' +
     '</div>';
 
-  // â”€â”€ Alerts with tap-to-act buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  var urgIco = { good: 'âœ…', watch: 'âš ï¸', critical: 'ðŸ”´', info: 'â„¹ï¸' };
+  //  Alerts with tap-to-act buttons 
+  var urgIco = { good: '', watch: '', critical: '', info: '' };
   var alertActionMap = {
     out_of_stock:     { label: 'Go to Inventory', fn: '_hasModule("inventory") ? renderInventoryMenu() : _showToast("Inventory not enabled", true)' },
     low_stock:        { label: 'Go to Inventory', fn: '_hasModule("inventory") ? renderInventoryMenu() : _showToast("Inventory not enabled", true)' },
@@ -4787,13 +4787,13 @@ function _renderMonitorPage(data, period, fromCache) {
   var alertsHtml = alerts.length === 0
     ? ''
     : '<div style="padding:4px 12px 0;">' +
-      '<div style="font-weight:700;font-size:0.76rem;text-transform:uppercase;letter-spacing:.5px;color:#374151;margin:6px 0 7px;">âš  What Needs Attention</div>' +
+      '<div style="font-weight:700;font-size:0.76rem;text-transform:uppercase;letter-spacing:.5px;color:#374151;margin:6px 0 7px;"> What Needs Attention</div>' +
       alerts.map(function(a) {
         var c   = _monSC(a.urgency || 'watch');
         var act = alertActionMap[a.type];
-        var btn = act ? '<div style="margin-top:8px;"><button onclick="' + act.fn + '" style="background:' + c + ';color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:0.73rem;font-weight:700;cursor:pointer;">' + act.label + ' â†’</button></div>' : '';
+        var btn = act ? '<div style="margin-top:8px;"><button onclick="' + act.fn + '" style="background:' + c + ';color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:0.73rem;font-weight:700;cursor:pointer;">' + act.label + ' </button></div>' : '';
         return '<div style="background:#fff;border-left:3px solid ' + c + ';border-radius:10px;padding:11px 12px;margin-bottom:7px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">' +
-          '<div style="font-weight:700;font-size:0.84rem;color:#111827;">' + (urgIco[a.urgency] || 'âš ï¸') + ' ' + _escAttr(a.title) + '</div>' +
+          '<div style="font-weight:700;font-size:0.84rem;color:#111827;">' + (urgIco[a.urgency] || '') + ' ' + _escAttr(a.title) + '</div>' +
           '<div style="font-size:0.78rem;color:#4b5563;margin-top:3px;">' + _escAttr(a.message) + '</div>' +
           '<div style="font-size:0.72rem;color:#6b7280;margin-top:4px;font-style:italic;">' + _escAttr(a.action) + '</div>' +
           btn +
@@ -4804,9 +4804,9 @@ function _renderMonitorPage(data, period, fromCache) {
   var slT  = sl.trend || {};
   var slP  = sl.top_product || {};
   var slContent =
-    _monRow('Average Sale', sl.avg_sale && sl.avg_sale.value !== null ? _monCur(sl.avg_sale.value) : 'â€”', null, (sl.avg_sale || {}).status || 'no_data') +
-    _monRow('Top-Selling Product', slP.name ? _escAttr(slP.name) : 'â€”', slP.name ? slP.qty + ' units sold' : null, slP.status || 'no_data') +
-    _monRow('Sales Trend', slT.pct !== null && slT.pct !== undefined ? (slT.pct > 0 ? '+' : '') + slT.pct.toFixed(1) + '%' : 'â€”',
+    _monRow('Average Sale', sl.avg_sale && sl.avg_sale.value !== null ? _monCur(sl.avg_sale.value) : '', null, (sl.avg_sale || {}).status || 'no_data') +
+    _monRow('Top-Selling Product', slP.name ? _escAttr(slP.name) : '', slP.name ? slP.qty + ' units sold' : null, slP.status || 'no_data') +
+    _monRow('Sales Trend', slT.pct !== null && slT.pct !== undefined ? (slT.pct > 0 ? '+' : '') + slT.pct.toFixed(1) + '%' : '',
       slT.pct === null || slT.pct === undefined ? 'No prior period data' : (slT.dir === 'up' ? 'Up from previous period' : slT.dir === 'down' ? 'Down from previous period' : 'Same as previous period'),
       slT.status || 'no_data') +
     (sl.no_sales_today ? _monRow('Today\'s Sales', 'None yet', 'No transactions recorded today', 'watch') : '');
@@ -4815,8 +4815,8 @@ function _renderMonitorPage(data, period, fromCache) {
   var exT  = ex.trend        || {};
   var exC  = ex.top_category || {};
   var exContent =
-    _monRow('Top Category', exC.name ? _escAttr(exC.name) : 'â€”', exC.name ? _monCur(exC.total) + ' total' : null, exC.status || 'no_data') +
-    _monRow('Expense Trend', exT.pct !== null && exT.pct !== undefined ? (exT.pct > 0 ? '+' : '') + exT.pct.toFixed(1) + '%' : 'â€”',
+    _monRow('Top Category', exC.name ? _escAttr(exC.name) : '', exC.name ? _monCur(exC.total) + ' total' : null, exC.status || 'no_data') +
+    _monRow('Expense Trend', exT.pct !== null && exT.pct !== undefined ? (exT.pct > 0 ? '+' : '') + exT.pct.toFixed(1) + '%' : '',
       exT.pct === null || exT.pct === undefined ? 'No prior period data' : (exT.dir === 'up' ? 'Higher than previous period' : exT.dir === 'down' ? 'Lower than previous period' : 'Stable'),
       exT.status || 'no_data') +
     (ex.pressure_alert ? _monRow('Pressure Alert', 'Watch', 'Expenses rising faster than sales', 'critical') : '');
@@ -4828,11 +4828,11 @@ function _renderMonitorPage(data, period, fromCache) {
   var prLabel = meta.profit_label || 'Estimated Profit';
   var prContent =
     _monRow(prLabel, _monCur(prEp.value), prEp.is_estimate ? 'Sales minus expenses (estimate)' : null, prEp.status || 'no_data') +
-    _monRow('Profit Margin', prM.value !== null && prM.value !== undefined ? prM.value.toFixed(1) + '%' : 'â€”', null, prM.status || 'no_data') +
-    _monRow('Profit Trend', prT.pct !== null && prT.pct !== undefined ? (prT.pct > 0 ? '+' : '') + prT.pct.toFixed(1) + '%' : 'â€”',
+    _monRow('Profit Margin', prM.value !== null && prM.value !== undefined ? prM.value.toFixed(1) + '%' : '', null, prM.status || 'no_data') +
+    _monRow('Profit Trend', prT.pct !== null && prT.pct !== undefined ? (prT.pct > 0 ? '+' : '') + prT.pct.toFixed(1) + '%' : '',
       prT.pct === null || prT.pct === undefined ? 'No prior period data' : null, prT.status || 'no_data') +
-    (prEp.status === 'critical' ? _monRow('âš  Profit Warning', 'Negative', 'Expenses exceed sales this period', 'critical') :
-     prEp.status === 'watch'    ? _monRow('âš  Profit Warning', 'Near Zero', 'Business is not generating profit', 'watch') : '');
+    (prEp.status === 'critical' ? _monRow(' Profit Warning', 'Negative', 'Expenses exceed sales this period', 'critical') :
+     prEp.status === 'watch'    ? _monRow(' Profit Warning', 'Near Zero', 'Business is not generating profit', 'watch') : '');
 
   // Inventory section
   var invLS = inv.low_stock    || {};
@@ -4842,45 +4842,45 @@ function _renderMonitorPage(data, period, fromCache) {
   var invContent =
     _monRow('Low Stock',    (invLS.value || 0) + ' products', 'At or below reorder level', invLS.status || 'no_data') +
     _monRow('Out of Stock', (invOS.value || 0) + ' products', 'Cannot be sold',            invOS.status || 'no_data') +
-    _monRow('Fast-Moving',  invFM.name ? _escAttr(invFM.name) : 'â€”', invFM.name ? invFM.qty + ' units this period' : null, invFM.status || 'no_data') +
-    _monRow('Slow-Moving',  invSM.name ? _escAttr(invSM.name) : 'â€”', invSM.name ? invSM.qty_sold + ' sold, ' + invSM.stock + ' in stock' : null, invSM.status || 'no_data');
+    _monRow('Fast-Moving',  invFM.name ? _escAttr(invFM.name) : '', invFM.name ? invFM.qty + ' units this period' : null, invFM.status || 'no_data') +
+    _monRow('Slow-Moving',  invSM.name ? _escAttr(invSM.name) : '', invSM.name ? invSM.qty_sold + ' sold, ' + invSM.stock + ' in stock' : null, invSM.status || 'no_data');
 
   // Staff section
   var stTS = st.top_staff    || {};
   var stAC = st.active_count || {};
   var stContent =
-    _monRow('Top Staff',     stTS.name ? _escAttr(stTS.name) : 'â€”', stTS.name ? _monCur(stTS.total) + ' in sales' : 'No sales data', stTS.status || 'no_data') +
+    _monRow('Top Staff',     stTS.name ? _escAttr(stTS.name) : '', stTS.name ? _monCur(stTS.total) + ' in sales' : 'No sales data', stTS.status || 'no_data') +
     _monRow('Active Staff',  (stAC.value || 0) + ' staff', 'Had at least one recorded action this period', stAC.status || 'info');
 
   // System section
   var sysContent =
-    _monRow('Pending Sync', (sys.pending_sync || {}).note || 'â€”', null, 'no_data') +
-    _monRow('Last Sync',    (sys.last_sync    || {}).note || 'â€”', null, 'no_data');
+    _monRow('Pending Sync', (sys.pending_sync || {}).note || '', null, 'no_data') +
+    _monRow('Last Sync',    (sys.last_sync    || {}).note || '', null, 'no_data');
 
   var cacheBar = fromCache
-    ? '<div style="background:#fef3c7;border-left:3px solid #f59e0b;padding:7px 12px;font-size:0.76rem;color:#92400e;">âš  Showing last available monitor data</div>'
+    ? '<div style="background:#fef3c7;border-left:3px solid #f59e0b;padding:7px 12px;font-size:0.76rem;color:#92400e;"> Showing last available monitor data</div>'
     : '';
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">ðŸ“¡ Business Monitors</div>' +
-    '<button class="small-btn" onclick="goHome()">â† Back</button></div>' +
+    '<div class="topbar"><div class="title" style="margin:0;"> Business Monitors</div>' +
+    '<button class="small-btn" onclick="goHome()"> Back</button></div>' +
     cacheBar +
     '<div style="padding:8px 12px 2px;overflow-x:auto;"><div style="display:inline-flex;gap:6px;">' + tabs + '</div></div>' +
     '<div style="padding:0 12px 4px;font-size:0.71rem;color:#9ca3af;">vs ' + _escAttr(data.comparison_period || '') + '</div>' +
     summaryHtml +
     headlineHtml +
     alertsHtml +
-    _monSection('ðŸ“ˆ', 'Sales',          slContent)  +
-    _monSection('ðŸ’¸', 'Expenses',       exContent)  +
-    _monSection('ðŸ’°', 'Profitability',  prContent)  +
-    _monSection('ðŸ“‹', 'Inventory',      invContent) +
-    _monSection('ðŸ‘¥', 'Staff Activity', stContent)  +
-    _monSection('ðŸ”„', 'System / Sync',  sysContent) +
+    _monSection('', 'Sales',          slContent)  +
+    _monSection('', 'Expenses',       exContent)  +
+    _monSection('', 'Profitability',  prContent)  +
+    _monSection('', 'Inventory',      invContent) +
+    _monSection('', 'Staff Activity', stContent)  +
+    _monSection('', 'System / Sync',  sysContent) +
     '<div style="height:20px;"></div></div>';
 }
 
-// â”€â”€ Support chat (store â†” admin) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Support chat (store  admin) 
 
 var _supportPollTimer = null;
 
@@ -4888,15 +4888,15 @@ async function renderSupport() {
   var isOwner = state.session && state.session.user && (state.session.user.Role || '').toUpperCase() === 'OWNER';
   if (!isOwner) {
     document.getElementById('app').innerHTML =
-      '<div class="screen"><div class="topbar"><div class="title" style="margin:0;">ðŸ“ž Help</div><button class="small-btn" onclick="goHome()">â† Home</button></div>' +
+      '<div class="screen"><div class="topbar"><div class="title" style="margin:0;"> Help</div><button class="small-btn" onclick="goHome()"> Home</button></div>' +
       '<div class="card" style="text-align:center;padding:24px;">' +
-      '<div style="font-size:2rem;margin-bottom:12px;">ðŸ“‹</div>' +
+      '<div style="font-size:2rem;margin-bottom:12px;"></div>' +
       '<div style="font-weight:700;font-size:15px;margin-bottom:8px;">Need Help?</div>' +
       '<div style="font-size:13px;color:#6b7280;">Please contact your store owner for assistance. Only the store owner can reach developer support.</div>' +
       '</div></div>';
     return;
   }
-  showLoading('Loading support messagesâ€¦');
+  showLoading('Loading support messages');
   var msgs = [];
   try { msgs = await API.call('getSupportMessages'); } catch(e) {}
   _renderSupportScreen(msgs);
@@ -4911,17 +4911,17 @@ function _renderSupportScreen(msgs) {
         'border-radius:' + (isAdmin ? '4px 14px 14px 14px' : '14px 4px 14px 14px') + ';' +
         'padding:10px 14px;font-size:14px;">' + _escHtml(m.Message) + '</div>' +
       '<div style="font-size:10px;color:#9ca3af;margin-top:2px;">' +
-        (isAdmin ? 'ðŸª HubSuite Admin' : 'ðŸ‘¤ ' + _escHtml(m.From_Name || 'You')) +
-        ' Â· ' + time + '</div></div>';
+        (isAdmin ? ' HubSuite Admin' : ' ' + _escHtml(m.From_Name || 'You')) +
+        '  ' + time + '</div></div>';
   }).join('');
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">ðŸ“ž Support Chat</div>' +
-    '<button class="small-btn" onclick="_stopSupportPoll();goHome();">â† Back</button></div>' +
+    '<div class="topbar"><div class="title" style="margin:0;"> Support Chat</div>' +
+    '<button class="small-btn" onclick="_stopSupportPoll();goHome();"> Back</button></div>' +
 
     '<div style="background:#fff;border-radius:0;padding:12px;margin-bottom:0;">' +
-    '<div style="font-size:12px;color:#6b7280;text-align:center;margin-bottom:8px;">Chat with HubSuite Admin Â· ' +
+    '<div style="font-size:12px;color:#6b7280;text-align:center;margin-bottom:8px;">Chat with HubSuite Admin  ' +
     '<strong>09163561251</strong> (GCash/Viber)</div>' +
     '</div>' +
 
@@ -4931,10 +4931,10 @@ function _renderSupportScreen(msgs) {
 
     '<div style="position:sticky;bottom:0;background:#fff;border-top:1px solid #e5e7eb;padding:12px;">' +
     '<div style="display:flex;gap:8px;">' +
-    '<textarea id="support-input" rows="2" placeholder="Type your messageâ€¦" ' +
+    '<textarea id="support-input" rows="2" placeholder="Type your message" ' +
       'style="flex:1;padding:10px;border:1px solid #e5e7eb;border-radius:10px;font-size:14px;resize:none;"></textarea>' +
     '<button onclick="submitSupportMessage()" ' +
-      'style="padding:10px 16px;background:#1e3a5f;color:#fff;border:none;border-radius:10px;font-size:20px;cursor:pointer;">âž¤</button>' +
+      'style="padding:10px 16px;background:#1e3a5f;color:#fff;border:none;border-radius:10px;font-size:20px;cursor:pointer;"></button>' +
     '</div></div></div>';
 
   // Scroll to bottom
@@ -4959,8 +4959,8 @@ function _renderSupportScreen(msgs) {
             'border-radius:' + (isAdmin ? '4px 14px 14px 14px' : '14px 4px 14px 14px') + ';' +
             'padding:10px 14px;font-size:14px;">' + _escHtml(m.Message) + '</div>' +
           '<div style="font-size:10px;color:#9ca3af;margin-top:2px;">' +
-            (isAdmin ? 'ðŸª HubSuite Admin' : 'ðŸ‘¤ ' + _escHtml(m.From_Name || 'You')) +
-            ' Â· ' + time + '</div></div>';
+            (isAdmin ? ' HubSuite Admin' : ' ' + _escHtml(m.From_Name || 'You')) +
+            '  ' + time + '</div></div>';
       }).join('');
       el.innerHTML = newBubbles || el.innerHTML;
       el.scrollTop = el.scrollHeight;
@@ -4992,12 +4992,12 @@ function _escHtml(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// â”€â”€ Subscription / Store Key screens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Subscription / Store Key screens 
 
 function showNoStoreKey() {
   document.getElementById('app').innerHTML =
     '<div class="screen"><div class="card" style="text-align:center;padding:32px 20px;">' +
-    '<div style="font-size:48px;margin-bottom:12px;">ðŸª</div>' +
+    '<div style="font-size:48px;margin-bottom:12px;"></div>' +
     '<h2 style="margin:0 0 8px;">HubSuite</h2>' +
     '<div class="muted" style="margin-bottom:24px;">This app is not linked to any store yet.</div>' +
     '<div class="subtitle" style="margin-bottom:8px;">Enter your Store Key</div>' +
@@ -5025,7 +5025,7 @@ function showSubscriptionExpired(paymentInfo) {
 
   document.getElementById('app').innerHTML =
     '<div class="screen"><div class="card" style="text-align:center;padding:32px 20px;">' +
-    '<div style="font-size:48px;margin-bottom:8px;">ðŸ”’</div>' +
+    '<div style="font-size:48px;margin-bottom:8px;"></div>' +
     '<h2 style="margin:0 0 4px;color:#dc2626;">Subscription Expired</h2>' +
     '<div class="muted" style="margin-bottom:20px;">Your store subscription needs attention.<br>If this app is helpful to you, please consider donating for its maintenance.</div>' +
 
@@ -5038,14 +5038,14 @@ function showSubscriptionExpired(paymentInfo) {
 
     '<div class="muted" style="font-size:12px;margin-bottom:16px;">After donating, you may send your GCash reference number to <strong>' + gcash + '</strong> if activation or support is needed.</div>' +
 
-    '<button class="btn btn-secondary" onclick="window.location.reload()">I already paid â€” Refresh</button>' +
+    '<button class="btn btn-secondary" onclick="window.location.reload()">I already paid  Refresh</button>' +
     '</div></div>';
 }
 
-// â”€â”€ Chat â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Chat 
 
 async function renderChat() {
-  showLoading('Loading chatâ€¦');
+  showLoading('Loading chat');
   try {
     var staff    = await API.call('getStaffChatMessages');
     var customer = await API.call('getCustomerChatMessages');
@@ -5068,12 +5068,12 @@ function renderChatScreen(staffMsgs, customerMsgs) {
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title">ðŸ’¬ Chat</div><button class="small-btn" onclick="goHome()">Back</button></div>' +
+    '<div class="topbar"><div class="title"> Chat</div><button class="small-btn" onclick="goHome()">Back</button></div>' +
     '<div class="card"><div class="subtitle">Staff Chat</div>' + staffHtml +
-    '<div class="field" style="margin-top:12px;"><input id="staff-msg" placeholder="Message staffâ€¦">' +
+    '<div class="field" style="margin-top:12px;"><input id="staff-msg" placeholder="Message staff">' +
     '<button class="btn btn-primary" style="margin-top:8px;" onclick="sendStaffMsg()">Send</button></div></div>' +
     '<div class="card"><div class="subtitle">Customer Chat</div>' + custHtml +
-    '<div class="field" style="margin-top:12px;"><input id="cust-msg" placeholder="Message customerâ€¦">' +
+    '<div class="field" style="margin-top:12px;"><input id="cust-msg" placeholder="Message customer">' +
     '<button class="btn btn-primary" style="margin-top:8px;" onclick="sendCustMsg()">Send</button></div></div>' +
     '</div>';
 }
@@ -5092,7 +5092,7 @@ async function sendCustMsg() {
   catch(e) { _showToast('Error: ' + e.message, true); }
 }
 
-// â”€â”€ Barcode Scanner (inline overlay, no popup window) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Barcode Scanner (inline overlay, no popup window) 
 
 var _scanMode      = null;
 var _barcodeStream = null;
@@ -5105,7 +5105,7 @@ function openScannerModal(mode) {
   var overlay = document.getElementById('barcode-overlay');
   overlay.style.display = 'flex';
   document.getElementById('scan-manual-input').value = '';
-  document.getElementById('barcode-status').textContent = 'Point camera at barcodeâ€¦';
+  document.getElementById('barcode-status').textContent = 'Point camera at barcode';
   _startBarcodeCamera();
 }
 
@@ -5131,11 +5131,11 @@ async function _startBarcodeCamera() {
     });
     video.srcObject = _barcodeStream;
   } catch(e) {
-    status.textContent = 'âš  Camera not accessible. Type barcode below.';
+    status.textContent = ' Camera not accessible. Type barcode below.';
     return;
   }
 
-  // Native BarcodeDetector (Chrome Android 83+) â€” fastest
+  // Native BarcodeDetector (Chrome Android 83+)  fastest
   if (typeof BarcodeDetector !== 'undefined') {
     var detector = new BarcodeDetector();
     _barcodeTimer = setInterval(async function() {
@@ -5144,7 +5144,7 @@ async function _startBarcodeCamera() {
         var results = await detector.detect(video);
         if (results.length > 0) {
           _barcodeSent = true;
-          status.textContent = 'âœ… ' + results[0].rawValue;
+          status.textContent = ' ' + results[0].rawValue;
           clearInterval(_barcodeTimer); _barcodeTimer = null;
           setTimeout(function() {
             closeScannerModal();
@@ -5157,7 +5157,7 @@ async function _startBarcodeCamera() {
   }
 
   // Fallback: load html5-qrcode from CDN
-  status.textContent = 'Loading scannerâ€¦';
+  status.textContent = 'Loading scanner';
   if (typeof Html5Qrcode === 'undefined') {
     await new Promise(function(res, rej) {
       var s = document.createElement('script');
@@ -5166,20 +5166,20 @@ async function _startBarcodeCamera() {
       document.head.appendChild(s);
     });
   }
-  // Stop our own camera stream first â€” html5-qrcode manages its own
+  // Stop our own camera stream first  html5-qrcode manages its own
   _stopBarcodeCamera();
   var scannerDiv = document.getElementById('barcode-reader-div');
   scannerDiv.innerHTML = '';
   var qr = new Html5Qrcode('barcode-reader-div');
   _barcodeTimer = qr; // store so we can stop it
-  status.textContent = 'Point camera at barcodeâ€¦';
+  status.textContent = 'Point camera at barcode';
   qr.start(
     { facingMode: 'environment' },
     { fps: 12, qrbox: { width: 260, height: 100 } },
     function(decoded) {
       if (_barcodeSent) return;
       _barcodeSent = true;
-      status.textContent = 'âœ… ' + decoded;
+      status.textContent = ' ' + decoded;
       qr.stop().catch(function(){}).finally(function() {
         closeScannerModal();
         _onBarcodeReceived(decoded);
@@ -5187,7 +5187,7 @@ async function _startBarcodeCamera() {
     },
     function() {}
   ).catch(function(e) {
-    status.textContent = 'âš  Camera error. Type barcode below.';
+    status.textContent = ' Camera error. Type barcode below.';
   });
 }
 
@@ -5245,12 +5245,12 @@ function _playBeep() {
   } catch(e) {}
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// SUPPLIERS â”€â”€ Task 10
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
+// SUPPLIERS  Task 10
+// 
 
 async function renderSuppliers(msg) {
-  showLoading('Loading suppliersâ€¦');
+  showLoading('Loading suppliers');
   try {
     var suppliers = await API.call('getSuppliers', {});
     _renderSuppliersUI(suppliers, null, msg);
@@ -5261,14 +5261,14 @@ function _renderSuppliersUI(suppliers, error, msg) {
   var rows = suppliers.length ? suppliers.map(function(s) {
     return '<div class="card" style="margin-bottom:8px;cursor:pointer;" onclick="renderSupplierDetail(\'' + s.supplier_id + '\')">' +
       '<div style="font-weight:bold;">' + _escHtml(s.name) + '</div>' +
-      '<div class="muted" style="font-size:12px;">' + (s.contact_person ? s.contact_person + ' Â· ' : '') + (s.phone || '') + '</div>' +
+      '<div class="muted" style="font-size:12px;">' + (s.contact_person ? s.contact_person + '  ' : '') + (s.phone || '') + '</div>' +
       '<div class="muted" style="font-size:11px;margin-top:4px;">Payment: ' + (s.payment_terms || 'cash') + '</div>' +
       '</div>';
   }).join('') : '<div class="muted" style="padding:8px;">No suppliers yet.</div>';
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">ðŸ­ Suppliers</div><button class="small-btn" onclick="goHome()">â† Home</button></div>' +
+    '<div class="topbar"><div class="title" style="margin:0;"> Suppliers</div><button class="small-btn" onclick="goHome()"> Home</button></div>' +
     (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
     (error ? '<div class="message message-error">' + error + '</div>' : '') +
     rows +
@@ -5277,21 +5277,21 @@ function _renderSuppliersUI(suppliers, error, msg) {
 }
 
 async function renderSupplierDetail(supplierId) {
-  showLoading('Loading supplierâ€¦');
+  showLoading('Loading supplier');
   try {
     var s = await API.call('getSupplierById', { supplierId: supplierId });
     var posHtml = s.recentOrders && s.recentOrders.length
       ? s.recentOrders.map(function(po) {
           return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f3f4f6;font-size:13px;" onclick="renderPODetail(\'' + po.po_id + '\')" style="cursor:pointer;">' +
             '<span>' + po.po_number + ' <span style="color:#6b7280;">(' + po.status + ')</span></span>' +
-            '<span>â‚±' + Number(po.total_amount||0).toLocaleString('en-PH', {minimumFractionDigits:2}) + '</span>' +
+            '<span>' + Number(po.total_amount||0).toLocaleString('en-PH', {minimumFractionDigits:2}) + '</span>' +
             '</div>';
         }).join('')
       : '<div class="muted" style="font-size:12px;">No orders yet.</div>';
 
     document.getElementById('app').innerHTML =
       '<div class="screen">' +
-      '<div class="topbar"><div class="title" style="margin:0;">' + _escHtml(s.name) + '</div><button class="small-btn" onclick="renderSuppliers()">â† Back</button></div>' +
+      '<div class="topbar"><div class="title" style="margin:0;">' + _escHtml(s.name) + '</div><button class="small-btn" onclick="renderSuppliers()"> Back</button></div>' +
       '<div class="card">' +
       (s.contact_person ? '<div><span class="muted">Contact:</span> ' + _escHtml(s.contact_person) + '</div>' : '') +
       (s.phone ? '<div><span class="muted">Phone:</span> ' + _escHtml(s.phone) + '</div>' : '') +
@@ -5303,8 +5303,8 @@ async function renderSupplierDetail(supplierId) {
       '<div class="card"><div class="section-title" style="margin-bottom:8px;">Recent Purchase Orders</div>' + posHtml + '</div>' +
       (_hasPermission('suppliers', 'edit') ?
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">' +
-        '<button class="btn btn-secondary" onclick="renderEditSupplierForm(\'' + supplierId + '\')">âœï¸ Edit</button>' +
-        '<button class="btn btn-secondary" style="background:#fee2e2;color:#dc2626;" onclick="confirmDeactivateSupplier(\'' + supplierId + '\')">ðŸ—‘ Deactivate</button>' +
+        '<button class="btn btn-secondary" onclick="renderEditSupplierForm(\'' + supplierId + '\')"> Edit</button>' +
+        '<button class="btn btn-secondary" style="background:#fee2e2;color:#dc2626;" onclick="confirmDeactivateSupplier(\'' + supplierId + '\')"> Deactivate</button>' +
         '</div>' : '') +
       (_hasPermission('purchase_orders', 'create') ? '<button class="btn btn-primary" style="margin-top:8px;" onclick="renderCreatePO(\'' + supplierId + '\')">+ New Purchase Order</button>' : '') +
       '</div>';
@@ -5314,7 +5314,7 @@ async function renderSupplierDetail(supplierId) {
 function renderAddSupplierForm(msg) {
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">Add Supplier</div><button class="small-btn" onclick="renderSuppliers()">â† Back</button></div>' +
+    '<div class="topbar"><div class="title" style="margin:0;">Add Supplier</div><button class="small-btn" onclick="renderSuppliers()"> Back</button></div>' +
     (msg ? '<div class="message message-error">' + msg + '</div>' : '') +
     '<div class="card">' +
     '<div class="field"><label>Supplier Name *</label><input id="sup-name" placeholder="e.g. ABC Distributors"></div>' +
@@ -5331,7 +5331,7 @@ function renderAddSupplierForm(msg) {
 async function submitAddSupplier() {
   var name = (document.getElementById('sup-name').value || '').trim();
   if (!name) { _showToast('Supplier name is required', true); return; }
-  showLoading('Savingâ€¦');
+  showLoading('Saving');
   try {
     await API.call('createSupplier', {
       name: name,
@@ -5342,17 +5342,17 @@ async function submitAddSupplier() {
       paymentTerms: document.getElementById('sup-terms').value || 'cash',
       notes: document.getElementById('sup-notes').value || ''
     });
-    renderSuppliers('âœ“ Supplier added');
+    renderSuppliers(' Supplier added');
   } catch(e) { renderAddSupplierForm(e.message); }
 }
 
 async function renderEditSupplierForm(supplierId) {
-  showLoading('Loadingâ€¦');
+  showLoading('Loading');
   try {
     var s = await API.call('getSupplierById', { supplierId: supplierId });
     document.getElementById('app').innerHTML =
       '<div class="screen">' +
-      '<div class="topbar"><div class="title" style="margin:0;">Edit Supplier</div><button class="small-btn" onclick="renderSupplierDetail(\'' + supplierId + '\')">â† Back</button></div>' +
+      '<div class="topbar"><div class="title" style="margin:0;">Edit Supplier</div><button class="small-btn" onclick="renderSupplierDetail(\'' + supplierId + '\')"> Back</button></div>' +
       '<div class="card">' +
       '<div class="field"><label>Supplier Name *</label><input id="sup-name" value="' + _escAttr(s.name) + '"></div>' +
       '<div class="field"><label>Contact Person</label><input id="sup-contact" value="' + _escAttr(s.contact_person) + '"></div>' +
@@ -5371,7 +5371,7 @@ async function renderEditSupplierForm(supplierId) {
 async function submitEditSupplier(supplierId) {
   var name = (document.getElementById('sup-name').value || '').trim();
   if (!name) { _showToast('Supplier name is required', true); return; }
-  showLoading('Savingâ€¦');
+  showLoading('Saving');
   try {
     await API.call('updateSupplier', {
       supplierId: supplierId,
@@ -5384,7 +5384,7 @@ async function submitEditSupplier(supplierId) {
       notes: document.getElementById('sup-notes').value || ''
     });
     renderSupplierDetail(supplierId);
-    _showToast('âœ“ Supplier updated');
+    _showToast(' Supplier updated');
   } catch(e) { _showToast(e.message, true); }
 }
 
@@ -5392,19 +5392,19 @@ async function confirmDeactivateSupplier(supplierId) {
   if (!confirm('Deactivate this supplier? This will hide them from the list.')) return;
   try {
     await API.call('deactivateSupplier', { supplierId: supplierId });
-    renderSuppliers('âœ“ Supplier deactivated');
+    renderSuppliers(' Supplier deactivated');
   } catch(e) { _showToast(e.message, true); }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// PURCHASE ORDERS â”€â”€ Task 11
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
+// PURCHASE ORDERS  Task 11
+// 
 
 var PO_STATUS_LABELS = { draft:'Draft', submitted:'Submitted', approved:'Approved', partially_received:'Partial', received:'Received', cancelled:'Cancelled' };
 var PO_STATUS_COLORS = { draft:'#6b7280', submitted:'#d97706', approved:'#2563eb', partially_received:'#7c3aed', received:'#16a34a', cancelled:'#dc2626' };
 
 async function renderPurchaseOrders(msg) {
-  showLoading('Loading purchase ordersâ€¦');
+  showLoading('Loading purchase orders');
   try {
     var pos = await API.call('getPurchaseOrders', {});
     _renderPOListUI(pos, null, msg);
@@ -5417,15 +5417,15 @@ function _renderPOListUI(pos, error, msg) {
     return '<div class="card" style="margin-bottom:8px;cursor:pointer;" onclick="renderPODetail(\'' + po.po_id + '\')">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;">' +
       '<div><div style="font-weight:bold;">' + po.po_number + '</div>' +
-      '<div class="muted" style="font-size:12px;">' + _escHtml(po.supplier_name || 'â€”') + ' Â· ' + (po.order_date || '') + '</div></div>' +
+      '<div class="muted" style="font-size:12px;">' + _escHtml(po.supplier_name || '') + '  ' + (po.order_date || '') + '</div></div>' +
       '<div style="text-align:right;"><div style="font-size:12px;color:' + color + ';font-weight:bold;">' + (PO_STATUS_LABELS[po.status] || po.status) + '</div>' +
-      '<div style="font-size:13px;font-weight:bold;">â‚±' + Number(po.total_amount||0).toLocaleString('en-PH',{minimumFractionDigits:2}) + '</div></div>' +
+      '<div style="font-size:13px;font-weight:bold;">' + Number(po.total_amount||0).toLocaleString('en-PH',{minimumFractionDigits:2}) + '</div></div>' +
       '</div></div>';
   }).join('') : '<div class="muted" style="padding:8px;">No purchase orders yet.</div>';
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">ðŸ“‹ Purchase Orders</div><button class="small-btn" onclick="goHome()">â† Home</button></div>' +
+    '<div class="topbar"><div class="title" style="margin:0;"> Purchase Orders</div><button class="small-btn" onclick="goHome()"> Home</button></div>' +
     (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
     (error ? '<div class="message message-error">' + error + '</div>' : '') +
     rows +
@@ -5434,7 +5434,7 @@ function _renderPOListUI(pos, error, msg) {
 }
 
 async function renderPODetail(poId) {
-  showLoading('Loading POâ€¦');
+  showLoading('Loading PO');
   try {
     var po = await API.call('getPurchaseOrderById', { poId: poId });
     var color = PO_STATUS_COLORS[po.status] || '#6b7280';
@@ -5443,33 +5443,33 @@ async function renderPODetail(poId) {
       return '<div style="padding:8px 0;border-bottom:1px solid #f3f4f6;">' +
         '<div style="display:flex;justify-content:space-between;">' +
         '<span style="font-size:13px;font-weight:bold;">' + _escHtml(item.product_name||item.product_id) + '</span>' +
-        '<span style="font-size:13px;">â‚±' + Number(item.unit_cost||0).toFixed(2) + ' Ã— ' + item.quantity_ordered + '</span>' +
+        '<span style="font-size:13px;">' + Number(item.unit_cost||0).toFixed(2) + '  ' + item.quantity_ordered + '</span>' +
         '</div>' +
         '<div class="muted" style="font-size:11px;">Received: ' + item.quantity_received + '/' + item.quantity_ordered +
-        (remaining > 0 ? ' <span style="color:#d97706;">(' + remaining + ' pending)</span>' : ' <span style="color:#16a34a;">âœ“</span>') + '</div>' +
+        (remaining > 0 ? ' <span style="color:#d97706;">(' + remaining + ' pending)</span>' : ' <span style="color:#16a34a;"></span>') + '</div>' +
         '</div>';
     }).join('');
 
     var actions = '';
     if (po.status === 'draft' && _hasPermission('purchase_orders', 'submit'))
-      actions += '<button class="btn btn-secondary" onclick="doSubmitPO(\'' + poId + '\')">ðŸ“¤ Submit for Approval</button>';
+      actions += '<button class="btn btn-secondary" onclick="doSubmitPO(\'' + poId + '\')"> Submit for Approval</button>';
     if (['draft','submitted'].includes(po.status) && _hasPermission('purchase_orders', 'approve'))
-      actions += '<button class="btn btn-primary" style="margin-top:8px;" onclick="doApprovePO(\'' + poId + '\')">âœ… Approve PO</button>';
+      actions += '<button class="btn btn-primary" style="margin-top:8px;" onclick="doApprovePO(\'' + poId + '\')"> Approve PO</button>';
     if (['approved','partially_received'].includes(po.status) && _hasPermission('stock_receiving', 'create'))
-      actions += '<button class="btn btn-primary" style="margin-top:8px;background:#7c3aed;" onclick="renderReceiveForm(\'' + poId + '\')">ðŸ“¦ Receive Stock</button>';
+      actions += '<button class="btn btn-primary" style="margin-top:8px;background:#7c3aed;" onclick="renderReceiveForm(\'' + poId + '\')"> Receive Stock</button>';
     if (!['received','cancelled'].includes(po.status) && _hasPermission('purchase_orders', 'cancel'))
-      actions += '<button class="btn btn-secondary" style="margin-top:8px;background:#fee2e2;color:#dc2626;" onclick="doCancelPO(\'' + poId + '\')">âœ• Cancel PO</button>';
+      actions += '<button class="btn btn-secondary" style="margin-top:8px;background:#fee2e2;color:#dc2626;" onclick="doCancelPO(\'' + poId + '\')"> Cancel PO</button>';
 
     document.getElementById('app').innerHTML =
       '<div class="screen">' +
-      '<div class="topbar"><div class="title" style="margin:0;">' + po.po_number + '</div><button class="small-btn" onclick="renderPurchaseOrders()">â† Back</button></div>' +
+      '<div class="topbar"><div class="title" style="margin:0;">' + po.po_number + '</div><button class="small-btn" onclick="renderPurchaseOrders()"> Back</button></div>' +
       '<div class="card">' +
       '<div style="display:flex;justify-content:space-between;margin-bottom:8px;">' +
       '<span class="muted">Status</span><span style="font-weight:bold;color:' + color + ';">' + (PO_STATUS_LABELS[po.status]||po.status) + '</span></div>' +
-      '<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span class="muted">Supplier</span><span>' + _escHtml(po.supplier_name||'â€”') + '</span></div>' +
-      '<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span class="muted">Order date</span><span>' + (po.order_date||'â€”') + '</span></div>' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span class="muted">Supplier</span><span>' + _escHtml(po.supplier_name||'') + '</span></div>' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span class="muted">Order date</span><span>' + (po.order_date||'') + '</span></div>' +
       (po.expected_delivery ? '<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span class="muted">Expected</span><span>' + po.expected_delivery + '</span></div>' : '') +
-      '<div style="display:flex;justify-content:space-between;"><span class="muted">Total</span><span style="font-weight:bold;">â‚±' + Number(po.total_amount||0).toLocaleString('en-PH',{minimumFractionDigits:2}) + '</span></div>' +
+      '<div style="display:flex;justify-content:space-between;"><span class="muted">Total</span><span style="font-weight:bold;">' + Number(po.total_amount||0).toLocaleString('en-PH',{minimumFractionDigits:2}) + '</span></div>' +
       (po.notes ? '<div style="margin-top:8px;font-size:12px;color:#6b7280;">' + _escHtml(po.notes) + '</div>' : '') +
       '</div>' +
       '<div class="card"><div class="section-title" style="margin-bottom:8px;">Items (' + (po.items||[]).length + ')</div>' + itemsHtml + '</div>' +
@@ -5479,7 +5479,7 @@ async function renderPODetail(poId) {
 }
 
 async function renderCreatePO(defaultSupplierId) {
-  showLoading('Loading suppliers & productsâ€¦');
+  showLoading('Loading suppliers & products');
   try {
     var [suppliers, products] = await Promise.all([API.call('getSuppliers', {}), API.call('getProducts')]);
     if (!suppliers.length) { _showToast('Add a supplier first', true); renderSuppliers(); return; }
@@ -5491,13 +5491,13 @@ function _renderCreatePOForm(suppliers, products, defaultSupplierId) {
   var supOptions = suppliers.map(function(s) {
     return '<option value="' + s.supplier_id + '"' + (s.supplier_id === defaultSupplierId ? ' selected' : '') + '>' + _escHtml(s.name) + '</option>';
   }).join('');
-  var prodOptions = '<option value="">â€” Select product â€”</option>' + products.map(function(p) {
+  var prodOptions = '<option value=""> Select product </option>' + products.map(function(p) {
     return '<option value="' + p.Product_ID + '">' + _escHtml(p.Product_Name) + (p.Barcode ? ' (' + p.Barcode + ')' : '') + '</option>';
   }).join('');
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">New Purchase Order</div><button class="small-btn" onclick="renderPurchaseOrders()">â† Back</button></div>' +
+    '<div class="topbar"><div class="title" style="margin:0;">New Purchase Order</div><button class="small-btn" onclick="renderPurchaseOrders()"> Back</button></div>' +
     '<div class="card">' +
     '<div class="field"><label>Supplier *</label><select id="po-supplier">' + supOptions + '</select></div>' +
     '<div class="field"><label>Order Date</label><input id="po-date" type="date" value="' + _todayInput() + '"></div>' +
@@ -5536,8 +5536,8 @@ function _renderPOItemsList() {
   if (!container) return;
   container.innerHTML = (window._poItems||[]).map(function(item, idx) {
     return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f3f4f6;">' +
-      '<div style="flex:1;font-size:13px;">' + _escHtml(item.productName) + '<br><span class="muted">' + item.qty + ' Ã— â‚±' + Number(item.unitCost).toFixed(2) + '</span></div>' +
-      '<button onclick="removePOItem(' + idx + ')" style="border:none;background:none;color:#dc2626;font-size:16px;cursor:pointer;">âœ•</button>' +
+      '<div style="flex:1;font-size:13px;">' + _escHtml(item.productName) + '<br><span class="muted">' + item.qty + '  ' + Number(item.unitCost).toFixed(2) + '</span></div>' +
+      '<button onclick="removePOItem(' + idx + ')" style="border:none;background:none;color:#dc2626;font-size:16px;cursor:pointer;"></button>' +
       '</div>';
   }).join('');
 }
@@ -5548,7 +5548,7 @@ async function submitCreatePO() {
   var supplierId = document.getElementById('po-supplier').value;
   if (!supplierId) { _showToast('Select a supplier', true); return; }
   if (!window._poItems || !window._poItems.length) { _showToast('Add at least one item', true); return; }
-  showLoading('Creating POâ€¦');
+  showLoading('Creating PO');
   try {
     var result = await API.call('createPurchaseOrder', {
       supplierId: supplierId,
@@ -5559,33 +5559,33 @@ async function submitCreatePO() {
     });
     window._poItems = [];
     renderPODetail(result.poId);
-    _showToast('âœ“ PO ' + result.poNumber + ' created');
+    _showToast(' PO ' + result.poNumber + ' created');
   } catch(e) { _showToast(e.message, true); showLoading(''); renderPurchaseOrders(); }
 }
 
 async function doSubmitPO(poId) {
-  showLoading('Submittingâ€¦');
-  try { await API.call('submitPurchaseOrder', { poId: poId }); renderPODetail(poId); _showToast('âœ“ PO submitted'); }
+  showLoading('Submitting');
+  try { await API.call('submitPurchaseOrder', { poId: poId }); renderPODetail(poId); _showToast(' PO submitted'); }
   catch(e) { _showToast(e.message, true); renderPODetail(poId); }
 }
 async function doApprovePO(poId) {
-  showLoading('Approvingâ€¦');
-  try { await API.call('approvePurchaseOrder', { poId: poId }); renderPODetail(poId); _showToast('âœ“ PO approved'); }
+  showLoading('Approving');
+  try { await API.call('approvePurchaseOrder', { poId: poId }); renderPODetail(poId); _showToast(' PO approved'); }
   catch(e) { _showToast(e.message, true); renderPODetail(poId); }
 }
 async function doCancelPO(poId) {
   if (!confirm('Cancel this purchase order?')) return;
-  showLoading('Cancellingâ€¦');
-  try { await API.call('cancelPurchaseOrder', { poId: poId }); renderPurchaseOrders('âœ“ PO cancelled'); }
+  showLoading('Cancelling');
+  try { await API.call('cancelPurchaseOrder', { poId: poId }); renderPurchaseOrders(' PO cancelled'); }
   catch(e) { _showToast(e.message, true); renderPODetail(poId); }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// STOCK RECEIVING â”€â”€ Task 12
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
+// STOCK RECEIVING  Task 12
+// 
 
 async function renderReceiveForm(poId) {
-  showLoading('Loading POâ€¦');
+  showLoading('Loading PO');
   try {
     var po = await API.call('getPurchaseOrderById', { poId: poId });
     var pendingItems = (po.items||[]).filter(function(i) { return Number(i.quantity_ordered) > Number(i.quantity_received); });
@@ -5595,7 +5595,7 @@ async function renderReceiveForm(poId) {
       var pending = Number(item.quantity_ordered) - Number(item.quantity_received);
       return '<div class="card" style="margin-bottom:8px;">' +
         '<div style="font-weight:bold;font-size:13px;">' + _escHtml(item.product_name||item.product_id) + '</div>' +
-        '<div class="muted" style="font-size:11px;">Ordered: ' + item.quantity_ordered + ' Â· Previously received: ' + item.quantity_received + ' Â· Pending: ' + pending + '</div>' +
+        '<div class="muted" style="font-size:11px;">Ordered: ' + item.quantity_ordered + '  Previously received: ' + item.quantity_received + '  Pending: ' + pending + '</div>' +
         '<input type="hidden" id="recv-poi-' + idx + '" value="' + item.id + '">' +
         '<input type="hidden" id="recv-pid-' + idx + '" value="' + item.product_id + '">' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">' +
@@ -5606,15 +5606,15 @@ async function renderReceiveForm(poId) {
 
     document.getElementById('app').innerHTML =
       '<div class="screen">' +
-      '<div class="topbar"><div class="title" style="margin:0;">ðŸ“¦ Receive Stock</div><button class="small-btn" onclick="renderPODetail(\'' + poId + '\')">â† Back</button></div>' +
-      '<div class="card"><div class="muted" style="font-size:12px;">PO: ' + po.po_number + ' Â· Supplier: ' + _escHtml(po.supplier_name||'â€”') + '</div></div>' +
+      '<div class="topbar"><div class="title" style="margin:0;"> Receive Stock</div><button class="small-btn" onclick="renderPODetail(\'' + poId + '\')"> Back</button></div>' +
+      '<div class="card"><div class="muted" style="font-size:12px;">PO: ' + po.po_number + '  Supplier: ' + _escHtml(po.supplier_name||'') + '</div></div>' +
       itemInputs +
       '<div class="card">' +
       '<div class="field"><label>Receipt Date</label><input id="recv-date" type="date" value="' + _todayInput() + '"></div>' +
       '<div class="field"><label>Notes</label><input id="recv-notes" placeholder="Optional notes"></div>' +
       '<div class="field"><label>Discrepancy Notes</label><input id="recv-disc" placeholder="Any discrepancies found?"></div>' +
       '</div>' +
-      '<button class="btn btn-primary" onclick="submitReceiveStock(\'' + poId + '\',' + pendingItems.length + ')">âœ“ Confirm Receipt</button>' +
+      '<button class="btn btn-primary" onclick="submitReceiveStock(\'' + poId + '\',' + pendingItems.length + ')"> Confirm Receipt</button>' +
       '</div>';
   } catch(e) { _showToast(e.message, true); renderPurchaseOrders(); }
 }
@@ -5633,7 +5633,7 @@ async function submitReceiveStock(poId, count) {
     }
   }
   if (!items.length) { _showToast('Enter at least one received quantity', true); return; }
-  showLoading('Recording receiptâ€¦');
+  showLoading('Recording receipt');
   try {
     var result = await API.call('receiveStock', {
       poId: poId,
@@ -5643,19 +5643,19 @@ async function submitReceiveStock(poId, count) {
       items: items
     });
     renderPODetail(poId);
-    _showToast('âœ“ Stock received â€” ' + result.receiptNumber);
+    _showToast(' Stock received  ' + result.receiptNumber);
   } catch(e) { _showToast(e.message, true); }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// BRANCH TRANSFERS â”€â”€ Task 14
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
+// BRANCH TRANSFERS  Task 14
+// 
 
 var BT_STATUS_LABELS = { draft:'Draft', pending_approval:'Pending Approval', approved:'Approved', in_transit:'In Transit', received:'Received', partially_received:'Partial', cancelled:'Cancelled' };
 var BT_STATUS_COLORS = { draft:'#6b7280', pending_approval:'#d97706', approved:'#2563eb', in_transit:'#7c3aed', received:'#16a34a', partially_received:'#16a34a', cancelled:'#dc2626' };
 
 async function renderBranchTransfers(msg) {
-  showLoading('Loading transfersâ€¦');
+  showLoading('Loading transfers');
   try {
     var transfers = await API.call('getBranchTransfers', {});
     _renderBTListUI(transfers, null, msg);
@@ -5668,14 +5668,14 @@ function _renderBTListUI(transfers, error, msg) {
     return '<div class="card" style="margin-bottom:8px;cursor:pointer;" onclick="renderBranchTransferDetail(\'' + t.id + '\')">' +
       '<div style="display:flex;justify-content:space-between;">' +
       '<div><div style="font-weight:bold;font-size:13px;">' + (t.transfer_number||t.id) + '</div>' +
-      '<div class="muted" style="font-size:11px;">' + _escHtml(t.source_branch_name||'â€”') + ' â†’ ' + _escHtml(t.destination_branch_name||'â€”') + '</div></div>' +
+      '<div class="muted" style="font-size:11px;">' + _escHtml(t.source_branch_name||'') + '  ' + _escHtml(t.destination_branch_name||'') + '</div></div>' +
       '<span style="font-size:12px;color:' + color + ';font-weight:bold;">' + (BT_STATUS_LABELS[t.status]||t.status) + '</span>' +
       '</div></div>';
   }).join('') : '<div class="muted" style="padding:8px;">No branch transfers found.</div>';
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">ðŸ”„ Branch Transfers</div><button class="small-btn" onclick="goHome()">â† Home</button></div>' +
+    '<div class="topbar"><div class="title" style="margin:0;"> Branch Transfers</div><button class="small-btn" onclick="goHome()"> Home</button></div>' +
     (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
     (error ? '<div class="message message-error">' + error + '</div>' : '') +
     rows +
@@ -5684,7 +5684,7 @@ function _renderBTListUI(transfers, error, msg) {
 }
 
 async function renderBranchTransferDetail(transferId) {
-  showLoading('Loading transferâ€¦');
+  showLoading('Loading transfer');
   try {
     var t = await API.call('getBranchTransferById', { id: transferId });
     var color = BT_STATUS_COLORS[t.status] || '#6b7280';
@@ -5697,23 +5697,23 @@ async function renderBranchTransferDetail(transferId) {
 
     var actions = '';
     if (t.status === 'draft' && _hasPermission('branch_transfer','submit'))
-      actions += '<button class="btn btn-secondary" onclick="doBTAction(\'submitBranchTransfer\',\'' + transferId + '\')">ðŸ“¤ Submit</button>';
+      actions += '<button class="btn btn-secondary" onclick="doBTAction(\'submitBranchTransfer\',\'' + transferId + '\')"> Submit</button>';
     if (t.status === 'pending_approval' && _hasPermission('branch_transfer','approve'))
-      actions += '<button class="btn btn-primary" style="margin-top:8px;" onclick="doBTAction(\'approveBranchTransfer\',\'' + transferId + '\')">âœ… Approve</button>';
+      actions += '<button class="btn btn-primary" style="margin-top:8px;" onclick="doBTAction(\'approveBranchTransfer\',\'' + transferId + '\')"> Approve</button>';
     if (t.status === 'approved' && _hasPermission('branch_transfer','submit'))
-      actions += '<button class="btn btn-primary" style="margin-top:8px;background:#7c3aed;" onclick="doBTAction(\'markBranchTransferSent\',\'' + transferId + '\')">ðŸšš Mark Sent</button>';
+      actions += '<button class="btn btn-primary" style="margin-top:8px;background:#7c3aed;" onclick="doBTAction(\'markBranchTransferSent\',\'' + transferId + '\')"> Mark Sent</button>';
     if (t.status === 'in_transit' && _hasPermission('branch_transfer','receive'))
-      actions += '<button class="btn btn-primary" style="margin-top:8px;" onclick="doBTAction(\'receiveBranchTransfer\',\'' + transferId + '\')">ðŸ“¦ Confirm Received</button>';
+      actions += '<button class="btn btn-primary" style="margin-top:8px;" onclick="doBTAction(\'receiveBranchTransfer\',\'' + transferId + '\')"> Confirm Received</button>';
     if (!['received','cancelled'].includes(t.status) && _hasPermission('branch_transfer','cancel'))
-      actions += '<button class="btn btn-secondary" style="margin-top:8px;background:#fee2e2;color:#dc2626;" onclick="doBTAction(\'cancelBranchTransfer\',\'' + transferId + '\')">âœ• Cancel</button>';
+      actions += '<button class="btn btn-secondary" style="margin-top:8px;background:#fee2e2;color:#dc2626;" onclick="doBTAction(\'cancelBranchTransfer\',\'' + transferId + '\')"> Cancel</button>';
 
     document.getElementById('app').innerHTML =
       '<div class="screen">' +
-      '<div class="topbar"><div class="title" style="margin:0;">' + (t.transfer_number||'Transfer') + '</div><button class="small-btn" onclick="renderBranchTransfers()">â† Back</button></div>' +
+      '<div class="topbar"><div class="title" style="margin:0;">' + (t.transfer_number||'Transfer') + '</div><button class="small-btn" onclick="renderBranchTransfers()"> Back</button></div>' +
       '<div class="card">' +
       '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span class="muted">Status</span><span style="color:' + color + ';font-weight:bold;">' + (BT_STATUS_LABELS[t.status]||t.status) + '</span></div>' +
-      '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span class="muted">From</span><span>' + _escHtml(t.source_branch_name||'â€”') + '</span></div>' +
-      '<div style="display:flex;justify-content:space-between;"><span class="muted">To</span><span>' + _escHtml(t.destination_branch_name||'â€”') + '</span></div>' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span class="muted">From</span><span>' + _escHtml(t.source_branch_name||'') + '</span></div>' +
+      '<div style="display:flex;justify-content:space-between;"><span class="muted">To</span><span>' + _escHtml(t.destination_branch_name||'') + '</span></div>' +
       '</div>' +
       '<div class="card"><div class="section-title" style="margin-bottom:8px;">Items</div>' + (itemsHtml||'<div class="muted">No items</div>') + '</div>' +
       (actions ? '<div class="card">' + actions + '</div>' : '') +
@@ -5727,26 +5727,26 @@ async function renderCreateBranchTransfer() {
 }
 
 async function doBTAction(action, transferId) {
-  showLoading('Processingâ€¦');
+  showLoading('Processing');
   try {
     await API.call(action, { id: transferId });
     renderBranchTransferDetail(transferId);
-    _showToast('âœ“ Done');
+    _showToast(' Done');
   } catch(e) { _showToast(e.message, true); renderBranchTransferDetail(transferId); }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// HQ CONTROL CENTER â”€â”€ Task 15
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
+// HQ CONTROL CENTER  Task 15
+// 
 
 async function renderHQControlCenter() {
-  showLoading('Loading HQ overviewâ€¦');
+  showLoading('Loading HQ overview');
   try {
     var data = await API.call('getHqControlCenter', {});
     _renderHQPage(data);
   } catch(e) {
     document.getElementById('app').innerHTML =
-      '<div class="screen"><div class="topbar"><div class="title" style="margin:0;">ðŸ¢ HQ Control Center</div><button class="small-btn" onclick="goHome()">â† Home</button></div>' +
+      '<div class="screen"><div class="topbar"><div class="title" style="margin:0;"> HQ Control Center</div><button class="small-btn" onclick="goHome()"> Home</button></div>' +
       '<div class="card"><div class="message message-error">' + e.message + '</div></div></div>';
   }
 }
@@ -5755,11 +5755,11 @@ function _renderHQPage(data) {
   var attQueue = (data.branch_attention_queue||[]).map(function(b) {
     var color = b.highest_severity === 'critical' ? '#dc2626' : b.highest_severity === 'watch' ? '#d97706' : '#16a34a';
     return '<div class="card" style="margin-bottom:8px;border-left:4px solid ' + color + ';">' +
-      '<div style="font-weight:bold;">' + _escHtml(b.branch_name||'â€”') + '</div>' +
-      '<div class="muted" style="font-size:12px;">' + b.issue_count + ' issue(s) Â· ' + (b.highest_severity||'info') + '</div>' +
-      (b.reasons||[]).map(function(r) { return '<div style="font-size:11px;color:#6b7280;">Â· ' + r + '</div>'; }).join('') +
+      '<div style="font-weight:bold;">' + _escHtml(b.branch_name||'') + '</div>' +
+      '<div class="muted" style="font-size:12px;">' + b.issue_count + ' issue(s)  ' + (b.highest_severity||'info') + '</div>' +
+      (b.reasons||[]).map(function(r) { return '<div style="font-size:11px;color:#6b7280;"> ' + r + '</div>'; }).join('') +
       '</div>';
-  }).join('') || '<div class="card"><div class="muted">All branches operating normally âœ“</div></div>';
+  }).join('') || '<div class="card"><div class="muted">All branches operating normally </div></div>';
 
   var ops = data.operational_queues || {};
   var opCards = '';
@@ -5768,45 +5768,45 @@ function _renderHQPage(data) {
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">ðŸ¢ HQ Control Center</div><button class="small-btn" onclick="goHome()">â† Home</button></div>' +
+    '<div class="topbar"><div class="title" style="margin:0;"> HQ Control Center</div><button class="small-btn" onclick="goHome()"> Home</button></div>' +
     (data.header ? '<div class="card" style="background:#f0fdf4;border:1px solid #bbf7d0;"><div class="section-title">' + data.header.title + '</div><div class="muted" style="font-size:12px;">' + (data.header.subtitle||'') + '</div></div>' : '') +
-    '<div class="section-title" style="margin:12px 0 8px;">ðŸš¨ Branches Needing Attention</div>' + attQueue +
+    '<div class="section-title" style="margin:12px 0 8px;"> Branches Needing Attention</div>' + attQueue +
     (opCards ? '<div class="card"><div class="section-title" style="margin-bottom:8px;">Operational Queue</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:0;">' + opCards + '</div></div>' : '') +
     '</div>';
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// CONSOLIDATED EXECUTIVE DASHBOARD â”€â”€ Task 16
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
+// CONSOLIDATED EXECUTIVE DASHBOARD  Task 16
+// 
 
 async function renderConsolidatedDashboard(period) {
   period = period || 'last_month';
-  showLoading('Loading consolidated viewâ€¦');
+  showLoading('Loading consolidated view');
   try {
     var data = await API.call('getConsolidatedExecutiveDashboard', { period: period });
     _renderConsolidatedPage(data, period);
   } catch(e) {
     document.getElementById('app').innerHTML =
-      '<div class="screen"><div class="topbar"><div class="title" style="margin:0;">ðŸ“Š Consolidated Dashboard</div><button class="small-btn" onclick="goHome()">â† Home</button></div>' +
+      '<div class="screen"><div class="topbar"><div class="title" style="margin:0;"> Consolidated Dashboard</div><button class="small-btn" onclick="goHome()"> Home</button></div>' +
       '<div class="card"><div class="message message-error">' + e.message + '</div></div></div>';
   }
 }
 
 function _renderConsolidatedPage(data, period) {
   var s = data.summary || {};
-  function money(v) { return 'â‚±' + Number(v||0).toLocaleString('en-PH', {minimumFractionDigits:0}); }
+  function money(v) { return '' + Number(v||0).toLocaleString('en-PH', {minimumFractionDigits:0}); }
   var periodBtns = ['last_month','last_quarter','last_year'].map(function(p) {
     return '<button onclick="renderConsolidatedDashboard(\'' + p + '\')" style="padding:6px 12px;border-radius:6px;border:1px solid #e5e7eb;background:' + (period===p?'#111827':'white') + ';color:' + (period===p?'white':'#374151') + ';font-size:12px;cursor:pointer;">' + p.replace('_',' ') + '</button>';
   }).join('');
 
   var highlights = data.highlights || {};
   var hlHtml = '';
-  if (highlights.top_sales_branch) hlHtml += '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f3f4f6;"><span class="muted">Top Sales</span><span style="font-weight:bold;">' + _escHtml(highlights.top_sales_branch.branch_name||'â€”') + '</span></div>';
-  if (highlights.bottom_result_branch) hlHtml += '<div style="display:flex;justify-content:space-between;padding:6px 0;"><span class="muted" style="color:#dc2626;">Lowest Result</span><span style="font-weight:bold;color:#dc2626;">' + _escHtml(highlights.bottom_result_branch.branch_name||'â€”') + '</span></div>';
+  if (highlights.top_sales_branch) hlHtml += '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f3f4f6;"><span class="muted">Top Sales</span><span style="font-weight:bold;">' + _escHtml(highlights.top_sales_branch.branch_name||'') + '</span></div>';
+  if (highlights.bottom_result_branch) hlHtml += '<div style="display:flex;justify-content:space-between;padding:6px 0;"><span class="muted" style="color:#dc2626;">Lowest Result</span><span style="font-weight:bold;color:#dc2626;">' + _escHtml(highlights.bottom_result_branch.branch_name||'') + '</span></div>';
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">ðŸ“Š All Branches</div><button class="small-btn" onclick="goHome()">â† Home</button></div>' +
+    '<div class="topbar"><div class="title" style="margin:0;"> All Branches</div><button class="small-btn" onclick="goHome()"> Home</button></div>' +
     '<div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;">' + periodBtns + '</div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">' +
     '<div class="card" style="text-align:center;"><div style="font-size:20px;font-weight:bold;color:#16a34a;">' + money(s.total_sales) + '</div><div class="muted" style="font-size:12px;">Total Sales</div></div>' +
@@ -5818,20 +5818,20 @@ function _renderConsolidatedPage(data, period) {
     '</div>';
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// MULTI-BRANCH REPORTS â”€â”€ Task 17
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
+// MULTI-BRANCH REPORTS  Task 17
+// 
 
 async function renderMultiBranchReports(type, period) {
   type = type || 'branch_sales_analysis';
   period = period || 'last_month';
-  showLoading('Generating reportâ€¦');
+  showLoading('Generating report');
   try {
     var data = await API.call('getMultiBranchAdvancedReports', { type: type, period: period });
     _renderMBReportPage(data, type, period);
   } catch(e) {
     document.getElementById('app').innerHTML =
-      '<div class="screen"><div class="topbar"><div class="title" style="margin:0;">ðŸ“ˆ Multi-Branch Reports</div><button class="small-btn" onclick="goHome()">â† Home</button></div>' +
+      '<div class="screen"><div class="topbar"><div class="title" style="margin:0;"> Multi-Branch Reports</div><button class="small-btn" onclick="goHome()"> Home</button></div>' +
       '<div class="card"><div class="message message-error">' + e.message + '</div></div></div>';
   }
 }
@@ -5846,8 +5846,8 @@ function _renderMBReportPage(data, type, period) {
   var sectionsHtml = (data.sections||[]).map(function(sec) {
     var rowsHtml = (sec.data||[]).slice(0,10).map(function(row) {
       return '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px solid #f3f4f6;">' +
-        '<span>' + _escHtml(String(row.branch_name||row.label||Object.values(row)[0]||'â€”')) + '</span>' +
-        '<span style="font-weight:bold;">' + _escHtml(String(Object.values(row).slice(-1)[0]||'â€”')) + '</span>' +
+        '<span>' + _escHtml(String(row.branch_name||row.label||Object.values(row)[0]||'')) + '</span>' +
+        '<span style="font-weight:bold;">' + _escHtml(String(Object.values(row).slice(-1)[0]||'')) + '</span>' +
         '</div>';
     }).join('');
     return '<div class="card" style="margin-bottom:8px;"><div class="section-title" style="margin-bottom:8px;">' + _escHtml(sec.title||'') + '</div>' + (rowsHtml||'<div class="muted">No data</div>') + '</div>';
@@ -5855,19 +5855,19 @@ function _renderMBReportPage(data, type, period) {
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">ðŸ“ˆ Multi-Branch</div><button class="small-btn" onclick="goHome()">â† Home</button></div>' +
+    '<div class="topbar"><div class="title" style="margin:0;"> Multi-Branch</div><button class="small-btn" onclick="goHome()"> Home</button></div>' +
     typeSelector +
     '<div class="card" style="margin-bottom:8px;"><div class="subtitle">' + _escHtml(data.title||type) + '</div></div>' +
     sectionsHtml +
     '</div>';
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// CUSTOM ROLE BUILDER â”€â”€ Task 18
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
+// CUSTOM ROLE BUILDER  Task 18
+// 
 
 async function renderCustomRoles(msg) {
-  showLoading('Loading rolesâ€¦');
+  showLoading('Loading roles');
   try {
     var roles = await API.call('getCustomRoles', {});
     _renderCustomRolesUI(roles, null, msg);
@@ -5878,13 +5878,13 @@ function _renderCustomRolesUI(roles, error, msg) {
   var rows = roles.length ? roles.map(function(r) {
     return '<div class="card" style="margin-bottom:8px;cursor:pointer;" onclick="renderCustomRoleDetail(\'' + r.id + '\')">' +
       '<div style="font-weight:bold;">' + _escHtml(r.role_name) + ' <span class="muted" style="font-weight:normal;font-size:12px;">(' + r.role_code + ')</span></div>' +
-      '<div class="muted" style="font-size:12px;">' + (r.permission_count||0) + ' permissions Â· ' + (r.assigned_user_count||0) + ' users Â· ' + (r.status||'active') + '</div>' +
+      '<div class="muted" style="font-size:12px;">' + (r.permission_count||0) + ' permissions  ' + (r.assigned_user_count||0) + ' users  ' + (r.status||'active') + '</div>' +
       '</div>';
   }).join('') : '<div class="muted" style="padding:8px;">No custom roles yet.</div>';
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">ðŸ”‘ Custom Roles</div><button class="small-btn" onclick="goHome()">â† Home</button></div>' +
+    '<div class="topbar"><div class="title" style="margin:0;"> Custom Roles</div><button class="small-btn" onclick="goHome()"> Home</button></div>' +
     (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
     (error ? '<div class="message message-error">' + error + '</div>' : '') +
     rows +
@@ -5893,7 +5893,7 @@ function _renderCustomRolesUI(roles, error, msg) {
 }
 
 async function renderCustomRoleDetail(roleId) {
-  showLoading('Loading roleâ€¦');
+  showLoading('Loading role');
   try {
     var role = await API.call('getCustomRoleById', { id: roleId });
     var permsHtml = (role.permissions||[]).map(function(p) {
@@ -5905,8 +5905,8 @@ async function renderCustomRoleDetail(roleId) {
 
     document.getElementById('app').innerHTML =
       '<div class="screen">' +
-      '<div class="topbar"><div class="title" style="margin:0;">' + _escHtml(role.role_name) + '</div><button class="small-btn" onclick="renderCustomRoles()">â† Back</button></div>' +
-      '<div class="card"><div class="muted" style="font-size:12px;margin-bottom:8px;">Code: ' + role.role_code + ' Â· Status: ' + (role.status||'active') + '</div>' +
+      '<div class="topbar"><div class="title" style="margin:0;">' + _escHtml(role.role_name) + '</div><button class="small-btn" onclick="renderCustomRoles()"> Back</button></div>' +
+      '<div class="card"><div class="muted" style="font-size:12px;margin-bottom:8px;">Code: ' + role.role_code + '  Status: ' + (role.status||'active') + '</div>' +
       (role.description ? '<div style="font-size:13px;margin-bottom:8px;">' + _escHtml(role.description) + '</div>' : '') +
       '<div class="section-title" style="font-size:13px;margin-bottom:6px;">Permissions</div>' +
       (permsHtml || '<div class="muted" style="font-size:12px;">No permissions assigned</div>') + '</div>' +
@@ -5916,7 +5916,7 @@ async function renderCustomRoleDetail(roleId) {
 }
 
 async function renderCreateCustomRole() {
-  showLoading('Loading permission catalogâ€¦');
+  showLoading('Loading permission catalog');
   try {
     var catalog = await API.call('getPermissionCatalog', {});
     _renderCreateRoleForm(catalog);
@@ -5950,7 +5950,7 @@ function _renderCreateRoleForm(catalog) {
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">Create Custom Role</div><button class="small-btn" onclick="renderCustomRoles()">â† Back</button></div>' +
+    '<div class="topbar"><div class="title" style="margin:0;">Create Custom Role</div><button class="small-btn" onclick="renderCustomRoles()"> Back</button></div>' +
     '<div class="card">' +
     '<div class="field"><label>Role Name *</label><input id="cr-name" placeholder="e.g. Senior Cashier"></div>' +
     '<div class="field"><label>Role Code *</label><input id="cr-code" placeholder="e.g. SENIOR_CASHIER (uppercase)"></div>' +
@@ -5966,20 +5966,20 @@ async function submitCreateCustomRole() {
   var code = (document.getElementById('cr-code').value||'').trim().toUpperCase().replace(/\s/g,'_');
   if (!name || !code) { _showToast('Name and code are required', true); return; }
   var perms = Array.from(document.querySelectorAll('input[name="perm"]:checked')).map(function(el) { return el.value; });
-  showLoading('Creating roleâ€¦');
+  showLoading('Creating role');
   try {
     await API.call('createCustomRole', { role_name: name, role_code: code, description: document.getElementById('cr-desc').value||'', permissions: perms });
-    renderCustomRoles('âœ“ Custom role created');
+    renderCustomRoles(' Custom role created');
   } catch(e) { _showToast(e.message, true); }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// ALERTS CENTER â”€â”€ Task 19
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
+// ALERTS CENTER  Task 19
+// 
 
 async function renderAlertsCenter(filter) {
   filter = filter || '';
-  showLoading('Loading alertsâ€¦');
+  showLoading('Loading alerts');
   try {
     var params = filter ? { severity: filter } : {};
     var alerts = await API.call('getAlerts', params);
@@ -6000,24 +6000,24 @@ function _renderAlertsUI(alerts, filter, error) {
       '<span style="font-size:11px;color:' + color + ';font-weight:bold;">' + (a.severity||'info').toUpperCase() + '</span>' +
       '</div>' +
       '<div style="font-size:12px;color:#374151;margin-top:4px;">' + _escHtml(a.message||'') + '</div>' +
-      (a.action_suggestion ? '<div class="muted" style="font-size:11px;margin-top:4px;">ðŸ’¡ ' + _escHtml(a.action_suggestion) + '</div>' : '') +
+      (a.action_suggestion ? '<div class="muted" style="font-size:11px;margin-top:4px;"> ' + _escHtml(a.action_suggestion) + '</div>' : '') +
       '</div>';
   }).join('') : '<div class="muted" style="padding:8px;">No alerts ' + (filter?'with severity '+filter:'') + '.</div>';
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">ðŸ”” Alerts</div><button class="small-btn" onclick="goHome()">â† Home</button></div>' +
+    '<div class="topbar"><div class="title" style="margin:0;"> Alerts</div><button class="small-btn" onclick="goHome()"> Home</button></div>' +
     '<div style="margin-bottom:10px;">' + filterBtns + '</div>' +
     (error ? '<div class="message message-error">' + error + '</div>' : '') +
     rows + '</div>';
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// NOTIFICATIONS CENTER â”€â”€ Task 20
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
+// NOTIFICATIONS CENTER  Task 20
+// 
 
 async function renderNotificationsCenter() {
-  showLoading('Loading notificationsâ€¦');
+  showLoading('Loading notifications');
   try {
     var notifications = await API.call('getNotifications', { limit: 50 });
     _renderNotificationsUI(notifications);
@@ -6041,7 +6041,7 @@ function _renderNotificationsUI(notifications, error) {
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">ðŸ“¬ Notifications</div><button class="small-btn" onclick="goHome()">â† Home</button></div>' +
+    '<div class="topbar"><div class="title" style="margin:0;"> Notifications</div><button class="small-btn" onclick="goHome()"> Home</button></div>' +
     (error ? '<div class="message message-error">' + error + '</div>' : '') +
     rows + '</div>';
 }
@@ -6051,12 +6051,12 @@ async function markAndReadNotif(notifId) {
   renderNotificationsCenter();
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// AUTOMATION RULES â”€â”€ Task 21
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
+// AUTOMATION RULES  Task 21
+// 
 
 async function renderAutomationRules(msg) {
-  showLoading('Loading automation rulesâ€¦');
+  showLoading('Loading automation rules');
   try {
     var rules = await API.call('getAutomationRules', {});
     _renderAutoRulesUI(rules, null, msg);
@@ -6069,14 +6069,14 @@ function _renderAutoRulesUI(rules, error, msg) {
     return '<div class="card" style="margin-bottom:8px;">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;">' +
       '<div style="flex:1;"><div style="font-weight:bold;font-size:13px;">' + _escHtml(r.rule_name) + '</div>' +
-      '<div class="muted" style="font-size:11px;">' + (r.trigger_type||'') + ' â†’ ' + (r.action_type||'') + '</div></div>' +
+      '<div class="muted" style="font-size:11px;">' + (r.trigger_type||'') + '  ' + (r.action_type||'') + '</div></div>' +
       '<button onclick="toggleAutoRule(\'' + r.id + '\',\'' + (active?'inactive':'active') + '\')" style="padding:4px 10px;border-radius:6px;border:none;background:' + (active?'#dcfce7':'#fee2e2') + ';color:' + (active?'#16a34a':'#dc2626') + ';font-size:11px;cursor:pointer;">' + (active?'Active':'Inactive') + '</button>' +
       '</div></div>';
   }).join('') : '<div class="muted" style="padding:8px;">No automation rules yet.</div>';
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">âš¡ Automation Rules</div><button class="small-btn" onclick="goHome()">â† Home</button></div>' +
+    '<div class="topbar"><div class="title" style="margin:0;"> Automation Rules</div><button class="small-btn" onclick="goHome()"> Home</button></div>' +
     (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
     (error ? '<div class="message message-error">' + error + '</div>' : '') +
     rows +
@@ -6094,7 +6094,7 @@ async function toggleAutoRule(ruleId, newStatus) {
 function renderCreateAutoRule() {
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">Create Automation Rule</div><button class="small-btn" onclick="renderAutomationRules()">â† Back</button></div>' +
+    '<div class="topbar"><div class="title" style="margin:0;">Create Automation Rule</div><button class="small-btn" onclick="renderAutomationRules()"> Back</button></div>' +
     '<div class="card">' +
     '<div class="field"><label>Rule Name *</label><input id="ar-name" placeholder="e.g. Escalate critical stock alerts"></div>' +
     '<div class="field"><label>Description</label><input id="ar-desc" placeholder="What does this rule do?"></div>' +
@@ -6107,7 +6107,7 @@ function renderCreateAutoRule() {
 async function submitCreateAutoRule() {
   var name = (document.getElementById('ar-name').value||'').trim();
   if (!name) { _showToast('Rule name is required', true); return; }
-  showLoading('Savingâ€¦');
+  showLoading('Saving');
   try {
     await API.call('createAutomationRule', {
       rule_name: name,
@@ -6119,16 +6119,16 @@ async function submitCreateAutoRule() {
       action_config: {},
       status: 'active'
     });
-    renderAutomationRules('âœ“ Rule created');
+    renderAutomationRules(' Rule created');
   } catch(e) { _showToast(e.message, true); }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// DATA IMPORT TOOLS â”€â”€ Task 22
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
+// DATA IMPORT TOOLS  Task 22
+// 
 
 async function renderDataImport(msg) {
-  showLoading('Loading import jobsâ€¦');
+  showLoading('Loading import jobs');
   try {
     var jobs = await API.call('getImportJobs', {});
     _renderDataImportUI(jobs, null, msg);
@@ -6142,7 +6142,7 @@ function _renderDataImportUI(jobs, error, msg) {
     '<div class="field"><label>Import Type</label><select id="import-type">' +
     IMPORT_TYPES.map(function(t) { return '<option value="' + t + '">' + t + '</option>'; }).join('') +
     '</select></div>' +
-    '<button class="btn btn-secondary" onclick="downloadImportTemplate()" style="margin-bottom:8px;">ðŸ“¥ Download Template CSV</button>' +
+    '<button class="btn btn-secondary" onclick="downloadImportTemplate()" style="margin-bottom:8px;"> Download Template CSV</button>' +
     '<div class="field"><label>Upload CSV File</label><input type="file" id="import-file" accept=".csv"></div>' +
     '<button class="btn btn-primary" onclick="submitImportUpload()">Upload & Validate</button>' +
     '</div>';
@@ -6152,14 +6152,14 @@ function _renderDataImportUI(jobs, error, msg) {
     return '<div class="card" style="margin-bottom:8px;cursor:pointer;" onclick="renderImportJobDetail(\'' + j.id + '\')">' +
       '<div style="display:flex;justify-content:space-between;">' +
       '<div><div style="font-weight:bold;font-size:13px;">' + (j.import_type||'import') + '</div>' +
-      '<div class="muted" style="font-size:11px;">' + (j.total_rows||0) + ' rows Â· ' + (j.valid_rows||0) + ' valid Â· ' + (j.invalid_rows||0) + ' errors</div></div>' +
+      '<div class="muted" style="font-size:11px;">' + (j.total_rows||0) + ' rows  ' + (j.valid_rows||0) + ' valid  ' + (j.invalid_rows||0) + ' errors</div></div>' +
       '<span style="font-size:12px;color:' + statusColor + ';font-weight:bold;">' + j.status + '</span>' +
       '</div></div>';
   }).join('') : '';
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">ðŸ“¤ Data Import</div><button class="small-btn" onclick="goHome()">â† Home</button></div>' +
+    '<div class="topbar"><div class="title" style="margin:0;"> Data Import</div><button class="small-btn" onclick="goHome()"> Home</button></div>' +
     (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
     (error ? '<div class="message message-error">' + error + '</div>' : '') +
     typeSelector +
@@ -6169,7 +6169,7 @@ function _renderDataImportUI(jobs, error, msg) {
 
 async function downloadImportTemplate() {
   var type = document.getElementById('import-type').value;
-  showLoading('Getting templateâ€¦');
+  showLoading('Getting template');
   try {
     var result = await API.call('getImportTemplate', { type: type });
     var blob = new Blob([result.csv||''], { type: 'text/csv' });
@@ -6188,7 +6188,7 @@ async function submitImportUpload() {
   if (!fileInput || !fileInput.files[0]) { _showToast('Select a CSV file first', true); return; }
   var reader = new FileReader();
   reader.onload = async function(ev) {
-    showLoading('Validatingâ€¦');
+    showLoading('Validating');
     try {
       var result = await API.call('uploadImportJob', { import_type: type, csv_data: ev.target.result });
       renderImportJobDetail(result.id);
@@ -6198,7 +6198,7 @@ async function submitImportUpload() {
 }
 
 async function renderImportJobDetail(jobId) {
-  showLoading('Loading jobâ€¦');
+  showLoading('Loading job');
   try {
     var job = await API.call('getImportJobById', { id: jobId });
     var rowsHtml = (job.sample_rows||[]).slice(0,10).map(function(r) {
@@ -6209,35 +6209,35 @@ async function renderImportJobDetail(jobId) {
     var canConfirm = job.status === 'validated' && (job.valid_rows||0) > 0;
     document.getElementById('app').innerHTML =
       '<div class="screen">' +
-      '<div class="topbar"><div class="title" style="margin:0;">Import Job</div><button class="small-btn" onclick="renderDataImport()">â† Back</button></div>' +
+      '<div class="topbar"><div class="title" style="margin:0;">Import Job</div><button class="small-btn" onclick="renderDataImport()"> Back</button></div>' +
       '<div class="card">' +
-      '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span class="muted">Type</span><span>' + (job.import_type||'â€”') + '</span></div>' +
-      '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span class="muted">Status</span><span style="font-weight:bold;">' + (job.status||'â€”') + '</span></div>' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span class="muted">Type</span><span>' + (job.import_type||'') + '</span></div>' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span class="muted">Status</span><span style="font-weight:bold;">' + (job.status||'') + '</span></div>' +
       '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span class="muted">Total rows</span><span>' + (job.total_rows||0) + '</span></div>' +
       '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span class="muted" style="color:#16a34a;">Valid</span><span style="color:#16a34a;font-weight:bold;">' + (job.valid_rows||0) + '</span></div>' +
       '<div style="display:flex;justify-content:space-between;"><span class="muted" style="color:#dc2626;">Invalid</span><span style="color:#dc2626;font-weight:bold;">' + (job.invalid_rows||0) + '</span></div>' +
       '</div>' +
       (rowsHtml ? '<div class="card"><div class="section-title" style="margin-bottom:6px;">Sample Validation</div>' + rowsHtml + '</div>' : '') +
-      (canConfirm ? '<button class="btn btn-primary" onclick="confirmImport(\'' + jobId + '\')">âœ“ Import ' + job.valid_rows + ' Valid Rows</button>' : '') +
+      (canConfirm ? '<button class="btn btn-primary" onclick="confirmImport(\'' + jobId + '\')"> Import ' + job.valid_rows + ' Valid Rows</button>' : '') +
       '</div>';
   } catch(e) { _showToast(e.message, true); renderDataImport(); }
 }
 
 async function confirmImport(jobId) {
   if (!confirm('Import the valid rows? This cannot be undone.')) return;
-  showLoading('Importingâ€¦');
+  showLoading('Importing');
   try {
     var result = await API.call('confirmImportJob', { id: jobId });
-    renderDataImport('âœ“ Imported ' + result.imported_rows + ' rows (' + (result.failed_rows||0) + ' failed)');
+    renderDataImport(' Imported ' + result.imported_rows + ' rows (' + (result.failed_rows||0) + ' failed)');
   } catch(e) { _showToast(e.message, true); }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// LEGACY MIGRATION TOOLS â”€â”€ Task 23
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
+// LEGACY MIGRATION TOOLS  Task 23
+// 
 
 async function renderLegacyMigration(msg) {
-  showLoading('Loading migration jobsâ€¦');
+  showLoading('Loading migration jobs');
   try {
     var jobs = await API.call('getMigrationJobs', {});
     _renderMigrationUI(jobs, null, msg);
@@ -6248,13 +6248,13 @@ function _renderMigrationUI(jobs, error, msg) {
   var jobRows = jobs.length ? jobs.map(function(j) {
     return '<div class="card" style="margin-bottom:8px;cursor:pointer;" onclick="renderMigrationJobDetail(\'' + j.id + '\')">' +
       '<div style="font-weight:bold;font-size:13px;">' + (j.migration_type||'migration') + ' <span class="muted">' + (j.source_type||'') + '</span></div>' +
-      '<div class="muted" style="font-size:11px;">' + (j.total_rows||0) + ' rows Â· status: ' + (j.status||'â€”') + '</div>' +
+      '<div class="muted" style="font-size:11px;">' + (j.total_rows||0) + ' rows  status: ' + (j.status||'') + '</div>' +
       '</div>';
   }).join('') : '';
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">ðŸ”„ Legacy Migration</div><button class="small-btn" onclick="goHome()">â† Home</button></div>' +
+    '<div class="topbar"><div class="title" style="margin:0;"> Legacy Migration</div><button class="small-btn" onclick="goHome()"> Home</button></div>' +
     (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
     (error ? '<div class="message message-error">' + error + '</div>' : '') +
     '<div class="card">' +
@@ -6274,7 +6274,7 @@ async function submitMigrationUpload() {
   if (!fileInput || !fileInput.files[0]) { _showToast('Select a CSV file', true); return; }
   var reader = new FileReader();
   reader.onload = async function(ev) {
-    showLoading('Uploadingâ€¦');
+    showLoading('Uploading');
     try {
       var result = await API.call('uploadMigrationJob', {
         migration_type: document.getElementById('mig-type').value,
@@ -6288,37 +6288,37 @@ async function submitMigrationUpload() {
 }
 
 async function renderMigrationJobDetail(jobId) {
-  showLoading('Loading jobâ€¦');
+  showLoading('Loading job');
   try {
     var job = await API.call('getMigrationJobById', { id: jobId });
     document.getElementById('app').innerHTML =
       '<div class="screen">' +
-      '<div class="topbar"><div class="title" style="margin:0;">Migration Job</div><button class="small-btn" onclick="renderLegacyMigration()">â† Back</button></div>' +
+      '<div class="topbar"><div class="title" style="margin:0;">Migration Job</div><button class="small-btn" onclick="renderLegacyMigration()"> Back</button></div>' +
       '<div class="card">' +
-      '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span class="muted">Type</span><span>' + (job.migration_type||'â€”') + '</span></div>' +
-      '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span class="muted">Status</span><span style="font-weight:bold;">' + (job.status||'â€”') + '</span></div>' +
-      '<div style="display:flex;justify-content:space-between;"><span class="muted">Rows</span><span>' + (job.total_rows||0) + ' total Â· ' + (job.valid_rows||0) + ' valid</span></div>' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span class="muted">Type</span><span>' + (job.migration_type||'') + '</span></div>' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span class="muted">Status</span><span style="font-weight:bold;">' + (job.status||'') + '</span></div>' +
+      '<div style="display:flex;justify-content:space-between;"><span class="muted">Rows</span><span>' + (job.total_rows||0) + ' total  ' + (job.valid_rows||0) + ' valid</span></div>' +
       '</div>' +
-      (job.status === 'mapped' ? '<button class="btn btn-primary" onclick="confirmMigration(\'' + jobId + '\')">âœ“ Confirm Import</button>' : '') +
+      (job.status === 'mapped' ? '<button class="btn btn-primary" onclick="confirmMigration(\'' + jobId + '\')"> Confirm Import</button>' : '') +
       '</div>';
   } catch(e) { _showToast(e.message, true); renderLegacyMigration(); }
 }
 
 async function confirmMigration(jobId) {
   if (!confirm('Import data? This cannot be undone.')) return;
-  showLoading('Importingâ€¦');
+  showLoading('Importing');
   try {
     var result = await API.call('confirmMigrationJob', { id: jobId });
-    renderLegacyMigration('âœ“ Migrated ' + result.imported_rows + ' rows');
+    renderLegacyMigration(' Migrated ' + result.imported_rows + ' rows');
   } catch(e) { _showToast(e.message, true); }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// FEATURE MARKETPLACE â”€â”€ Task 24
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
+// FEATURE MARKETPLACE  Task 24
+// 
 
 async function renderFeatureMarketplace() {
-  showLoading('Loading marketplaceâ€¦');
+  showLoading('Loading marketplace');
   try {
     var features = await API.call('getFeatureMarketplace', {});
     _renderMarketplaceUI(features);
@@ -6326,7 +6326,7 @@ async function renderFeatureMarketplace() {
 }
 
 function _renderMarketplaceUI(features, error) {
-  var STATUS_LABEL = { active_paid: 'âœ“ Active', trial_active: 'â± Trial', trial_expiring: 'âš  Expiring', trial_expired: 'âœ— Expired', locked: 'Locked', cancelled: 'Cancelled' };
+  var STATUS_LABEL = { active_paid: ' Active', trial_active: ' Trial', trial_expiring: ' Expiring', trial_expired: ' Expired', locked: 'Locked', cancelled: 'Cancelled' };
   var STATUS_COLOR = { active_paid: '#16a34a', trial_active: '#2563eb', trial_expiring: '#d97706', trial_expired: '#dc2626', locked: '#6b7280', cancelled: '#dc2626' };
   var tier = _planTier(state.session && state.session.plan && state.session.plan.id);
   var addonPrice = _planAddOnPrice();
@@ -6336,7 +6336,7 @@ function _renderMarketplaceUI(features, error) {
     var statusLabel = STATUS_LABEL[f.tenant_status] || f.tenant_status;
     var trialInfo = f.trial_ends_at ? '<div class="muted" style="font-size:11px;">Trial ends: ' + String(f.trial_ends_at).slice(0,10) + '</div>' : '';
     var actionBtn = f.action_state === 'start_trial' && f.is_trial_available
-      ? '<button class="btn btn-primary" style="font-size:12px;padding:8px;" onclick="doStartTrial(\'' + f.module_code + '\')">â–¶ Start ' + f.trial_days + '-Day Free Trial</button>'
+      ? '<button class="btn btn-primary" style="font-size:12px;padding:8px;" onclick="doStartTrial(\'' + f.module_code + '\')"> Start ' + f.trial_days + '-Day Free Trial</button>'
       : (f.tenant_status === 'trial_active' || f.tenant_status === 'active_paid'
           ? '<button class="btn btn-secondary" style="font-size:12px;padding:8px;background:#fee2e2;color:#dc2626;" onclick="doCancelFeature(\'' + f.module_code + '\')">Cancel</button>'
           : '');
@@ -6347,7 +6347,7 @@ function _renderMarketplaceUI(features, error) {
       '<span style="font-size:11px;color:' + statusColor + ';font-weight:bold;">' + statusLabel + '</span>' +
       '</div>' +
       '<div style="font-size:12px;color:#374151;margin-bottom:6px;">' + _escHtml(f.short_description||'') + '</div>' +
-      (f.display_monthly_price ? '<div class="muted" style="font-size:11px;margin-bottom:4px;">â‚±' + Number(f.display_monthly_price).toFixed(0) + '/month after trial</div>' : '') +
+      (f.display_monthly_price ? '<div class="muted" style="font-size:11px;margin-bottom:4px;">' + Number(f.display_monthly_price).toFixed(0) + '/month after trial</div>' : '') +
       (f.display_price_note ? '<div class="muted" style="font-size:11px;margin-bottom:6px;">' + _escHtml(f.display_price_note) + '</div>' : '') +
       trialInfo + actionBtn +
       '</div>';
@@ -6355,27 +6355,27 @@ function _renderMarketplaceUI(features, error) {
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">ðŸª HubSuite Add-ons</div><button class="small-btn" onclick="goHome()">â† Home</button></div>' +
+    '<div class="topbar"><div class="title" style="margin:0;"> HubSuite Add-ons</div><button class="small-btn" onclick="goHome()"> Home</button></div>' +
     '<div class="muted" style="font-size:12px;margin-bottom:12px;">' +
       _escHtml(tier.name || 'HubSuite') +
-      (addonPrice !== null ? ' add-ons are â‚±' + addonPrice + '/month each after the trial period.' : ' add-ons use feature-based pricing after trial.') +
+      (addonPrice !== null ? ' add-ons are ' + addonPrice + '/month each after the trial period.' : ' add-ons use feature-based pricing after trial.') +
     '</div>' +
     cards + '</div>';
 }
 
 async function doStartTrial(moduleCode) {
-  showLoading('Starting trialâ€¦');
+  showLoading('Starting trial');
   try {
     var result = await API.call('startTrial', { moduleCode: moduleCode });
     await _refreshOwnerAddOns({ force: true });
-    _showToast('âœ“ Trial started! Ends ' + String(result.trial_ends_at).slice(0,10));
+    _showToast(' Trial started! Ends ' + String(result.trial_ends_at).slice(0,10));
     renderFeatureMarketplace();
   } catch(e) { _showToast(e.message, true); }
 }
 
 async function doCancelFeature(moduleCode) {
   if (!confirm('Cancel this feature subscription?')) return;
-  showLoading('Cancellingâ€¦');
+  showLoading('Cancelling');
   try {
     await API.call('manageSubscription', { moduleCode: moduleCode, action: 'cancel' });
     await _refreshOwnerAddOns({ force: true });
@@ -6384,18 +6384,18 @@ async function doCancelFeature(moduleCode) {
   } catch(e) { _showToast(e.message, true); }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// SANDBOX MODE â”€â”€ Task 25
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
+// SANDBOX MODE  Task 25
+// 
 
 async function renderSandboxMode() {
-  showLoading('Loading sandbox statusâ€¦');
+  showLoading('Loading sandbox status');
   try {
     var data = await API.call('getSandbox', {});
     _renderSandboxUI(data);
   } catch(e) {
     document.getElementById('app').innerHTML =
-      '<div class="screen"><div class="topbar"><div class="title" style="margin:0;">ðŸ§ª Sandbox Mode</div><button class="small-btn" onclick="goHome()">â† Home</button></div>' +
+      '<div class="screen"><div class="topbar"><div class="title" style="margin:0;"> Sandbox Mode</div><button class="small-btn" onclick="goHome()"> Home</button></div>' +
       '<div class="card"><div class="message message-error">' + e.message + '</div></div></div>';
   }
 }
@@ -6404,47 +6404,47 @@ function _renderSandboxUI(data) {
   var inSandbox = data.is_in_sandbox;
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">ðŸ§ª Sandbox Mode</div><button class="small-btn" onclick="goHome()">â† Home</button></div>' +
+    '<div class="topbar"><div class="title" style="margin:0;"> Sandbox Mode</div><button class="small-btn" onclick="goHome()"> Home</button></div>' +
     '<div class="card" style="background:' + (inSandbox ? '#fef9c3' : '#f9fafb') + ';border:' + (inSandbox ? '2px solid #fbbf24' : '1px solid #e5e7eb') + ';">' +
-    '<div style="font-size:20px;text-align:center;margin-bottom:8px;">' + (inSandbox ? 'ðŸŸ¡ SANDBOX ACTIVE' : 'âšª Sandbox Inactive') + '</div>' +
+    '<div style="font-size:20px;text-align:center;margin-bottom:8px;">' + (inSandbox ? ' SANDBOX ACTIVE' : ' Sandbox Inactive') + '</div>' +
     '<div class="muted" style="font-size:12px;text-align:center;margin-bottom:12px;">' + (inSandbox ? (data.banner_message||'You are in sandbox mode. No real data will be affected.') : 'Sandbox lets you test the app with demo data without affecting real records.') + '</div>' +
     (inSandbox
       ? '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
-        '<button class="btn btn-secondary" onclick="doSandboxReset()">ðŸ”„ Reset Demo Data</button>' +
-        '<button class="btn btn-secondary" style="background:#fee2e2;color:#dc2626;" onclick="doSandboxExit()">âœ• Exit Sandbox</button>' +
+        '<button class="btn btn-secondary" onclick="doSandboxReset()"> Reset Demo Data</button>' +
+        '<button class="btn btn-secondary" style="background:#fee2e2;color:#dc2626;" onclick="doSandboxExit()"> Exit Sandbox</button>' +
         '</div>'
       : '<div class="field"><label>Demo Template</label><select id="sandbox-template"><option value="demo_sari_sari_basic">Sari-sari Store (Basic)</option><option value="demo_grocery_standard">Grocery Store (Standard)</option></select></div>' +
-        '<button class="btn btn-primary" onclick="doSandboxEnter()">â–¶ Enter Sandbox</button>') +
+        '<button class="btn btn-primary" onclick="doSandboxEnter()"> Enter Sandbox</button>') +
     '</div></div>';
 }
 
 async function doSandboxEnter() {
-  showLoading('Entering sandboxâ€¦');
+  showLoading('Entering sandbox');
   try {
     var result = await API.call('enterSandbox', { template_code: document.getElementById('sandbox-template').value });
     _renderSandboxUI(result);
-    _showToast('âœ“ Sandbox activated with demo data');
+    _showToast(' Sandbox activated with demo data');
   } catch(e) { _showToast(e.message, true); }
 }
 async function doSandboxReset() {
   if (!confirm('Reset all demo data? The sandbox will be repopulated from the template.')) return;
-  showLoading('Resettingâ€¦');
-  try { await API.call('resetSandbox', {}); renderSandboxMode(); _showToast('âœ“ Demo data reset'); }
+  showLoading('Resetting');
+  try { await API.call('resetSandbox', {}); renderSandboxMode(); _showToast(' Demo data reset'); }
   catch(e) { _showToast(e.message, true); }
 }
 async function doSandboxExit() {
   if (!confirm('Exit sandbox? You will return to real data.')) return;
-  showLoading('Exitingâ€¦');
-  try { await API.call('exitSandbox', {}); renderSandboxMode(); _showToast('âœ“ Exited sandbox'); }
+  showLoading('Exiting');
+  try { await API.call('exitSandbox', {}); renderSandboxMode(); _showToast(' Exited sandbox'); }
   catch(e) { _showToast(e.message, true); }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// HARDWARE SETUP â”€â”€ Task 27 + Task 33
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
+// HARDWARE SETUP  Task 27 + Task 33
+// 
 
 async function renderHardwareSetup() {
-  showLoading('Loading hardware profilesâ€¦');
+  showLoading('Loading hardware profiles');
   try {
     var [profiles, current] = await Promise.all([
       API.call('getHardwareProfiles', {}),
@@ -6453,7 +6453,7 @@ async function renderHardwareSetup() {
     _renderHardwareSetupUI(profiles, current);
   } catch(e) {
     document.getElementById('app').innerHTML =
-      '<div class="screen"><div class="topbar"><div class="title" style="margin:0;">ðŸ–¨ï¸ Hardware Setup</div><button class="small-btn" onclick="goHome()">â† Home</button></div>' +
+      '<div class="screen"><div class="topbar"><div class="title" style="margin:0;"> Hardware Setup</div><button class="small-btn" onclick="goHome()"> Home</button></div>' +
       '<div class="card"><div class="message message-error">' + e.message + '</div></div></div>';
   }
 }
@@ -6471,45 +6471,45 @@ function _renderHardwareSetupUI(profiles, current) {
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
       '<div><div style="font-weight:bold;">' + _escHtml(p.profile_name||p.profile_code) + '</div>' +
       '<div class="muted" style="font-size:12px;">' + (p.business_type||'') + '</div></div>' +
-      (isSelected ? '<span style="font-size:12px;color:#2563eb;font-weight:bold;">âœ“ Selected</span>' :
+      (isSelected ? '<span style="font-size:12px;color:#2563eb;font-weight:bold;"> Selected</span>' :
         '<button onclick="doSelectHardwareProfile(\'' + p.profile_code + '\')" style="padding:6px 12px;border-radius:6px;border:1px solid #2563eb;background:white;color:#2563eb;font-size:12px;cursor:pointer;">Select</button>') +
       '</div>' +
-      (minDev.ram_gb ? '<div class="muted" style="font-size:11px;">Min: ' + minDev.ram_gb + 'GB RAM Â· ' + (minDev.screen_inches||'?') + '" screen</div>' : '') +
+      (minDev.ram_gb ? '<div class="muted" style="font-size:11px;">Min: ' + minDev.ram_gb + 'GB RAM  ' + (minDev.screen_inches||'?') + '" screen</div>' : '') +
       (checklist.length ? '<div style="margin-top:8px;">' + checklist.slice(0,4).map(function(item) {
-        return '<div style="font-size:12px;padding:2px 0;">â˜ ' + _escHtml(typeof item === 'string' ? item : (item.label||JSON.stringify(item))) + '</div>';
+        return '<div style="font-size:12px;padding:2px 0;"> ' + _escHtml(typeof item === 'string' ? item : (item.label||JSON.stringify(item))) + '</div>';
       }).join('') + '</div>' : '') +
       '</div>';
   }).join('');
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">ðŸ–¨ï¸ Hardware Setup</div><button class="small-btn" onclick="goHome()">â† Home</button></div>' +
+    '<div class="topbar"><div class="title" style="margin:0;"> Hardware Setup</div><button class="small-btn" onclick="goHome()"> Home</button></div>' +
     '<div class="muted" style="font-size:12px;margin-bottom:12px;">Choose the hardware profile that matches your setup. This configures receipt printing, scanner, and display recommendations.</div>' +
     (selectedCode ? '<div class="card" style="background:#f0fdf4;border:1px solid #bbf7d0;margin-bottom:8px;"><div class="muted" style="font-size:12px;">Current setup: <strong>' + (current.profile_name||selectedCode) + '</strong></div></div>' : '') +
     profileCards + '</div>';
 }
 
 async function doSelectHardwareProfile(profileCode) {
-  showLoading('Savingâ€¦');
+  showLoading('Saving');
   try {
     await API.call('selectHardwareProfile', { profile_code: profileCode });
     renderHardwareSetup();
-    _showToast('âœ“ Hardware profile selected');
+    _showToast(' Hardware profile selected');
   } catch(e) { _showToast(e.message, true); }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// FULL SETTINGS PAGE â”€â”€ Task 28 (expanded)
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
+// FULL SETTINGS PAGE  Task 28 (expanded)
+// 
 
 async function renderFullSettings() {
-  showLoading('Loading settingsâ€¦');
+  showLoading('Loading settings');
   try {
     var settings = await API.call('getSettings', {});
     _renderFullSettingsUI(settings);
   } catch(e) {
     document.getElementById('app').innerHTML =
-      '<div class="screen"><div class="topbar"><div class="title" style="margin:0;">âš™ï¸ Settings</div><button class="small-btn" onclick="goHome()">â† Home</button></div>' +
+      '<div class="screen"><div class="topbar"><div class="title" style="margin:0;"> Settings</div><button class="small-btn" onclick="goHome()"> Home</button></div>' +
       '<div class="card"><div class="message message-error">' + e.message + '</div></div></div>';
   }
 }
@@ -6521,10 +6521,10 @@ function _renderFullSettingsUI(settings) {
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">âš™ï¸ Settings</div><button class="small-btn" onclick="goHome()">â† Home</button></div>' +
+    '<div class="topbar"><div class="title" style="margin:0;"> Settings</div><button class="small-btn" onclick="goHome()"> Home</button></div>' +
 
     '<div class="card">' +
-    '<div class="section-title" style="margin-bottom:8px;">ðŸª Business Profile</div>' +
+    '<div class="section-title" style="margin-bottom:8px;"> Business Profile</div>' +
     '<div class="field"><label>Business Name</label><input id="set-biz-name" value="' + _escAttr(bp.business_name||'') + '"></div>' +
     '<div class="field"><label>Owner Name</label><input id="set-owner" value="' + _escAttr(bp.owner_name||'') + '"></div>' +
     '<div class="field"><label>Phone</label><input id="set-phone" value="' + _escAttr(bp.phone||'') + '"></div>' +
@@ -6534,7 +6534,7 @@ function _renderFullSettingsUI(settings) {
     '</div>' +
 
     '<div class="card">' +
-    '<div class="section-title" style="margin-bottom:8px;">âš™ï¸ Operations</div>' +
+    '<div class="section-title" style="margin-bottom:8px;"> Operations</div>' +
     '<label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:14px;"><input type="checkbox" id="set-req-exp-appr" ' + (ops.require_expense_approval ? 'checked' : '') + '> Require approval for expenses</label>' +
     '<label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:14px;"><input type="checkbox" id="set-req-adj-appr" ' + (ops.require_stock_adjustment_approval ? 'checked' : '') + '> Require approval for stock adjustments</label>' +
     '<label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:14px;"><input type="checkbox" id="set-allow-neg" ' + (ops.allow_negative_stock ? 'checked' : '') + '> Allow negative stock</label>' +
@@ -6542,13 +6542,13 @@ function _renderFullSettingsUI(settings) {
     '</div>' +
 
     '<div class="card">' +
-    '<div class="section-title" style="margin-bottom:8px;">ðŸ–¨ï¸ Printing</div>' +
+    '<div class="section-title" style="margin-bottom:8px;"> Printing</div>' +
     '<div class="field"><label>Printer Type</label><select id="set-printer"><option value="none"' + (!print.default_printer_type||print.default_printer_type==='none'?' selected':'') + '>None (screen only)</option><option value="bluetooth_thermal"' + (print.default_printer_type==='bluetooth_thermal'?' selected':'') + '>Bluetooth Thermal</option><option value="wifi_printer"' + (print.default_printer_type==='wifi_printer'?' selected':'') + '>WiFi Printer</option></select></div>' +
     '<button class="btn btn-secondary" onclick="savePrintingSettings()">Save Printing</button>' +
     '</div>' +
 
     '<div class="card">' +
-    '<div class="section-title" style="margin-bottom:8px;">ðŸ” Security</div>' +
+    '<div class="section-title" style="margin-bottom:8px;"> Security</div>' +
     '<div class="field"><label>Current Password</label><input id="set-cur-pw" type="password" placeholder="Enter current password"></div>' +
     '<div class="field"><label>New Password</label><input id="set-new-pw" type="password" placeholder="New password"></div>' +
     '<div class="field"><label>Confirm New Password</label><input id="set-confirm-pw" type="password" placeholder="Repeat new password"></div>' +
@@ -6558,7 +6558,7 @@ function _renderFullSettingsUI(settings) {
 }
 
 async function saveBusinessProfile() {
-  showLoading('Savingâ€¦');
+  showLoading('Saving');
   try {
     await API.call('updateBusinessProfile', {
       business_name:    document.getElementById('set-biz-name').value||'',
@@ -6567,20 +6567,20 @@ async function saveBusinessProfile() {
       address:          document.getElementById('set-address').value||'',
       default_currency: document.getElementById('set-currency').value||'PHP'
     });
-    _showToast('âœ“ Business profile saved');
+    _showToast(' Business profile saved');
     renderFullSettings();
   } catch(e) { _showToast(e.message, true); }
 }
 
 async function saveOperationsSettings() {
-  showLoading('Savingâ€¦');
+  showLoading('Saving');
   try {
     await API.call('updateOperationsSettings', {
       require_expense_approval:         document.getElementById('set-req-exp-appr').checked,
       require_stock_adjustment_approval: document.getElementById('set-req-adj-appr').checked,
       allow_negative_stock:             document.getElementById('set-allow-neg').checked
     });
-    _showToast('âœ“ Operations settings saved');
+    _showToast(' Operations settings saved');
   } catch(e) { _showToast(e.message, true); }
 }
 
@@ -6594,20 +6594,20 @@ async function changePasswordFromSettings() {
   var conf = document.getElementById('set-confirm-pw').value;
   if (!cur || !nw) { _showToast('Fill in current and new password', true); return; }
   if (nw !== conf) { _showToast('New passwords do not match', true); return; }
-  showLoading('Changing passwordâ€¦');
+  showLoading('Changing password');
   try {
     await API.call('changePassword', { currentPassword: cur, newPassword: nw });
-    _showToast('âœ“ Password changed');
+    _showToast(' Password changed');
     renderFullSettings();
   } catch(e) { _showToast(e.message, true); }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// ACTIVITY LOG â€” Phase 1C
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
+// ACTIVITY LOG  Phase 1C
+// 
 
 async function renderActivityLog(filterUser) {
-  showLoading('Loading activity logâ€¦');
+  showLoading('Loading activity log');
   try {
     var params = { limit: 100 };
     if (filterUser) params.user_id = filterUser;
@@ -6644,24 +6644,24 @@ function _renderActivityLogUI(entries, filterUser, error) {
       '<div style="font-size:13px;font-weight:600;color:#111827;">' + _escHtml(label) + '</div>' +
       '<div style="font-size:12px;color:#6b7280;">' + _escHtml(e.summary || '') + '</div>' +
       '<div style="font-size:11px;color:#9ca3af;margin-top:3px;">' +
-        _escHtml(e.full_name || e.user_id || 'System') + ' Â· ' + _escHtml(e.role || '') +
-        ' Â· ' + (e.created_at || '').slice(0, 16).replace('T', ' ') +
+        _escHtml(e.full_name || e.user_id || 'System') + '  ' + _escHtml(e.role || '') +
+        '  ' + (e.created_at || '').slice(0, 16).replace('T', ' ') +
       '</div></div></div>';
   }).join('') : '<div class="muted" style="padding:16px;text-align:center;">No activity recorded yet.</div>';
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title" style="margin:0;">ðŸ“œ Staff Activity</div><button class="small-btn" onclick="goHome()">â† Home</button></div>' +
+    '<div class="topbar"><div class="title" style="margin:0;"> Staff Activity</div><button class="small-btn" onclick="goHome()"> Home</button></div>' +
     (error ? '<div class="message message-error">' + error + '</div>' : '') +
     '<div style="background:#fff;border-radius:12px;margin:12px;box-shadow:0 1px 4px rgba(0,0,0,0.08);overflow:hidden;">' + rows + '</div>' +
     '</div>';
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// DASHBOARD BUTTON ADDITIONS â€” wire all new screens into dashboards
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// 
+// DASHBOARD BUTTON ADDITIONS  wire all new screens into dashboards
+// 
 
-// Notification badge helper â€” show unread count next to notifications button
+// Notification badge helper  show unread count next to notifications button
 async function _loadNotifBadge(buttonId) {
   try {
     var r = await API.call('getUnreadCount', {});
@@ -6673,7 +6673,7 @@ async function _loadNotifBadge(buttonId) {
   } catch(e) {}
 }
 
-// â”€â”€ Sync Functions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Sync Functions 
 
 async function syncWhenOnline() {
   if (!API.token) return; // No session
@@ -6689,7 +6689,7 @@ async function syncWhenOnline() {
   }
 }
 
-// â”€â”€ Start â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Start 
 
 window.addEventListener('DOMContentLoaded', function() {
   boot().catch(function(err) {
