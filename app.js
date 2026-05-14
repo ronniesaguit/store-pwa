@@ -604,11 +604,20 @@ function renderOwnerDashboard(msg) {
   if (_hasModule('quick_sell'))      btns += '<button class="big-btn" onclick="renderSalesHistory()"> Sales History</button>';
   if (_hasModule('inventory'))       btns += '<button class="big-btn" onclick="renderInventoryAdvancedSummary()"> Inventory</button>';
   if (_hasModule('expenses'))        btns += '<button class="big-btn" onclick="renderExpenses()"> Expenses</button>';
-  if (_hasModule('reports'))         btns += '<button class="big-btn" onclick="renderReports()"> Reports</button>';
-  if (_hasModule('reports'))         btns += '<button class="big-btn" onclick="renderAdvancedReportsHome()"> Advanced Reports</button>';
-  if (_hasModule('suppliers'))       btns += '<button class="big-btn" onclick="renderSuppliers()"> Suppliers</button>';
-  if (_hasModule('purchase_orders')) btns += '<button class="big-btn" onclick="renderPurchaseOrders()"> Purchase Orders</button>';
-  if (_hasModule('branch_transfer')) btns += '<button class="big-btn" onclick="renderBranchTransfers()"> Branch Transfers</button>';
+    if (_hasModule('reports'))         btns += '<button class="big-btn" onclick="renderReports()"> Reports</button>';
+    if (_hasModule('reports'))         btns += '<button class="big-btn" onclick="renderAdvancedReportsHome()"> Advanced Reports</button>';
+    if (_hasModule('tax_reports'))     btns += '<button class="big-btn" onclick="renderBIRData()"> BIR / Tax</button>';
+    if (_hasModule('inventory_movements')) btns += '<button class="big-btn" onclick="renderInventoryMovements()"> Stock History</button>';
+    if (_hasModule('suppliers'))       btns += '<button class="big-btn" onclick="renderSuppliers()"> Suppliers</button>';
+    if (_hasModule('purchase_orders')) btns += '<button class="big-btn" onclick="renderPurchaseOrders()"> Purchase Orders</button>';
+    if (_hasModule('purchase_requisitions')) btns += '<button class="big-btn" onclick="renderPurchaseRequisitions()"> Requisitions</button>';
+    if (_hasModule('stock_receiving')) btns += '<button class="big-btn" onclick="renderReceivingLogs()"> Receiving Logs</button>';
+    if (_hasModule('order_fulfillment')) btns += '<button class="big-btn" onclick="renderOrderFulfillment()"> Fulfillment</button>';
+    if (_hasModule('branch_transfer')) btns += '<button class="big-btn" onclick="renderBranchTransfers()"> Branch Transfers</button>';
+    if (_hasModule('vendor_payments')) btns += '<button class="big-btn" onclick="renderVendorPayments()"> Vendor Payments</button>';
+    if (_hasModule('customer_returns')) btns += '<button class="big-btn" onclick="renderCustomerReturns()"> Returns</button>';
+    if (_hasModule('discounts_promotions')) btns += '<button class="big-btn" onclick="renderDiscountsPromotions()"> Promotions</button>';
+    if (_hasModule('voids')) btns += '<button class="big-btn" onclick="renderVoids()"> Voids</button>';
   if (_hasModule('hq_control_center')) btns += '<button class="big-btn" onclick="renderHQControlCenter()"> HQ Control</button>';
   if (_hasModule('internal_chat'))   btns += '<button class="big-btn" onclick="renderChat()"> Chat</button>';
   if (_hasModule('staff_management') || _hasModule('staff')) btns += '<button class="big-btn" onclick="renderStaffList()"> Staff</button>';
@@ -617,11 +626,12 @@ function renderOwnerDashboard(msg) {
   if (_hasModule('roi'))             btns += '<button class="big-btn" onclick="renderROIMonitor()"> ROI</button>';
   if (_hasModule('monitors'))        btns += '<button class="big-btn" onclick="renderMonitors()"> Monitors</button>';
   if (_hasModule('automation_rules'))btns += '<button class="big-btn" onclick="renderAutomationRules()"> Automation</button>';
-  if (_hasModule('data_import_tools')) btns += '<button class="big-btn" onclick="renderDataImport()"> Import Data</button>';
-  if (_hasModule('settings'))        btns += '<button class="big-btn" onclick="renderFullSettings()"> Settings</button>';
-  btns += '<button class="big-btn" onclick="renderNotificationsCenter()"> Notifications</button>';
-  btns += '<button class="big-btn" onclick="renderAlertsCenter()"> Alerts</button>';
-  btns += '<button class="big-btn" onclick="renderActivityLog()"> Staff Activity</button>';
+    if (_hasModule('data_import_tools')) btns += '<button class="big-btn" onclick="renderDataImport()"> Import Data</button>';
+    if (_hasModule('registry_db')) btns += '<button class="big-btn" onclick="renderRegistryDbStatus()"> Registry DB</button>';
+    if (_hasModule('settings'))        btns += '<button class="big-btn" onclick="renderFullSettings()"> Settings</button>';
+    if (_hasModule('notification_delivery')) btns += '<button class="big-btn" onclick="renderNotificationsCenter()"> Notifications</button>';
+    if (_hasModule('alert_rules_engine') || _hasModule('alerts_dashboard')) btns += '<button class="big-btn" onclick="renderAlertsCenter()"> Alerts</button>';
+    if (_hasModule('activity_log')) btns += '<button class="big-btn" onclick="renderActivityLog()"> Staff Activity</button>';
   if (_hasModule('feature_marketplace')) btns += '<button class="big-btn" onclick="renderFeatureMarketplace()"> Hub Add-ons</button>';
   if (_hasModule('hardware_profiles')) btns += '<button class="big-btn" onclick="renderHardwareSetup()"> Hardware</button>';
   if (_hasModule('sandbox_mode')) btns += '<button class="big-btn" onclick="renderSandboxMode()"> Sandbox</button>';
@@ -1151,15 +1161,25 @@ function renderStaffDashboard(msg) {
   if (has('expenses'))        btns += '<button class="big-btn" onclick="renderExpenses()"> Expenses</button>';
   if (has('reports'))         btns += '<button class="big-btn" onclick="renderReports()"> Reports</button>';
   if (has('reports'))         btns += '<button class="big-btn" onclick="renderAdvancedReportsHome()"> Advanced Reports</button>';
+  if (has('tax_reports'))     btns += '<button class="big-btn" onclick="renderBIRData()"> BIR / Tax</button>';
+  if (has('inventory_movements')) btns += '<button class="big-btn" onclick="renderInventoryMovements()"> Stock History</button>';
   if (has('suppliers'))       btns += '<button class="big-btn" onclick="renderSuppliers()"> Suppliers</button>';
   if (has('purchase_orders')) btns += '<button class="big-btn" onclick="renderPurchaseOrders()"> Purchase Orders</button>';
+  if (has('purchase_requisitions')) btns += '<button class="big-btn" onclick="renderPurchaseRequisitions()"> Requisitions</button>';
+  if (has('stock_receiving')) btns += '<button class="big-btn" onclick="renderReceivingLogs()"> Receiving Logs</button>';
+  if (has('order_fulfillment')) btns += '<button class="big-btn" onclick="renderOrderFulfillment()"> Fulfillment</button>';
   if (has('branch_transfer')) btns += '<button class="big-btn" onclick="renderBranchTransfers()"> Branch Transfers</button>';
+  if (has('vendor_payments')) btns += '<button class="big-btn" onclick="renderVendorPayments()"> Vendor Payments</button>';
+  if (has('customer_returns')) btns += '<button class="big-btn" onclick="renderCustomerReturns()"> Returns</button>';
+  if (has('discounts_promotions')) btns += '<button class="big-btn" onclick="renderDiscountsPromotions()"> Promotions</button>';
+  if (has('voids')) btns += '<button class="big-btn" onclick="renderVoids()"> Voids</button>';
   if (has('hq_control_center')) btns += '<button class="big-btn" onclick="renderHQControlCenter()"> HQ Control</button>';
   if (has('staff_management') || has('staff')) btns += '<button class="big-btn" onclick="renderStaffList()"> Staff</button>';
   if (has('approvals'))       btns += '<button class="big-btn" onclick="renderApprovalsQueue()"> Approvals</button>';
   if (has('roi'))             btns += '<button class="big-btn" onclick="renderROIMonitor()"> ROI</button>';
   if (has('monitors'))        btns += '<button class="big-btn" onclick="renderMonitors()"> Monitors</button>';
   if (has('automation_rules')) btns += '<button class="big-btn" onclick="renderAutomationRules()"> Automation</button>';
+  if (has('registry_db'))      btns += '<button class="big-btn" onclick="renderRegistryDbStatus()"> Registry DB</button>';
   if (has('internal_chat'))   btns += '<button class="big-btn" onclick="renderChat()"> Chat</button>';
   if (has('alert_rules_engine')) btns += '<button class="big-btn" onclick="renderAlertsCenter()"> Alerts</button>';
   if (has('support'))         btns += '<button class="big-btn" onclick="renderSupport()"> Help</button>';
@@ -3822,6 +3842,7 @@ function renderReportScreen(type, d, fixedCosts) {
       '<div style="font-size:14px;font-weight:bold;">' + title + '</div>' +
       '<div style="display:flex;gap:6px;">' +
         '<button class="small-btn" onclick="printLastReport()"> PDF</button>' +
+        '<button class="small-btn" onclick="exportLastReportCsv()"> CSV</button>' +
         '<button class="small-btn" onclick="renderReports()"> Back</button>' +
       '</div>' +
     '</div>' +
@@ -4128,6 +4149,52 @@ function printReport(type, d) {
 function printLastReport() {
   if (!state.lastReport) { _showToast('No report to print', true); return; }
   printReport(state.lastReport.type, state.lastReport.d);
+}
+
+function _csvCell(v) {
+  var s = String(v == null ? '' : v);
+  if (/[",\r\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+function _downloadTextFile(filename, text, mime) {
+  var blob = new Blob([text], { type: mime || 'text/plain;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function() {
+    URL.revokeObjectURL(url);
+    if (a.parentNode) a.parentNode.removeChild(a);
+  }, 0);
+}
+
+function exportLastReportCsv() {
+  if (!state.lastReport) { _showToast('No report to export', true); return; }
+  var r = state.lastReport;
+  var d = r.d || {};
+  var s = d.summary || {};
+  var lines = [
+    ['Section','Metric','Value'],
+    ['Summary','Revenue',s.revenue || 0],
+    ['Summary','Transactions',s.txCount || 0],
+    ['Summary','Items Sold',s.totalQty || 0],
+    ['Summary','COGS',s.cogs || 0],
+    ['Summary','Gross Profit',s.grossProfit || 0],
+    ['Summary','Expenses',s.totalExpenses || 0],
+    ['Summary','Net Profit',s.netProfit || 0]
+  ];
+  (d.topProducts || []).forEach(function(p) {
+    lines.push(['Top Product', p.name || '', (p.qty || 0) + ' pcs / ' + (p.revenue || 0)]);
+  });
+  (d.expenseBreakdown || []).forEach(function(e) {
+    lines.push(['Expense', e.category || 'Other', e.amount || 0]);
+  });
+  var csv = lines.map(function(row) { return row.map(_csvCell).join(','); }).join('\r\n');
+  _downloadTextFile('report-' + r.type + '-' + new Date().toISOString().slice(0,10) + '.csv', csv, 'text/csv;charset=utf-8');
+  _showToast('CSV export ready');
 }
 
 //  BIR Data screen 
@@ -5396,6 +5463,82 @@ async function confirmDeactivateSupplier(supplierId) {
 }
 
 // 
+// PURCHASE REQUISITIONS
+// 
+
+async function renderPurchaseRequisitions(msg) {
+  showLoading('Loading requisitions');
+  try {
+    var reqs = await API.call('getPurchaseRequisitions', { limit: 100 });
+    _renderPurchaseRequisitionsUI(reqs || [], null, msg);
+  } catch(e) { _renderPurchaseRequisitionsUI([], e.message, msg); }
+}
+
+function _renderPurchaseRequisitionsUI(reqs, error, msg) {
+  var rows = reqs.length ? reqs.map(function(r) {
+    return '<div class="card" style="margin-bottom:8px;">' +
+      '<div style="display:flex;justify-content:space-between;gap:8px;">' +
+      '<div><div style="font-weight:bold;font-size:13px;">' + _escHtml(r.requisition_number || r.id || 'Requisition') + '</div>' +
+      '<div class="muted" style="font-size:12px;">' + _escHtml(r.requested_by_name || r.requested_by || '') + ' ' + String(r.created_at || '').slice(0,10) + '</div></div>' +
+      '<span style="font-size:12px;font-weight:bold;">' + _escHtml(r.status || 'draft') + '</span>' +
+      '</div>' +
+      (r.notes ? '<div style="font-size:12px;color:#6b7280;margin-top:6px;">' + _escHtml(r.notes) + '</div>' : '') +
+      '</div>';
+  }).join('') : '<div class="muted" style="padding:8px;">No purchase requisitions yet.</div>';
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;"> Requisitions</div><button class="small-btn" onclick="goHome()"> Home</button></div>' +
+    (msg ? '<div class="message message-ok">' + _escHtml(msg) + '</div>' : '') +
+    (error ? '<div class="message message-error">' + _escHtml(error) + '</div>' : '') +
+    rows +
+    (_hasPermission('purchase_requisitions','create') ? '<button class="btn btn-primary" style="margin-top:8px;" onclick="renderCreatePurchaseRequisition()">+ New Requisition</button>' : '') +
+    '</div>';
+}
+
+async function renderCreatePurchaseRequisition() {
+  showLoading('Loading products');
+  try {
+    var products = await API.call('getProducts');
+    var options = '<option value="">Select product</option>' + (products || []).map(function(p) {
+      return '<option value="' + _escAttr(p.Product_ID || p.product_id) + '">' + _escHtml(p.Product_Name || p.product_name || '') + '</option>';
+    }).join('');
+    document.getElementById('app').innerHTML =
+      '<div class="screen">' +
+      '<div class="topbar"><div class="title" style="margin:0;">New Requisition</div><button class="small-btn" onclick="renderPurchaseRequisitions()"> Back</button></div>' +
+      '<div class="card"><div class="field"><label>Needed By</label><input id="pr-needed" type="date" value="' + _todayInput() + '"></div>' +
+      '<div class="field"><label>Notes</label><input id="pr-notes" placeholder="Reason or supplier preference"></div></div>' +
+      '<div class="card"><div class="section-title" style="margin-bottom:8px;">Items</div><div id="pr-items"></div>' +
+      '<div style="display:grid;grid-template-columns:1fr 80px;gap:8px;"><select id="pr-product">' + options + '</select><input id="pr-qty" type="number" min="1" value="1"></div>' +
+      '<button class="btn btn-secondary" style="margin-top:8px;" onclick="addPRItem()">+ Add Item</button></div>' +
+      '<button class="btn btn-primary" onclick="submitCreatePurchaseRequisition()">Submit Requisition</button></div>';
+    window._prItems = [];
+  } catch(e) { _showToast(e.message, true); renderPurchaseRequisitions(); }
+}
+
+function addPRItem() {
+  var sel = document.getElementById('pr-product');
+  var qty = Number(document.getElementById('pr-qty').value) || 0;
+  if (!sel.value || qty <= 0) { _showToast('Select product and quantity', true); return; }
+  window._prItems.push({ productId: sel.value, productName: sel.options[sel.selectedIndex].text, quantity: qty });
+  document.getElementById('pr-items').innerHTML = window._prItems.map(function(item) {
+    return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f3f4f6;font-size:13px;"><span>' + _escHtml(item.productName) + '</span><span>' + item.quantity + '</span></div>';
+  }).join('');
+}
+
+async function submitCreatePurchaseRequisition() {
+  if (!window._prItems || !window._prItems.length) { _showToast('Add at least one item', true); return; }
+  showLoading('Submitting requisition');
+  try {
+    await API.call('createPurchaseRequisition', {
+      neededBy: document.getElementById('pr-needed').value,
+      notes: document.getElementById('pr-notes').value || '',
+      items: window._prItems.map(function(item) { return { productId: item.productId, quantity: item.quantity }; })
+    });
+    renderPurchaseRequisitions('Requisition submitted');
+  } catch(e) { _showToast(e.message, true); }
+}
+
+// 
 // PURCHASE ORDERS  Task 11
 // 
 
@@ -5646,6 +5789,53 @@ async function submitReceiveStock(poId, count) {
   } catch(e) { _showToast(e.message, true); }
 }
 
+async function renderReceivingLogs(msg) {
+  showLoading('Loading receiving logs');
+  try {
+    var logs = await API.call('getReceivingHistory', { limit: 100 });
+    _renderReceivingLogsUI(logs || [], null, msg);
+  } catch(e) { _renderReceivingLogsUI([], e.message, msg); }
+}
+
+function _renderReceivingLogsUI(logs, error, msg) {
+  var rows = logs.length ? logs.map(function(r) {
+    return '<div class="card" style="margin-bottom:8px;cursor:pointer;" onclick="renderReceivingDetail(\'' + (r.id || r.receiving_id || r.receipt_id) + '\')">' +
+      '<div style="display:flex;justify-content:space-between;gap:8px;">' +
+      '<div><div style="font-weight:bold;font-size:13px;">' + _escHtml(r.receipt_number || r.receiptNumber || r.id || 'Receipt') + '</div>' +
+      '<div class="muted" style="font-size:12px;">' + _escHtml(r.po_number || r.poNumber || '') + ' ' + _escHtml(r.supplier_name || '') + '</div></div>' +
+      '<div style="text-align:right;font-size:12px;"><strong>' + _escHtml((r.status || 'received')) + '</strong><div class="muted">' + String(r.receipt_date || r.created_at || '').slice(0,10) + '</div></div>' +
+      '</div></div>';
+  }).join('') : '<div class="muted" style="padding:8px;">No receiving logs yet.</div>';
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;"> Receiving Logs</div><button class="small-btn" onclick="goHome()"> Home</button></div>' +
+    (msg ? '<div class="message message-ok">' + _escHtml(msg) + '</div>' : '') +
+    (error ? '<div class="message message-error">' + _escHtml(error) + '</div>' : '') +
+    rows + '</div>';
+}
+
+async function renderReceivingDetail(receivingId) {
+  showLoading('Loading receiving detail');
+  try {
+    var r = await API.call('getReceivingById', { id: receivingId });
+    var items = (r.items || []).map(function(item) {
+      return '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;">' +
+        '<span>' + _escHtml(item.product_name || item.product_id || '') + '</span>' +
+        '<span>' + Number(item.qty_received || item.quantity_received || 0) + ' ' + _escHtml(item.condition || '') + '</span>' +
+        '</div>';
+    }).join('') || '<div class="muted">No items recorded.</div>';
+    document.getElementById('app').innerHTML =
+      '<div class="screen">' +
+      '<div class="topbar"><div class="title" style="margin:0;">' + _escHtml(r.receipt_number || r.receiptNumber || 'Receiving Detail') + '</div><button class="small-btn" onclick="renderReceivingLogs()"> Back</button></div>' +
+      '<div class="card">' +
+      '<div><span class="muted">PO:</span> ' + _escHtml(r.po_number || r.poNumber || '') + '</div>' +
+      '<div><span class="muted">Supplier:</span> ' + _escHtml(r.supplier_name || '') + '</div>' +
+      '<div><span class="muted">Date:</span> ' + String(r.receipt_date || r.created_at || '').slice(0,10) + '</div>' +
+      (r.notes ? '<div style="font-size:12px;color:#6b7280;margin-top:8px;">' + _escHtml(r.notes) + '</div>' : '') +
+      '</div><div class="card"><div class="section-title" style="margin-bottom:8px;">Items</div>' + items + '</div></div>';
+  } catch(e) { _showToast(e.message, true); renderReceivingLogs(); }
+}
+
 // 
 // BRANCH TRANSFERS  Task 14
 // 
@@ -5721,8 +5911,86 @@ async function renderBranchTransferDetail(transferId) {
 }
 
 async function renderCreateBranchTransfer() {
-  _showToast('Branch setup required in Settings first. Contact support to add branches.', false);
-  renderBranchTransfers();
+  showLoading('Loading branches and products');
+  try {
+    var products = await API.call('getProducts');
+    var branches = [];
+    try { branches = await API.call('getBranchLocations', {}); } catch(e1) {}
+    if (!branches.length) {
+      try {
+        var hq = await API.call('getHqControlCenter', {});
+        branches = hq.branches || hq.items || [];
+      } catch(e2) {}
+    }
+    _renderCreateBranchTransferForm(branches || [], products || []);
+  } catch(e) { _showToast(e.message, true); renderBranchTransfers(); }
+}
+
+function _renderCreateBranchTransferForm(branches, products) {
+  var branchOptions = branches.map(function(b) {
+    var id = b.id || b.branch_id || b.store_id || b.name;
+    var name = b.name || b.branch_name || b.store_name || id;
+    return '<option value="' + _escAttr(id) + '">' + _escHtml(name) + '</option>';
+  }).join('');
+  var productOptions = '<option value="">Select product</option>' + products.map(function(p) {
+    return '<option value="' + _escAttr(p.Product_ID || p.product_id) + '">' + _escHtml(p.Product_Name || p.product_name || '') + '</option>';
+  }).join('');
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">New Transfer</div><button class="small-btn" onclick="renderBranchTransfers()"> Back</button></div>' +
+    '<div class="card">' +
+    '<div class="field"><label>Source Branch</label><select id="bt-source">' + branchOptions + '</select></div>' +
+    '<div class="field"><label>Target Branch</label><select id="bt-target">' + branchOptions + '</select></div>' +
+    '<div class="field"><label>Notes</label><input id="bt-notes" placeholder="Optional"></div>' +
+    '</div>' +
+    '<div class="card"><div class="section-title" style="margin-bottom:8px;">Items</div>' +
+    '<div id="bt-items"></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 80px;gap:8px;margin-top:8px;">' +
+    '<select id="bt-product">' + productOptions + '</select>' +
+    '<input id="bt-qty" type="number" min="1" value="1" placeholder="Qty">' +
+    '</div><button class="btn btn-secondary" style="margin-top:8px;" onclick="addBTItem()">+ Add Item</button></div>' +
+    '<button class="btn btn-primary" onclick="submitCreateBranchTransfer()">Create Transfer</button>' +
+    '</div>';
+  window._btItems = [];
+}
+
+function addBTItem() {
+  var sel = document.getElementById('bt-product');
+  var qty = Number(document.getElementById('bt-qty').value) || 0;
+  if (!sel.value || qty <= 0) { _showToast('Select product and quantity', true); return; }
+  window._btItems = window._btItems || [];
+  window._btItems.push({ productId: sel.value, productName: sel.options[sel.selectedIndex].text, quantity: qty });
+  _renderBTItems();
+}
+
+function _renderBTItems() {
+  document.getElementById('bt-items').innerHTML = window._btItems.map(function(item, i) {
+    return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f3f4f6;font-size:13px;">' +
+      '<span>' + _escHtml(item.productName) + '</span><span>' + item.quantity + ' <button onclick="removeBTItem(' + i + ')" style="border:none;background:transparent;color:#dc2626;">Remove</button></span></div>';
+  }).join('');
+}
+
+function removeBTItem(i) {
+  window._btItems.splice(i, 1);
+  _renderBTItems();
+}
+
+async function submitCreateBranchTransfer() {
+  var items = (window._btItems || []).map(function(item) {
+    return { productId: item.productId, quantity: item.quantity };
+  });
+  if (!items.length) { _showToast('Add at least one item', true); return; }
+  showLoading('Creating transfer');
+  try {
+    var result = await API.call('createBranchTransfer', {
+      sourceBranchId: document.getElementById('bt-source').value,
+      targetBranchId: document.getElementById('bt-target').value,
+      notes: document.getElementById('bt-notes').value || '',
+      items: items
+    });
+    renderBranchTransfers('Transfer created');
+    if (result && result.id) setTimeout(function() { renderBranchTransferDetail(result.id); }, 300);
+  } catch(e) { _showToast(e.message, true); }
 }
 
 async function doBTAction(action, transferId) {
@@ -5732,6 +6000,220 @@ async function doBTAction(action, transferId) {
     renderBranchTransferDetail(transferId);
     _showToast(' Done');
   } catch(e) { _showToast(e.message, true); renderBranchTransferDetail(transferId); }
+}
+
+// 
+// ORDER FULFILLMENT / VENDOR PAYMENTS / RETURNS / PROMOS / VOIDS
+// 
+
+async function renderOrderFulfillment(msg) {
+  showLoading('Loading fulfillment');
+  try {
+    var orders = await API.call('getFulfillmentOrders', { limit: 100 });
+    _renderSimpleActionList('Order Fulfillment', orders || [], {
+      empty: 'No fulfillment orders yet.',
+      title: function(o) { return o.order_number || o.id || 'Order'; },
+      sub: function(o) { return (o.branch_name || '') + ' ' + (o.customer_name || '') + ' ' + String(o.created_at || '').slice(0,10); },
+      status: function(o) { return o.status || 'pending'; },
+      back: 'goHome()',
+      actionLabel: 'Mark Fulfilled',
+      action: function(o) { return "fulfillOrder('" + _escAttr(o.id || o.order_id) + "')"; },
+      msg: msg
+    });
+  } catch(e) { _renderSimpleActionList('Order Fulfillment', [], { empty: e.message, back: 'goHome()', isError: true }); }
+}
+
+async function fulfillOrder(orderId) {
+  try { await API.call('fulfillOrder', { id: orderId }); renderOrderFulfillment('Order fulfilled'); }
+  catch(e) { _showToast(e.message, true); }
+}
+
+async function renderVendorPayments(msg) {
+  showLoading('Loading vendor payments');
+  try {
+    var payments = await API.call('getVendorPayments', { limit: 100 });
+    _renderSimpleActionList('Vendor Payments', payments || [], {
+      empty: 'No vendor payments yet.',
+      title: function(p) { return p.payment_number || p.id || 'Payment'; },
+      sub: function(p) { return (p.supplier_name || '') + ' ' + String(p.payment_date || p.created_at || '').slice(0,10); },
+      amount: function(p) { return Number(p.amount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 }); },
+      back: 'goHome()',
+      create: 'renderCreateVendorPayment()',
+      createLabel: '+ Log Payment',
+      msg: msg
+    });
+  } catch(e) { _renderSimpleActionList('Vendor Payments', [], { empty: e.message, back: 'goHome()', isError: true }); }
+}
+
+async function renderCreateVendorPayment() {
+  showLoading('Loading suppliers');
+  try {
+    var suppliers = await API.call('getSuppliers', {});
+    var options = (suppliers || []).map(function(s) { return '<option value="' + _escAttr(s.supplier_id) + '">' + _escHtml(s.name) + '</option>'; }).join('');
+    document.getElementById('app').innerHTML =
+      '<div class="screen"><div class="topbar"><div class="title" style="margin:0;">Log Payment</div><button class="small-btn" onclick="renderVendorPayments()"> Back</button></div>' +
+      '<div class="card"><div class="field"><label>Supplier</label><select id="vp-supplier">' + options + '</select></div>' +
+      '<div class="field"><label>Amount</label><input id="vp-amount" type="number" min="0" step="0.01"></div>' +
+      '<div class="field"><label>Date</label><input id="vp-date" type="date" value="' + _todayInput() + '"></div>' +
+      '<div class="field"><label>Reference</label><input id="vp-ref" placeholder="OR / transfer reference"></div>' +
+      '<button class="btn btn-primary" onclick="submitVendorPayment()">Save Payment</button></div></div>';
+  } catch(e) { _showToast(e.message, true); renderVendorPayments(); }
+}
+
+async function submitVendorPayment() {
+  showLoading('Saving payment');
+  try {
+    await API.call('createVendorPayment', {
+      supplierId: document.getElementById('vp-supplier').value,
+      amount: Number(document.getElementById('vp-amount').value) || 0,
+      paymentDate: document.getElementById('vp-date').value,
+      reference: document.getElementById('vp-ref').value || ''
+    });
+    renderVendorPayments('Payment logged');
+  } catch(e) { _showToast(e.message, true); }
+}
+
+async function renderCustomerReturns(msg) {
+  showLoading('Loading returns');
+  try {
+    var returns = await API.call('getCustomerReturns', { limit: 100 });
+    _renderSimpleActionList('Customer Returns', returns || [], {
+      empty: 'No customer returns yet.',
+      title: function(r) { return r.return_number || r.id || 'Return'; },
+      sub: function(r) { return (r.product_name || '') + ' ' + String(r.created_at || '').slice(0,10); },
+      status: function(r) { return r.status || 'received'; },
+      back: 'goHome()',
+      create: 'renderCreateCustomerReturn()',
+      createLabel: '+ Record Return',
+      msg: msg
+    });
+  } catch(e) { _renderSimpleActionList('Customer Returns', [], { empty: e.message, back: 'goHome()', isError: true }); }
+}
+
+async function renderCreateCustomerReturn() {
+  showLoading('Loading products');
+  try {
+    var products = await API.call('getProducts');
+    var options = (products || []).map(function(p) { return '<option value="' + _escAttr(p.Product_ID || p.product_id) + '">' + _escHtml(p.Product_Name || p.product_name || '') + '</option>'; }).join('');
+    document.getElementById('app').innerHTML =
+      '<div class="screen"><div class="topbar"><div class="title" style="margin:0;">Record Return</div><button class="small-btn" onclick="renderCustomerReturns()"> Back</button></div>' +
+      '<div class="card"><div class="field"><label>Product</label><select id="ret-product">' + options + '</select></div>' +
+      '<div class="field"><label>Quantity</label><input id="ret-qty" type="number" min="1" value="1"></div>' +
+      '<div class="field"><label>Reason</label><input id="ret-reason" placeholder="Damaged, wrong item, etc."></div>' +
+      '<label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;"><input id="ret-restock" type="checkbox" checked> Return to stock</label>' +
+      '<button class="btn btn-primary" onclick="submitCustomerReturn()">Save Return</button></div></div>';
+  } catch(e) { _showToast(e.message, true); renderCustomerReturns(); }
+}
+
+async function submitCustomerReturn() {
+  showLoading('Saving return');
+  try {
+    await API.call('createCustomerReturn', {
+      productId: document.getElementById('ret-product').value,
+      quantity: Number(document.getElementById('ret-qty').value) || 1,
+      reason: document.getElementById('ret-reason').value || '',
+      restock: document.getElementById('ret-restock').checked
+    });
+    renderCustomerReturns('Return recorded');
+  } catch(e) { _showToast(e.message, true); }
+}
+
+async function renderDiscountsPromotions(msg) {
+  showLoading('Loading promotions');
+  try {
+    var promos = await API.call('getPromotions', { limit: 100 });
+    _renderSimpleActionList('Discounts / Promotions', promos || [], {
+      empty: 'No promotions yet.',
+      title: function(p) { return p.name || p.promo_name || p.id || 'Promotion'; },
+      sub: function(p) { return (p.discount_type || '') + ' ' + (p.discount_value || '') + ' ' + String(p.starts_at || '').slice(0,10) + ' - ' + String(p.ends_at || '').slice(0,10); },
+      status: function(p) { return p.status || 'active'; },
+      back: 'goHome()',
+      create: 'renderCreatePromotion()',
+      createLabel: '+ New Promotion',
+      msg: msg
+    });
+  } catch(e) { _renderSimpleActionList('Discounts / Promotions', [], { empty: e.message, back: 'goHome()', isError: true }); }
+}
+
+function renderCreatePromotion() {
+  document.getElementById('app').innerHTML =
+    '<div class="screen"><div class="topbar"><div class="title" style="margin:0;">New Promotion</div><button class="small-btn" onclick="renderDiscountsPromotions()"> Back</button></div>' +
+    '<div class="card"><div class="field"><label>Name</label><input id="promo-name" placeholder="Weekend sale"></div>' +
+    '<div class="field"><label>Type</label><select id="promo-type"><option value="percent">Percent</option><option value="amount">Fixed Amount</option></select></div>' +
+    '<div class="field"><label>Value</label><input id="promo-value" type="number" min="0" step="0.01"></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"><div class="field"><label>Starts</label><input id="promo-start" type="date" value="' + _todayInput() + '"></div><div class="field"><label>Ends</label><input id="promo-end" type="date" value="' + _todayInput() + '"></div></div>' +
+    '<button class="btn btn-primary" onclick="submitPromotion()">Save Promotion</button></div></div>';
+}
+
+async function submitPromotion() {
+  showLoading('Saving promotion');
+  try {
+    await API.call('createPromotion', {
+      name: document.getElementById('promo-name').value || '',
+      discountType: document.getElementById('promo-type').value,
+      discountValue: Number(document.getElementById('promo-value').value) || 0,
+      startsAt: document.getElementById('promo-start').value,
+      endsAt: document.getElementById('promo-end').value
+    });
+    renderDiscountsPromotions('Promotion saved');
+  } catch(e) { _showToast(e.message, true); }
+}
+
+async function renderVoids(msg) {
+  showLoading('Loading voids');
+  try {
+    var voids = await API.call('getVoids', { limit: 100 });
+    _renderSimpleActionList('Voids', voids || [], {
+      empty: 'No voids recorded.',
+      title: function(v) { return v.receipt_no || v.sale_id || v.id || 'Void'; },
+      sub: function(v) { return (v.reason || '') + ' ' + String(v.created_at || '').slice(0,16); },
+      amount: function(v) { return Number(v.amount || v.total || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 }); },
+      back: 'goHome()',
+      create: 'renderCreateVoid()',
+      createLabel: '+ Void Sale',
+      msg: msg
+    });
+  } catch(e) { _renderSimpleActionList('Voids', [], { empty: e.message, back: 'goHome()', isError: true }); }
+}
+
+function renderCreateVoid() {
+  document.getElementById('app').innerHTML =
+    '<div class="screen"><div class="topbar"><div class="title" style="margin:0;">Void Sale</div><button class="small-btn" onclick="renderVoids()"> Back</button></div>' +
+    '<div class="card"><div class="field"><label>Sale / Receipt ID</label><input id="void-sale" placeholder="Sale ID or receipt number"></div>' +
+    '<div class="field"><label>Reason</label><input id="void-reason" placeholder="Why this sale is voided"></div>' +
+    '<button class="btn btn-primary" style="background:#dc2626;" onclick="submitVoidSale()">Void Sale</button></div></div>';
+}
+
+async function submitVoidSale() {
+  var saleId = (document.getElementById('void-sale').value || '').trim();
+  if (!saleId) { _showToast('Sale ID is required', true); return; }
+  if (!confirm('Void this sale? Inventory and reports may be adjusted.')) return;
+  showLoading('Voiding sale');
+  try {
+    await API.call('voidSale', { saleId: saleId, reason: document.getElementById('void-reason').value || '' });
+    renderVoids('Sale voided');
+  } catch(e) { _showToast(e.message, true); }
+}
+
+function _renderSimpleActionList(title, rows, options) {
+  options = options || {};
+  var html = rows.length ? rows.map(function(row) {
+    var action = options.action ? '<button class="btn btn-secondary" style="margin-top:8px;font-size:12px;padding:8px;" onclick="' + options.action(row) + '">' + _escHtml(options.actionLabel || 'Action') + '</button>' : '';
+    return '<div class="card" style="margin-bottom:8px;">' +
+      '<div style="display:flex;justify-content:space-between;gap:8px;">' +
+      '<div><div style="font-weight:bold;font-size:13px;">' + _escHtml(options.title ? options.title(row) : (row.id || title)) + '</div>' +
+      '<div class="muted" style="font-size:12px;">' + _escHtml(options.sub ? options.sub(row) : '') + '</div></div>' +
+      '<div style="text-align:right;font-size:12px;">' +
+      (options.amount ? '<strong>' + _escHtml(options.amount(row)) + '</strong>' : '<strong>' + _escHtml(options.status ? options.status(row) : '') + '</strong>') +
+      '</div></div>' + action + '</div>';
+  }).join('') : '<div class="' + (options.isError ? 'message message-error' : 'muted') + '" style="padding:8px;">' + _escHtml(options.empty || 'No records.') + '</div>';
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;"> ' + _escHtml(title) + '</div><button class="small-btn" onclick="' + (options.back || 'goHome()') + '"> Home</button></div>' +
+    (options.msg ? '<div class="message message-ok">' + _escHtml(options.msg) + '</div>' : '') +
+    html +
+    (options.create ? '<button class="btn btn-primary" style="margin-top:8px;" onclick="' + options.create + '">' + _escHtml(options.createLabel || '+ New') + '</button>' : '') +
+    '</div>';
 }
 
 // 
@@ -6233,6 +6715,38 @@ async function confirmImport(jobId) {
 }
 
 // 
+// REGISTRY DB
+// 
+
+async function renderRegistryDbStatus() {
+  showLoading('Checking registry');
+  try {
+    var status = await API.call('getRegistryStatus', {});
+    _renderRegistryDbStatus(status || {}, null);
+  } catch(e) {
+    _renderRegistryDbStatus({}, e.message);
+  }
+}
+
+function _renderRegistryDbStatus(status, error) {
+  var rows = [
+    ['API', status.api || status.api_status || (error ? 'Unavailable' : 'Ready')],
+    ['D1 / Registry', status.database || status.db_status || (error ? 'Needs backend verification' : 'Ready')],
+    ['Last Migration', status.last_migration || status.schema_version || 'Not reported'],
+    ['Stores Registered', status.store_count == null ? 'Not reported' : status.store_count]
+  ].map(function(row) {
+    return '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;"><span class="muted">' + _escHtml(row[0]) + '</span><strong>' + _escHtml(row[1]) + '</strong></div>';
+  }).join('');
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;"> Registry DB</div><button class="small-btn" onclick="goHome()"> Home</button></div>' +
+    (error ? '<div class="message message-error">' + _escHtml(error) + '</div>' : '') +
+    '<div class="card"><div class="section-title" style="margin-bottom:8px;">Registry Health</div>' + rows + '</div>' +
+    '<button class="btn btn-secondary" onclick="renderRegistryDbStatus()">Refresh</button>' +
+    '</div>';
+}
+
+// 
 // LEGACY MIGRATION TOOLS  Task 23
 // 
 
@@ -6518,6 +7032,12 @@ function _renderFullSettingsUI(settings) {
   var bp = settings.business_profile || {};
   var ops = settings.operations || {};
   var print = settings.printing || {};
+  var notif = settings.notifications || {};
+  var inv = settings.inventory_alerts || {};
+  var integrations = settings.integrations || {};
+  var tax = settings.tax || {};
+  var logging = settings.logging || {};
+  var approvals = settings.approval_thresholds || {};
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
@@ -6539,6 +7059,50 @@ function _renderFullSettingsUI(settings) {
     '<label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:14px;"><input type="checkbox" id="set-req-adj-appr" ' + (ops.require_stock_adjustment_approval ? 'checked' : '') + '> Require approval for stock adjustments</label>' +
     '<label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:14px;"><input type="checkbox" id="set-allow-neg" ' + (ops.allow_negative_stock ? 'checked' : '') + '> Allow negative stock</label>' +
     '<button class="btn btn-secondary" onclick="saveOperationsSettings()">Save Operations</button>' +
+    '</div>' +
+
+    '<div class="card">' +
+    '<div class="section-title" style="margin-bottom:8px;"> Alerts / Notifications</div>' +
+    '<label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:14px;"><input type="checkbox" id="set-notif-enabled" ' + (notif.enabled !== false ? 'checked' : '') + '> Enable notifications</label>' +
+    '<label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:14px;"><input type="checkbox" id="set-notif-low-stock" ' + (notif.low_stock !== false ? 'checked' : '') + '> Low stock alerts</label>' +
+    '<label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:14px;"><input type="checkbox" id="set-notif-approvals" ' + (notif.approvals !== false ? 'checked' : '') + '> Approval alerts</label>' +
+    '<button class="btn btn-secondary" onclick="saveNotificationSettings()">Save Notifications</button>' +
+    '</div>' +
+
+    '<div class="card">' +
+    '<div class="section-title" style="margin-bottom:8px;"> Inventory Alerts</div>' +
+    '<div class="field"><label>Low Stock Threshold</label><input id="set-low-stock-threshold" type="number" min="0" value="' + _escAttr(inv.low_stock_threshold || 5) + '"></div>' +
+    '<div class="field"><label>Critical Stock Threshold</label><input id="set-critical-stock-threshold" type="number" min="0" value="' + _escAttr(inv.critical_stock_threshold || 0) + '"></div>' +
+    '<button class="btn btn-secondary" onclick="saveInventoryAlertSettings()">Save Inventory Alerts</button>' +
+    '</div>' +
+
+    '<div class="card">' +
+    '<div class="section-title" style="margin-bottom:8px;"> API Keys / Integration</div>' +
+    '<div class="field"><label>Webhook URL</label><input id="set-webhook-url" value="' + _escAttr(integrations.webhook_url || '') + '" placeholder="https://..."></div>' +
+    '<div class="field"><label>Integration Key Alias</label><input id="set-api-key-alias" value="' + _escAttr(integrations.api_key_alias || '') + '" placeholder="Production POS key"></div>' +
+    '<button class="btn btn-secondary" onclick="saveIntegrationSettings()">Save Integrations</button>' +
+    '</div>' +
+
+    '<div class="card">' +
+    '<div class="section-title" style="margin-bottom:8px;"> Taxes / VAT</div>' +
+    '<label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:14px;"><input type="checkbox" id="set-vat-enabled" ' + (tax.vat_enabled ? 'checked' : '') + '> VAT registered</label>' +
+    '<div class="field"><label>VAT Rate (%)</label><input id="set-vat-rate" type="number" min="0" step="0.01" value="' + _escAttr(tax.vat_rate == null ? 12 : tax.vat_rate) + '"></div>' +
+    '<button class="btn btn-secondary" onclick="saveTaxSettings()">Save Tax Settings</button>' +
+    '</div>' +
+
+    '<div class="card">' +
+    '<div class="section-title" style="margin-bottom:8px;"> Logging</div>' +
+    '<label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:14px;"><input type="checkbox" id="set-log-auth" ' + (logging.auth !== false ? 'checked' : '') + '> Auth events</label>' +
+    '<label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:14px;"><input type="checkbox" id="set-log-inventory" ' + (logging.inventory !== false ? 'checked' : '') + '> Inventory events</label>' +
+    '<label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:14px;"><input type="checkbox" id="set-log-sales" ' + (logging.sales !== false ? 'checked' : '') + '> Sales events</label>' +
+    '<button class="btn btn-secondary" onclick="saveLoggingSettings()">Save Logging</button>' +
+    '</div>' +
+
+    '<div class="card">' +
+    '<div class="section-title" style="margin-bottom:8px;"> Approval Thresholds</div>' +
+    '<div class="field"><label>Expense Approval Above</label><input id="set-expense-threshold" type="number" min="0" step="0.01" value="' + _escAttr(approvals.expense_amount || 0) + '"></div>' +
+    '<div class="field"><label>Stock Adjustment Approval Above Qty</label><input id="set-stock-threshold" type="number" min="0" step="1" value="' + _escAttr(approvals.stock_adjustment_qty || 0) + '"></div>' +
+    '<button class="btn btn-secondary" onclick="saveApprovalThresholds()">Save Thresholds</button>' +
     '</div>' +
 
     '<div class="card">' +
@@ -6581,6 +7145,74 @@ async function saveOperationsSettings() {
       allow_negative_stock:             document.getElementById('set-allow-neg').checked
     });
     _showToast(' Operations settings saved');
+  } catch(e) { _showToast(e.message, true); }
+}
+
+async function saveNotificationSettings() {
+  showLoading('Saving');
+  try {
+    await API.call('updateNotificationSettings', {
+      enabled: document.getElementById('set-notif-enabled').checked,
+      low_stock: document.getElementById('set-notif-low-stock').checked,
+      approvals: document.getElementById('set-notif-approvals').checked
+    });
+    _showToast(' Notification settings saved');
+  } catch(e) { _showToast(e.message, true); }
+}
+
+async function saveInventoryAlertSettings() {
+  showLoading('Saving');
+  try {
+    await API.call('updateInventoryAlertSettings', {
+      low_stock_threshold: Number(document.getElementById('set-low-stock-threshold').value) || 0,
+      critical_stock_threshold: Number(document.getElementById('set-critical-stock-threshold').value) || 0
+    });
+    _showToast(' Inventory alert settings saved');
+  } catch(e) { _showToast(e.message, true); }
+}
+
+async function saveIntegrationSettings() {
+  showLoading('Saving');
+  try {
+    await API.call('updateIntegrationSettings', {
+      webhook_url: document.getElementById('set-webhook-url').value || '',
+      api_key_alias: document.getElementById('set-api-key-alias').value || ''
+    });
+    _showToast(' Integration settings saved');
+  } catch(e) { _showToast(e.message, true); }
+}
+
+async function saveTaxSettings() {
+  showLoading('Saving');
+  try {
+    await API.call('updateTaxSettings', {
+      vat_enabled: document.getElementById('set-vat-enabled').checked,
+      vat_rate: Number(document.getElementById('set-vat-rate').value) || 0
+    });
+    _showToast(' Tax settings saved');
+  } catch(e) { _showToast(e.message, true); }
+}
+
+async function saveLoggingSettings() {
+  showLoading('Saving');
+  try {
+    await API.call('updateLoggingSettings', {
+      auth: document.getElementById('set-log-auth').checked,
+      inventory: document.getElementById('set-log-inventory').checked,
+      sales: document.getElementById('set-log-sales').checked
+    });
+    _showToast(' Logging settings saved');
+  } catch(e) { _showToast(e.message, true); }
+}
+
+async function saveApprovalThresholds() {
+  showLoading('Saving');
+  try {
+    await API.call('updateApprovalThresholds', {
+      expense_amount: Number(document.getElementById('set-expense-threshold').value) || 0,
+      stock_adjustment_qty: Number(document.getElementById('set-stock-threshold').value) || 0
+    });
+    _showToast(' Approval thresholds saved');
   } catch(e) { _showToast(e.message, true); }
 }
 

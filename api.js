@@ -289,7 +289,37 @@ const API = {
   },
   async createRestock(data) {
     return this.call('createRestock', data);
-  }
+  },
+
+  // Remaining module contracts
+  async getReceivingHistory(filters) { return this.call('getReceivingHistory', filters || {}); },
+  async getReceivingById(id) { return this.call('getReceivingById', { id }); },
+  async getPurchaseRequisitions(filters) { return this.call('getPurchaseRequisitions', filters || {}); },
+  async createPurchaseRequisition(data) { return this.call('createPurchaseRequisition', data); },
+  async getFulfillmentOrders(filters) { return this.call('getFulfillmentOrders', filters || {}); },
+  async fulfillOrder(id) { return this.call('fulfillOrder', { id }); },
+  async createBranchTransfer(data) { return this.call('createBranchTransfer', data); },
+  async submitBranchTransfer(id) { return this.call('submitBranchTransfer', { id }); },
+  async approveBranchTransfer(id) { return this.call('approveBranchTransfer', { id }); },
+  async markBranchTransferSent(id) { return this.call('markBranchTransferSent', { id }); },
+  async receiveBranchTransfer(id) { return this.call('receiveBranchTransfer', { id }); },
+  async cancelBranchTransfer(id) { return this.call('cancelBranchTransfer', { id }); },
+  async getBranchLocations() { return this.call('getBranchLocations', {}); },
+  async getVendorPayments(filters) { return this.call('getVendorPayments', filters || {}); },
+  async createVendorPayment(data) { return this.call('createVendorPayment', data); },
+  async getCustomerReturns(filters) { return this.call('getCustomerReturns', filters || {}); },
+  async createCustomerReturn(data) { return this.call('createCustomerReturn', data); },
+  async getPromotions(filters) { return this.call('getPromotions', filters || {}); },
+  async createPromotion(data) { return this.call('createPromotion', data); },
+  async getVoids(filters) { return this.call('getVoids', filters || {}); },
+  async voidSale(data) { return this.call('voidSale', data); },
+  async updateNotificationSettings(data) { return this.call('updateNotificationSettings', data); },
+  async updateInventoryAlertSettings(data) { return this.call('updateInventoryAlertSettings', data); },
+  async updateIntegrationSettings(data) { return this.call('updateIntegrationSettings', data); },
+  async updateTaxSettings(data) { return this.call('updateTaxSettings', data); },
+  async updateLoggingSettings(data) { return this.call('updateLoggingSettings', data); },
+  async updateApprovalThresholds(data) { return this.call('updateApprovalThresholds', data); },
+  async getRegistryStatus() { return this.call('getRegistryStatus', {}); }
 };
 
 // â”€â”€ Admin API client (used only by admin.html) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
