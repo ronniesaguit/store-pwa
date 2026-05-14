@@ -1858,6 +1858,31 @@ function _moduleDescOf(m) {
   return (m && (m.short_description || m.description || m.feature_description || m.Short_Description || m.Description)) || '';
 }
 
+function _isOperationalModuleCode(code) {
+  var hidden = {
+    auth: true,
+    module_catalog: true,
+    module_code_registry: true,
+    addon_code_registry: true,
+    plan_bundles: true,
+    addon_filtering: true,
+    included_module_filtering: true,
+    hub_bundle_modules: true,
+    business_hub_addons: true,
+    negosyo_hub_addons: true,
+    flexible_plan_modules: true,
+    feature_marketplace: true,
+    offline_cache: true,
+    registry_db: true,
+    api_integrations: true,
+    logging_config: true,
+    dashboard_widgets: true,
+    module_permissions: true,
+    approval_thresholds: true
+  };
+  return !hidden[_moduleCodeKey(code)];
+}
+
 function _canonicalModule(m, fallbackCode) {
   var code = _moduleCodeOf(m) || String(fallbackCode || '').trim();
   return {
@@ -1889,7 +1914,7 @@ function _allModuleCatalog() {
   } catch(e) {}
 
   try {
-    if (typeof _fallbackModuleCatalog === 'function') addList(_fallbackModuleCatalog() || []);
+    if (!Object.keys(map).length && typeof _fallbackModuleCatalog === 'function') addList(_fallbackModuleCatalog() || []);
   } catch(e) {}
 
   ['TRIAL','NEGOSYO_HUB','BUSINESS_HUB','NEXORA_HUB'].forEach(function(plan) {
@@ -1903,7 +1928,7 @@ function _allModuleCatalog() {
 }
 
 function _customModuleCatalog() {
-  return _allModuleCatalog();
+  return _allModuleCatalog().filter(function(m) { return _isOperationalModuleCode(_moduleCodeOf(m)); });
 }
 
 function _planCoreModuleCodes(planId) {
@@ -1916,11 +1941,11 @@ function _planCoreModuleCodes(planId) {
   } catch(e) {}
 
   if (Array.isArray(hubCodes)) {
-    return _uniqueModuleCodes(hubCodes.map(function(code) { return _moduleCodeKey(code); }));
+    return _uniqueModuleCodes(hubCodes.map(function(code) { return _moduleCodeKey(code); }).filter(_isOperationalModuleCode));
   }
 
   if (typeof _fallbackCoreModuleCodes === 'function') {
-    return _uniqueModuleCodes((_fallbackCoreModuleCodes(plan) || []).map(function(code) { return _moduleCodeKey(code); }));
+    return _uniqueModuleCodes((_fallbackCoreModuleCodes(plan) || []).map(function(code) { return _moduleCodeKey(code); }).filter(_isOperationalModuleCode));
   }
 
   return [];
@@ -1930,7 +1955,7 @@ function _planCoreModuleCatalog(planId) {
   var coreMap = {};
   _planCoreModuleCodes(planId).forEach(function(code) { coreMap[_moduleCodeKey(code)] = true; });
 
-  var all = _allModuleCatalog();
+  var all = _customModuleCatalog();
   var included = all.filter(function(m) {
     return coreMap[_moduleCodeKey(_moduleCodeOf(m))];
   });
@@ -1948,7 +1973,7 @@ function _planCoreModuleCatalog(planId) {
 
 function _planAddOnCatalog(planId, catalog) {
   var plan = _normalizePlanId(planId);
-  var all = _allModuleCatalog();
+  var all = _customModuleCatalog();
 
   if (plan === 'CUSTOM') return all;
 
