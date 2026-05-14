@@ -524,12 +524,13 @@ function renderDashboard() {
     '<div style="font-size:24px;font-weight:bold;color:#16a34a;">' + _money(mrr) + '</div>' +
     '</div>' +
 
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">' +
-    '<button class="btn btn-primary" style="margin:0;" onclick="renderCreateStore()">+ New Store</button>' +
-    '<button class="btn btn-secondary" style="margin:0;" onclick="renderPlatformSettings()">Settings</button>' +
-    '<button class="btn btn-secondary" style="margin:0;" onclick="renderHealthMonitor()">Health Monitor</button>' +
-    '<button class="btn btn-secondary" style="margin:0;position:relative;" id="msg-btn" onclick="renderMessagesInbox()">Messages</button>' +
-    '</div>' +
+     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">' +
+     '<button class="btn btn-primary" style="margin:0;" onclick="renderCreateStore()">+ New Store</button>' +
+     '<button class="btn btn-secondary" style="margin:0;" onclick="renderPlatformSettings()">Settings</button>' +
+     '<button class="btn btn-secondary" style="margin:0;" onclick="renderModuleCatalog()">Modules</button>' +
+     '<button class="btn btn-secondary" style="margin:0;" onclick="renderHealthMonitor()">Health Monitor</button>' +
+     '<button class="btn btn-secondary" style="margin:0;position:relative;" id="msg-btn" onclick="renderMessagesInbox()">Messages</button>' +
+     '</div>' +
 
     '<div class="card">' +
     '<div class="section-title">All Stores</div>' +
@@ -1126,6 +1127,72 @@ async function changeAdminPassword() {
     _toast('Password changed! Please log in again.');
     setTimeout(function() { ADMIN_API.clearToken(); renderAdminLogin(); }, 1500);
   } catch(e) { _toast(e.message, true); }
+}
+
+//  Modules / Bundles
+
+async function renderModuleCatalog() {
+  _app('<div class="screen">' + _topbar('Modules', 'renderDashboard()') +
+    '<div class="card"><div class="muted">Loading module catalog</div></div></div>');
+  try { await _ensureFeatureCatalog(); } catch(e) {}
+
+  var all = _allModuleCatalog();
+  var planIds = ['TRIAL', 'NEGOSYO_HUB', 'BUSINESS_HUB', 'NEXORA_HUB', 'CUSTOM'];
+  var moduleRows = all.map(function(m, i) {
+    var code = _moduleCodeOf(m);
+    var price = m.price != null ? 'PHP ' + _esc(String(m.price)) + '/mo' : 'Bundle';
+    return '<div style="display:grid;grid-template-columns:34px 1fr;gap:10px;padding:10px 0;border-bottom:1px solid #f3f4f6;">' +
+      '<div style="font-weight:800;color:#64748b;">' + (i + 1) + '</div>' +
+      '<div><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">' +
+      '<div><div style="font-size:13px;font-weight:800;color:#111827;">' + _esc(_moduleNameOf(m)) + '</div>' +
+      '<div style="font-family:monospace;font-size:11px;color:#64748b;">' + _esc(code) + '</div></div>' +
+      '<div style="white-space:nowrap;font-size:11px;font-weight:800;color:#166534;background:#dcfce7;border-radius:999px;padding:2px 8px;">' + price + '</div>' +
+      '</div>' +
+      (_moduleDescOf(m) ? '<div class="muted" style="font-size:11px;margin-top:3px;">' + _esc(_moduleDescOf(m)) + '</div>' : '') +
+      '</div></div>';
+  }).join('');
+
+  var bundleHtml = planIds.map(function(planId) {
+    var core = planId === 'CUSTOM' ? all : _planCoreModuleCatalog(planId);
+    var addOns = _planAddOnCatalog(planId, _featureCatalog());
+    var tier = _planTier(planId) || {};
+    var addOnPrice = _addOnPriceForPlan(planId);
+    var coreChips = core.map(function(m) {
+      return '<span style="display:inline-block;background:#ecfdf5;color:#065f46;border:1px solid #bbf7d0;border-radius:999px;padding:4px 8px;margin:0 4px 6px 0;font-size:11px;font-weight:700;">' + _esc(_moduleNameOf(m)) + '</span>';
+    }).join('');
+    var addOnChips = (planId === 'CUSTOM' ? [] : addOns).map(function(m) {
+      return '<span style="display:inline-block;background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;border-radius:999px;padding:4px 8px;margin:0 4px 6px 0;font-size:11px;font-weight:700;">' + _esc(_moduleNameOf(m)) + '</span>';
+    }).join('');
+
+    return '<div class="card">' +
+      '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:8px;">' +
+      '<div><div class="section-title" style="margin-bottom:2px;">' + _esc(_planLabel(planId)) + '</div>' +
+      '<div class="muted" style="font-size:12px;">Base PHP ' + _esc(String(tier.basePrice || 0)) + '/mo' +
+      (addOnPrice != null ? '  Add-ons PHP ' + addOnPrice + '/mo each' : '') + '</div></div>' +
+      '<div style="font-size:11px;font-weight:800;color:#1d4ed8;background:#dbeafe;border-radius:999px;padding:4px 8px;white-space:nowrap;">' +
+      core.length + ' included' + (planId === 'CUSTOM' ? '' : ' / ' + addOns.length + ' add-ons') + '</div>' +
+      '</div>' +
+      '<div style="font-size:12px;font-weight:800;color:#065f46;margin:10px 0 6px;">Included Bundle</div>' +
+      '<div>' + (coreChips || '<span class="muted">No included modules.</span>') + '</div>' +
+      (planId === 'CUSTOM'
+        ? '<div class="hint" style="margin-top:10px;">Custom / Flexible can select any module from the full catalog.</div>'
+        : '<div style="font-size:12px;font-weight:800;color:#9a3412;margin:12px 0 6px;">Available Add-ons</div><div>' + (addOnChips || '<span class="muted">No additional add-ons.</span>') + '</div>') +
+      '</div>';
+  }).join('');
+
+  _app('<div class="screen">' +
+    _topbar('Modules', 'renderDashboard()') +
+    '<div class="stat-grid">' +
+    '<div class="stat-card"><div class="val">' + all.length + '</div><div class="lbl">Total Modules</div></div>' +
+    '<div class="stat-card"><div class="val" style="color:#1d4ed8;">5</div><div class="lbl">Plan Bundles</div></div>' +
+    '</div>' +
+    '<div class="card">' +
+    '<div class="section-title">All Modules</div>' +
+    moduleRows +
+    '</div>' +
+    '<div class="section-title" style="margin:16px 4px 8px;color:#1e3a5f;">Bundles + Add-ons</div>' +
+    bundleHtml +
+    '</div>');
 }
 
 //  Health Monitoring 
