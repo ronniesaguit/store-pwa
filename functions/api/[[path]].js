@@ -7,6 +7,10 @@ const LOCAL_ACTIONS = new Set([
   'adminCopyStoreToDedicatedDb', 'adminSavePlatformSettings', 'adminChangePassword',
   'adminGetAllStoreHealth', 'adminGetStoreSnapshot', 'adminGetUnreadCount',
   'adminGetAllMessages', 'adminGetStoreMessages', 'adminSendMessage',
+  'login', 'logout', 'getBootData',
+  'getProducts', 'createProduct', 'updateProduct', 'deleteProduct',
+  'getProductByBarcode', 'addProductStock',
+  'getCategories', 'createCategory', 'updateCategory', 'deleteCategory',
   'getRegistryStatus',
   'getReceivingHistory', 'getReceivingById', 'receiveStock',
   'getPurchaseRequisitions', 'createPurchaseRequisition',
@@ -101,6 +105,22 @@ function requireAdmin(requestBody) {
   if (!token.startsWith('local_admin_')) throw new Error('Admin not logged in');
 }
 
+function ownerCredentials(env) {
+  return {
+    username: String(env.STORE_OWNER_USERNAME || env.OWNER_USERNAME || 'owner'),
+    password: String(env.STORE_OWNER_PASSWORD || env.OWNER_PASSWORD || '1234')
+  };
+}
+
+function ownerToken(tenant) {
+  return 'local_owner_' + String(tenant || 'default') + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+}
+
+function requireOwner(requestBody) {
+  const token = String(requestBody.token || '');
+  if (!token.startsWith('local_owner_')) throw new Error('Please log in');
+}
+
 function normalizePlan(plan) {
   const raw = String(plan || 'TRIAL').trim().toUpperCase();
   const aliases = { STARTER: 'NEGOSYO_HUB', BASIC: 'NEGOSYO_HUB', STANDARD: 'BUSINESS_HUB', GROWTH: 'BUSINESS_HUB', PRO: 'BUSINESS_HUB', ELITE: 'NEXORA_HUB' };
@@ -193,6 +213,75 @@ async function saveAdminStore(env, store) {
 async function adminDashboard(env) {
   const settings = Object.assign(platformSettings(env), await getSettings(env, 'admin').then((s) => s.platform || {}));
   return { stores: await adminStores(env), platformSettings: settings, featureCatalog: featureCatalog() };
+}
+
+function ownerManifest(plan) {
+  const modules = featureCatalog().map((f) => f.module_code || f.code);
+  return {
+    dashboard_type: 'store_owner_dashboard',
+    role_display_name: 'Owner',
+    enabled_modules: modules,
+    granted_permissions: modules.reduce((acc, code) => {
+      ['view', 'create', 'update', 'delete', 'approve', 'export'].forEach((action) => acc.push(code + '.' + action));
+      return acc;
+    }, [])
+  };
+}
+
+async function ownerStoreProfile(env, tenant) {
+  const stores = await adminStores(env);
+  const matched = stores.find((s) => String(s.API_Key || '').toUpperCase() === String(tenant || '').toUpperCase()) || stores[0] || {};
+  const plan = normalizePlan(matched.Plan || 'BUSINESS_HUB');
+  const def = planDefaults(plan);
+  return {
+    storeKey: tenant,
+    storeName: matched.Store_Name || 'Demo Store',
+    ownerName: matched.Owner_Name || 'Store Owner',
+    ownerEmail: matched.Owner_Email || '',
+    plan: {
+      id: plan,
+      name: plan,
+      base_price: Number(matched.Monthly_Fee || def.fee || 0),
+      addon_price: plan === 'NEGOSYO_HUB' ? 30 : (plan === 'BUSINESS_HUB' ? 50 : (plan === 'NEXORA_HUB' ? 100 : null))
+    },
+    inTrial: !!matched.Trial_End,
+    manifest: ownerManifest(plan)
+  };
+}
+
+async function ownerBootData(env, tenant) {
+  const profile = await ownerStoreProfile(env, tenant);
+  const categories = await listRecords(env, tenant, 'categories');
+  const products = await listRecords(env, tenant, 'products');
+  const session = {
+    loggedIn: true,
+    user: {
+      User_ID: 'owner',
+      Username: ownerCredentials(env).username,
+      Full_Name: profile.ownerName,
+      Role: 'OWNER'
+    },
+    plan: profile.plan,
+    inTrial: profile.inTrial,
+    manifest: profile.manifest,
+    storeName: profile.storeName,
+    ownerName: profile.ownerName
+  };
+  return {
+    session,
+    products,
+    categories,
+    storeName: profile.storeName,
+    ownerName: profile.ownerName,
+    plan: profile.plan,
+    inTrial: profile.inTrial,
+    manifest: profile.manifest,
+    user: session.user,
+    paymentInfo: {
+      gcashNumber: platformSettings(env).GCASH_NUMBER,
+      gcashName: platformSettings(env).GCASH_NAME
+    }
+  };
 }
 
 async function ensureSchema(db) {
@@ -308,6 +397,103 @@ function withNumberFields(record, fields) {
 async function handleLocalAction(action, data, requestBody, env) {
   const tenant = tenantId(requestBody);
   switch (action) {
+    case 'login': {
+      const creds = ownerCredentials(env);
+      if (String(data.username || '') !== creds.username || String(data.password || '') !== creds.password) {
+        throw new Error('Invalid username or password');
+      }
+      const boot = await ownerBootData(env, tenant);
+      return Object.assign({ token: ownerToken(tenant) }, boot);
+    }
+
+    case 'logout':
+      return { ok: true };
+
+    case 'getBootData':
+      requireOwner(requestBody);
+      return ownerBootData(env, tenant);
+
+    case 'getProducts':
+      requireOwner(requestBody);
+      return listRecords(env, tenant, 'products');
+
+    case 'createProduct': {
+      requireOwner(requestBody);
+      const product = Object.assign({
+        Product_ID: id('prod'),
+        Product_Name: '',
+        Category_Name: '',
+        Unit: 'pc',
+        Barcode: '',
+        Cost_Price: 0,
+        Selling_Price: 0,
+        Current_Stock: 0,
+        Reorder_Level: 5
+      }, data);
+      product.id = product.Product_ID || product.id;
+      product.Product_ID = product.Product_ID || product.id;
+      return putRecord(env, tenant, 'products', withNumberFields(product, ['Cost_Price', 'Selling_Price', 'Current_Stock', 'Reorder_Level']));
+    }
+
+    case 'updateProduct': {
+      requireOwner(requestBody);
+      const productId = data.productId || data.Product_ID || data.id;
+      const patch = Object.assign({}, data);
+      delete patch.productId;
+      return patchRecord(env, tenant, 'products', productId, withNumberFields(patch, ['Cost_Price', 'Selling_Price', 'Current_Stock', 'Reorder_Level']));
+    }
+
+    case 'deleteProduct':
+      requireOwner(requestBody);
+      return patchRecord(env, tenant, 'products', data.productId || data.Product_ID || data.id, { deleted: true, status: 'deleted' });
+
+    case 'getProductByBarcode': {
+      requireOwner(requestBody);
+      const products = await listRecords(env, tenant, 'products');
+      return products.find((p) => String(p.Barcode || '') === String(data.barcode || '')) || null;
+    }
+
+    case 'addProductStock': {
+      requireOwner(requestBody);
+      const productId = data.productId || data.Product_ID || data.id;
+      const current = await getRecord(env, tenant, 'products', productId);
+      if (!current) throw new Error('Product not found');
+      const qty = Number(data.qty || data.quantity || 0);
+      current.Current_Stock = Number(current.Current_Stock || 0) + qty;
+      await putRecord(env, tenant, 'products', current);
+      await putRecord(env, tenant, 'inventory_movements', {
+        productId,
+        quantity: qty,
+        reason: data.reason || 'stock_added',
+        notes: data.notes || '',
+        created_at: nowIso()
+      });
+      return current;
+    }
+
+    case 'getCategories':
+      requireOwner(requestBody);
+      return listRecords(env, tenant, 'categories');
+
+    case 'createCategory': {
+      requireOwner(requestBody);
+      const name = String(data.Category_Name || data.categoryName || data.name || '').trim();
+      if (!name) throw new Error('Category name is required');
+      return putRecord(env, tenant, 'categories', { id: name.toLowerCase().replace(/[^a-z0-9]+/g, '_'), Category_Name: name });
+    }
+
+    case 'updateCategory': {
+      requireOwner(requestBody);
+      const oldName = String(data.oldName || data.Category_Name || '').trim();
+      const newName = String(data.newName || data.categoryName || '').trim();
+      if (!oldName || !newName) throw new Error('Old and new category names are required');
+      return putRecord(env, tenant, 'categories', { id: newName.toLowerCase().replace(/[^a-z0-9]+/g, '_'), Category_Name: newName, Previous_Name: oldName });
+    }
+
+    case 'deleteCategory':
+      requireOwner(requestBody);
+      return patchRecord(env, tenant, 'categories', String(data.Category_Name || data.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '_'), { deleted: true });
+
     case 'adminLogin': {
       const creds = adminCredentials(env);
       if (String(data.username || '') !== creds.username || String(data.password || '') !== creds.password) {
