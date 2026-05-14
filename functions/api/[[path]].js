@@ -7,7 +7,7 @@ const LOCAL_ACTIONS = new Set([
   'adminCopyStoreToDedicatedDb', 'adminSavePlatformSettings', 'adminChangePassword',
   'adminGetAllStoreHealth', 'adminGetStoreSnapshot', 'adminGetUnreadCount',
   'adminGetAllMessages', 'adminGetStoreMessages', 'adminSendMessage',
-  'login', 'logout', 'getBootData',
+  'login', 'logout', 'getBootData', 'getFeatureMarketplace', 'startTrial',
   'getProducts', 'createProduct', 'updateProduct', 'deleteProduct',
   'getProductByBarcode', 'addProductStock',
   'getCategories', 'createCategory', 'updateCategory', 'deleteCategory',
@@ -412,6 +412,36 @@ async function handleLocalAction(action, data, requestBody, env) {
     case 'getBootData':
       requireOwner(requestBody);
       return ownerBootData(env, tenant);
+
+    case 'getFeatureMarketplace': {
+      requireOwner(requestBody);
+      const active = await listRecords(env, tenant, 'addon_subscriptions');
+      const activeByCode = {};
+      active.forEach((sub) => { activeByCode[String(sub.module_code || sub.code || '')] = sub; });
+      return featureCatalog().map((feature) => {
+        const code = feature.module_code || feature.code;
+        const sub = activeByCode[code] || {};
+        return Object.assign({}, feature, {
+          module_code: code,
+          monthly_price: feature.price,
+          tenant_status: sub.status || null,
+          is_trial_available: true
+        });
+      });
+    }
+
+    case 'startTrial': {
+      requireOwner(requestBody);
+      const moduleCode = String(data.moduleCode || data.module_code || '').trim();
+      if (!moduleCode) throw new Error('Module code is required');
+      return putRecord(env, tenant, 'addon_subscriptions', {
+        id: moduleCode,
+        module_code: moduleCode,
+        status: 'trial_active',
+        trial_started_at: nowIso(),
+        trial_ends_at: addDays(30)
+      });
+    }
 
     case 'getProducts':
       requireOwner(requestBody);

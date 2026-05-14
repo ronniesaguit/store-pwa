@@ -486,6 +486,47 @@ function _isActiveAddOnStatus(status) {
   return ['active_paid', 'trial_active', 'trial_expiring'].indexOf(String(status || '')) !== -1;
 }
 
+function _moduleCodeKey(code) {
+  return String(code || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+}
+
+function _isOperationalModuleCode(code) {
+  var hidden = {
+    auth: true,
+    module_catalog: true,
+    module_code_registry: true,
+    addon_code_registry: true,
+    plan_bundles: true,
+    addon_filtering: true,
+    included_module_filtering: true,
+    hub_bundle_modules: true,
+    business_hub_addons: true,
+    negosyo_hub_addons: true,
+    flexible_plan_modules: true,
+    feature_marketplace: true,
+    offline_cache: true,
+    registry_db: true,
+    api_integrations: true,
+    logging_config: true,
+    dashboard_widgets: true,
+    module_permissions: true,
+    approval_thresholds: true
+  };
+  return !hidden[_moduleCodeKey(_resolveModuleId(code))];
+}
+
+function _featureCode(feature) {
+  return feature && (feature.module_code || feature.code || feature.Module_Code || feature.Code);
+}
+
+function _featureName(feature) {
+  return feature && (feature.feature_name || feature.name || feature.module_name || feature.Feature_Name || feature.Name || _featureCode(feature));
+}
+
+function _featureDescription(feature) {
+  return feature && (feature.short_description || feature.description || feature.feature_description || feature.Short_Description || feature.Description || '');
+}
+
 function _ownerActiveAddOnModules() {
   return (state.ownerAddOns || []).filter(function(feature) {
     return _isActiveAddOnStatus(feature.tenant_status || feature.status);
@@ -496,7 +537,41 @@ function _ownerActiveAddOnModules() {
 
 function _normalizeOwnerAddOnCatalog(features) {
   var planId = _currentPlanId();
-  return (HUB && HUB.getAddOnCatalog) ? HUB.getAddOnCatalog(planId, features || []) : (features || []);
+  var source = [];
+  if (HUB && HUB.getCustomModuleCatalog) source = source.concat(HUB.getCustomModuleCatalog() || []);
+  source = source.concat(features || []);
+  var statusByCode = {};
+  (features || []).forEach(function(feature) {
+    var code = _moduleCodeKey(_featureCode(feature));
+    if (code) statusByCode[code] = feature;
+  });
+  var seen = {};
+  var normalized = source.map(function(feature) {
+    var rawCode = _featureCode(feature);
+    var code = _resolveModuleId(rawCode);
+    var key = _moduleCodeKey(code);
+    if (!key || seen[key]) return null;
+    seen[key] = true;
+    var status = statusByCode[_moduleCodeKey(code)] || {};
+    var price = feature.monthly_price != null ? feature.monthly_price : feature.price;
+    return {
+      module_code: code,
+      code: code,
+      feature_name: _featureName(feature),
+      name: _featureName(feature),
+      short_description: _featureDescription(feature),
+      description: _featureDescription(feature),
+      monthly_price: price,
+      price: price,
+      tenant_status: status.tenant_status || feature.tenant_status || feature.status || null,
+      status: status.status || feature.status || null,
+      is_trial_available: feature.is_trial_available !== false,
+      why_it_matters: feature.why_it_matters || ''
+    };
+  }).filter(function(feature) {
+    return feature && _isOperationalModuleCode(feature.module_code);
+  });
+  return (HUB && HUB.getAddOnCatalog) ? HUB.getAddOnCatalog(planId, normalized) : normalized;
 }
 
 async function _refreshOwnerAddOns(options) {
@@ -675,7 +750,7 @@ function _addonCards(list) {
   if (!list.length) {
     return '<div style="text-align:center;color:#9ca3af;padding:40px 16px;">' +
       '<div style="font-size:2rem;margin-bottom:8px;"></div>' +
-      '<div>No add-ons match your search.</div></div>';
+      '<div>No additional modules are available for this plan.</div></div>';
   }
   return list.map(function(f) {
     var icon = _MODULE_ICONS[f.module_code] || '';
@@ -700,16 +775,19 @@ function _addonCards(list) {
   }).join('');
 }
 
-function renderAddOnsPanel() {
-  var all = (state.ownerAddOns || []).filter(function(f) {
-    return !_isActiveAddOnStatus(f.tenant_status) && !_hasModule(f.module_code);
+function _ownerAddOnList() {
+  return _normalizeOwnerAddOnCatalog(state.ownerAddOns || []).filter(function(f) {
+    return !_isActiveAddOnStatus(f.tenant_status || f.status) && _isOperationalModuleCode(f.module_code);
   });
+}
+
+function renderAddOnsPanel() {
+  var all = _ownerAddOnList();
   state._addOnsPanelAll = all;
 
   var loading = !state.ownerAddOnsLoaded;
-  var body = loading
-    ? '<div style="text-align:center;color:#9ca3af;padding:48px 16px;"><div style="font-size:2rem;margin-bottom:8px;"></div><div>Loading add-ons</div></div>'
-    : _addonCards(all);
+  var body = _addonCards(all);
+  var planName = _planLabel(_currentPlanId());
 
   var overlay = document.createElement('div');
   overlay.id = 'addons-overlay';
@@ -720,12 +798,11 @@ function renderAddOnsPanel() {
     '<div id="addons-sheet" style="background:#f9fafb;border-radius:20px 20px 0 0;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;">' +
       '<div style="padding:14px 16px 10px;background:#fff;border-bottom:1px solid #f0f0f0;flex-shrink:0;">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">' +
-          '<div style="font-size:1.05rem;font-weight:700;color:#111;"> Explore Add-Ons</div>' +
+          '<div><div style="font-size:1.05rem;font-weight:700;color:#111;">Available Add-On Modules</div>' +
+          '<div class="muted" style="font-size:0.75rem;">' + _escHtml(planName) + (loading ? ' - updating in background' : '') + '</div></div>' +
           '<button onclick="closeAddOnsPanel()" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:#9ca3af;line-height:1;"></button>' +
         '</div>' +
-        '<input id="addons-search" type="text" placeholder="What feature do you need?" ' +
-          'style="width:100%;box-sizing:border-box;padding:10px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:0.9rem;outline:none;" ' +
-          'oninput="filterAddOns(this.value)">' +
+        '<div style="font-size:0.8rem;color:#4b5563;line-height:1.45;">Choose from the modules not included in your current plan.</div>' +
       '</div>' +
       '<div id="addons-cards" style="overflow-y:auto;padding:12px 16px 32px;">' + body + '</div>' +
     '</div>';
@@ -733,12 +810,10 @@ function renderAddOnsPanel() {
   document.body.appendChild(overlay);
 
   if (loading) {
-    _refreshOwnerAddOns({}).then(function() {
+    _refreshOwnerAddOns({ force: true }).then(function() {
       var el = document.getElementById('addons-cards');
       if (!el) return;
-      var fresh = (state.ownerAddOns || []).filter(function(f) {
-        return !_isActiveAddOnStatus(f.tenant_status) && !_hasModule(f.module_code);
-      });
+      var fresh = _ownerAddOnList();
       state._addOnsPanelAll = fresh;
       el.innerHTML = _addonCards(fresh);
     });
@@ -767,7 +842,8 @@ function filterAddOns(q) {
 }
 
 function renderFeatureDetailModal(moduleCode) {
-  var feature = (state.ownerAddOns || []).filter(function(f) { return f.module_code === moduleCode; })[0];
+  var feature = (state._addOnsPanelAll || []).filter(function(f) { return f.module_code === moduleCode; })[0] ||
+    (state.ownerAddOns || []).filter(function(f) { return f.module_code === moduleCode; })[0];
   if (!feature) return;
 
   var icon = _MODULE_ICONS[moduleCode] || '';

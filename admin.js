@@ -220,7 +220,9 @@ function _applyModulePatchFields(patch, modulePayload) {
 
 
 function _moduleCodeKey(code) {
-  return String(code || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  var value = String(code || '').trim();
+  try { if (HUB && HUB.resolveModuleId) value = HUB.resolveModuleId(value); } catch(e) {}
+  return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 }
 
 function _planAddOnCatalog(planId, catalog) {
@@ -1843,7 +1845,9 @@ function _renderAddOnSelector(containerId, planId, selectedModuleCodes) {
 /* UNIFIED_MODULE_SPLIT_OVERRIDE_START */
 
 function _moduleCodeKey(code) {
-  return String(code || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  var value = String(code || '').trim();
+  try { if (HUB && HUB.resolveModuleId) value = HUB.resolveModuleId(value); } catch(e) {}
+  return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 }
 
 function _moduleCodeOf(m) {
