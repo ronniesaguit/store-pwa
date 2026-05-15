@@ -659,6 +659,141 @@ function _dashboardHeader_(storeName, subLabel, onlineLabel, isOffline) {
     '</div>';
 }
 
+function _ownerModuleButton(moduleCode, label, action, extraStyle) {
+  return '<div class="module-action" style="display:grid;grid-template-columns:minmax(0,1fr) 42px;gap:8px;align-items:stretch;">' +
+    '<button class="big-btn" onclick="' + action + '"' + (extraStyle ? ' style="' + extraStyle + '"' : '') + '>' + label + '</button>' +
+    '<button type="button" title="Help" aria-label="Help for ' + _escAttr(label) + '" onclick="event.stopPropagation();showModuleHelp(\'' + _escAttr(moduleCode) + '\')" ' +
+    'style="border:1px solid rgba(255,255,255,0.22);background:rgba(255,255,255,0.12);color:#fff;border-radius:12px;font-weight:900;font-size:16px;box-shadow:0 8px 18px rgba(0,0,0,.16);">?</button>' +
+    '</div>';
+}
+
+function _helpText(enWhat, enHow, tlWhat, tlHow, cbWhat, cbHow) {
+  return {
+    en: { what: enWhat, how: enHow },
+    tl: { what: tlWhat || enWhat, how: tlHow || enHow },
+    ceb: { what: cbWhat || tlWhat || enWhat, how: cbHow || tlHow || enHow }
+  };
+}
+
+var MODULE_HELP = {
+  products: _helpText('Products is where you manage the items your store sells.', 'Open Products to view items, add a new product, edit prices, assign categories, and check basic item details.', 'Dito inaayos ang mga paninda o items ng tindahan.', 'Buksan ang Products para makita ang items, magdagdag, magpalit ng presyo, at maglagay ng category.', 'Dinhi nimo dumalahon ang mga baligya sa tindahan.', 'Ablihi ang Products aron makita, madugangan, mausab ang presyo, ug mabutangan og category ang item.'),
+  quick_sell: _helpText('Quick Sell is your fast POS screen for recording sales.', 'Choose products, enter quantities, select payment type, then save the sale to update records and stock.', 'Quick Sell ang mabilis na POS para mag-record ng benta.', 'Piliin ang produkto, ilagay ang quantity, piliin ang bayad, tapos i-save ang sale.', 'Quick Sell mao ang paspas nga POS para sa baligya.', 'Pilia ang produkto, ibutang ang gidaghanon, pilia ang bayad, dayon i-save ang sale.'),
+  sales_history: _helpText('Sales History shows previous transactions and receipts.', 'Open it to review sales, check payment details, and view receipt information.', 'Dito makikita ang mga nakaraang benta at resibo.', 'Buksan ito para i-review ang sales, payment details, at receipt.', 'Dinhi makita ang nangaging sales ug resibo.', 'Ablihi aron mareview ang sales, detalye sa bayad, ug resibo.'),
+  inventory: _helpText('Inventory helps you monitor stock levels and stock movement.', 'Use it to check low stock, receive stock, adjust quantities, and review inventory status.', 'Inventory ang gamit para bantayan ang dami ng stock.', 'Gamitin ito para tingnan ang low stock, magdagdag ng stock, at mag-adjust ng quantity.', 'Inventory ang gamit sa pagbantay sa stock.', 'Gamita aron makita ang low stock, modawat og stock, ug mo-adjust sa quantity.'),
+  expenses: _helpText('Expenses records the costs of running the store.', 'Add expenses, review daily costs, and use the data in reports and profit checks.', 'Expenses ang talaan ng gastos ng tindahan.', 'Magdagdag ng gastos, tingnan ang daily costs, at gamitin sa reports.', 'Expenses mao ang lista sa gasto sa tindahan.', 'Ibutang ang gasto, tan-awa ang daily costs, ug gamita sa reports.'),
+  reports: _helpText('Reports summarize sales, expenses, inventory, and business performance.', 'Select a report period, review totals, and use the numbers for decisions.', 'Reports ang buod ng benta, gastos, inventory, at performance.', 'Pumili ng period, tingnan ang totals, at gamitin sa pagdedesisyon.', 'Reports mao ang summary sa sales, gasto, inventory, ug performance.', 'Pilia ang period, tan-awa ang totals, ug gamita sa desisyon.'),
+  advanced_reports: _helpText('Advanced Reports gives deeper views of business performance.', 'Use it for more detailed sales, stock, and financial analysis.', 'Advanced Reports para sa mas detalyadong analysis.', 'Gamitin ito para sa mas malalim na sales, stock, at financial review.', 'Advanced Reports para sa mas detalyado nga analysis.', 'Gamita alang sa mas lawom nga sales, stock, ug financial review.'),
+  tax_reports: _helpText('BIR / Tax helps prepare tax-related summaries.', 'Open it to review taxable totals and yearly or quarterly tax figures.', 'BIR / Tax para sa tax summaries ng tindahan.', 'Buksan para makita ang taxable totals at quarterly o yearly figures.', 'BIR / Tax para sa tax summaries sa tindahan.', 'Ablihi aron makita ang taxable totals ug quarterly o yearly figures.'),
+  inventory_movements: _helpText('Stock History shows the movement trail of inventory.', 'Use it to audit stock received, transferred, adjusted, or changed by approvals.', 'Stock History ang history ng galaw ng inventory.', 'Gamitin para ma-audit ang receive, transfer, adjustment, at approvals.', 'Stock History ang kasaysayan sa lihok sa inventory.', 'Gamita sa pag-audit sa receive, transfer, adjustment, ug approvals.'),
+  suppliers: _helpText('Suppliers stores vendor and supplier information.', 'Add suppliers, update contact details, and connect them with purchase workflows.', 'Suppliers ang listahan ng vendors o suppliers.', 'Magdagdag, mag-update ng contact, at gamitin sa purchasing.', 'Suppliers mao ang lista sa vendors o suppliers.', 'Modugang, mo-update sa contact, ug gamita sa purchasing.'),
+  purchase_orders: _helpText('Purchase Orders tracks orders sent to suppliers.', 'Create an order, add supplier/items, submit it, and monitor approval or receiving.', 'Purchase Orders ang orders papunta sa suppliers.', 'Gumawa ng order, ilagay supplier/items, submit, at bantayan ang approval o receiving.', 'Purchase Orders mao ang orders padulong sa suppliers.', 'Himo og order, ibutang supplier/items, submit, ug bantayi ang approval o receiving.'),
+  purchase_requisitions: _helpText('Requisitions are internal requests before purchase orders.', 'Create a request, add needed items, and route it for approval before buying.', 'Requisitions ang request bago gumawa ng purchase order.', 'Gumawa ng request, ilagay ang kailangan, at ipa-approve bago bumili.', 'Requisitions mao ang request sa dili pa purchase order.', 'Himo og request, ibutang ang kinahanglan, ug ipa-approve una mopalit.'),
+  stock_receiving: _helpText('Receiving Logs record incoming stock.', 'Use it when items arrive to update inventory and keep receiving records.', 'Receiving Logs ang tala ng dumating na stock.', 'Gamitin kapag dumating ang items para ma-update ang inventory.', 'Receiving Logs mao ang record sa niabot nga stock.', 'Gamita kung moabot ang items aron ma-update ang inventory.'),
+  order_fulfillment: _helpText('Fulfillment tracks orders that need preparation or delivery.', 'Open it to check pending orders and mark them fulfilled when completed.', 'Fulfillment para sa orders na kailangang ihanda o i-deliver.', 'Tingnan ang pending orders at markahan na fulfilled kapag tapos na.', 'Fulfillment para sa orders nga andamon o i-deliver.', 'Tan-awa ang pending orders ug markahi nga fulfilled kung human na.'),
+  branch_transfer: _helpText('Branch Transfers move stock between locations.', 'Create a transfer, choose source and target branch, send it, then mark it received.', 'Branch Transfers para ilipat ang stock sa ibang branch.', 'Gumawa ng transfer, piliin source/target branch, send, at receive.', 'Branch Transfers para ibalhin ang stock sa laing branch.', 'Himo og transfer, pili source/target branch, send, ug receive.'),
+  vendor_payments: _helpText('Vendor Payments records payments made to suppliers.', 'Log payment amount, reference, supplier, and notes for reporting.', 'Vendor Payments ang tala ng bayad sa suppliers.', 'Ilagay amount, reference, supplier, at notes para sa reports.', 'Vendor Payments mao ang record sa bayad sa suppliers.', 'Ibutang amount, reference, supplier, ug notes para reports.'),
+  customer_returns: _helpText('Returns handles items returned by customers.', 'Record the returned item, quantity, reason, and inventory effect.', 'Returns para sa items na binalik ng customer.', 'I-record ang item, quantity, dahilan, at epekto sa inventory.', 'Returns para sa items nga gibalik sa customer.', 'I-record ang item, quantity, rason, ug epekto sa inventory.'),
+  discounts_promotions: _helpText('Promotions manages discounts and offers.', 'Create promos, set discount values, and review promotion records.', 'Promotions para gumawa ng discounts at offers.', 'Gumawa ng promo, set discount, at tingnan ang promo records.', 'Promotions para sa discounts ug offers.', 'Himo og promo, set discount, ug tan-awa ang promo records.'),
+  voids: _helpText('Voids records cancelled or reversed transactions.', 'Use it to void a sale with a reason so cancellations stay auditable.', 'Voids para sa cancelled transactions.', 'Gamitin para i-void ang sale na may dahilan at may audit trail.', 'Voids para sa cancelled transactions.', 'Gamita sa pag-void sa sale nga naay rason ug audit trail.'),
+  hq_control_center: _helpText('HQ Control gives a high-level view of branch attention and control.', 'Use it to monitor multiple branches and spot stores needing action.', 'HQ Control para makita ang overall status ng branches.', 'Gamitin para bantayan ang branches at makita kung alin ang kailangan ng aksyon.', 'HQ Control para makita ang overall status sa branches.', 'Gamita sa pagbantay sa branches ug makita asa kinahanglan og aksyon.'),
+  internal_chat: _helpText('Chat is for store team and admin communication.', 'Open Chat to send and read messages related to store operations.', 'Chat para sa usapan ng team at admin.', 'Buksan para magpadala at magbasa ng messages tungkol sa operations.', 'Chat para sa komunikasyon sa team ug admin.', 'Ablihi aron mopadala ug mobasa og messages bahin sa operations.'),
+  staff_management: _helpText('Staff manages employee accounts and access.', 'Add staff, assign roles, reset passwords, and activate or deactivate users.', 'Staff para sa accounts at access ng empleyado.', 'Magdagdag ng staff, mag-assign ng role, reset password, at activate/deactivate.', 'Staff para sa accounts ug access sa empleyado.', 'Modugang og staff, assign role, reset password, ug activate/deactivate.'),
+  custom_role_builder: _helpText('Custom Roles lets you build special staff permissions.', 'Create a role, choose allowed modules/actions, then assign it to staff.', 'Custom Roles para gumawa ng special permissions.', 'Gumawa ng role, piliin allowed modules/actions, at i-assign sa staff.', 'Custom Roles para makahimo og special permissions.', 'Himo og role, pili allowed modules/actions, ug i-assign sa staff.'),
+  approvals: _helpText('Approvals handles requests that need owner or manager decision.', 'Open the queue, review details, then approve or reject with notes.', 'Approvals para sa requests na kailangan ng desisyon.', 'Buksan ang queue, review details, tapos approve o reject na may notes.', 'Approvals para sa requests nga kinahanglan og desisyon.', 'Ablihi ang queue, review details, dayon approve o reject nga naay notes.'),
+  roi: _helpText('ROI Monitor tracks capital, loans, and return on investment.', 'Enter capital or loan details and review progress against store performance.', 'ROI Monitor para sa puhunan, utang, at balik-kita.', 'Ilagay capital o loan details at tingnan ang progress ng kita.', 'ROI Monitor para sa puhunan, utang, ug balik-kita.', 'Ibutang capital o loan details ug tan-awa ang progress sa kita.'),
+  monitors: _helpText('Monitors show important business indicators.', 'Use it to check sales health, stock warnings, and operational signals.', 'Monitors para sa importanteng business indicators.', 'Tingnan ang sales health, stock warnings, at operational signals.', 'Monitors para sa importanteng business indicators.', 'Tan-awa ang sales health, stock warnings, ug operational signals.'),
+  automation_rules: _helpText('Automation runs rule-based workflow triggers.', 'Create or review rules that react to store events such as alerts or approvals.', 'Automation para sa automatic workflow rules.', 'Gumawa o tingnan ang rules na tumutugon sa store events.', 'Automation para sa automatic workflow rules.', 'Himo o tan-awa ang rules nga motubag sa store events.'),
+  data_import_tools: _helpText('Import Data helps bring existing records into the app.', 'Use it to upload or prepare product, inventory, or business data.', 'Import Data para ipasok ang existing records sa app.', 'Gamitin para mag-upload o maghanda ng product, inventory, o business data.', 'Import Data para isulod ang existing records sa app.', 'Gamita sa upload o pag-andam sa product, inventory, o business data.'),
+  settings: _helpText('Settings controls store defaults and preferences.', 'Open it to adjust user, tax, notification, payment, and app settings.', 'Settings para sa defaults at preferences ng tindahan.', 'Buksan para ayusin user, tax, notification, payment, at app settings.', 'Settings para sa defaults ug preferences sa tindahan.', 'Ablihi aron ayohon ang user, tax, notification, payment, ug app settings.'),
+  notification_delivery: _helpText('Notifications shows store alerts and updates.', 'Open it to review unread notifications and action items.', 'Notifications para sa alerts at updates ng store.', 'Buksan para makita ang unread notifications at action items.', 'Notifications para sa alerts ug updates sa store.', 'Ablihi aron makita ang unread notifications ug action items.'),
+  alert_rules_engine: _helpText('Alerts highlights store conditions that need attention.', 'Use it to review alert levels, thresholds, and branch-aware warnings.', 'Alerts para sa conditions na kailangan ng pansin.', 'Tingnan ang alert levels, thresholds, at warnings.', 'Alerts para sa conditions nga kinahanglan og pansin.', 'Tan-awa ang alert levels, thresholds, ug warnings.'),
+  activity_log: _helpText('Staff Activity shows important actions made in the store.', 'Open it to audit logins, sales, product changes, and staff actions.', 'Staff Activity para sa audit ng actions sa store.', 'Buksan para makita ang logins, sales, product changes, at staff actions.', 'Staff Activity para sa audit sa actions sa store.', 'Ablihi aron makita ang logins, sales, product changes, ug staff actions.'),
+  hardware_profiles: _helpText('Hardware Setup configures devices used by the store.', 'Use it for scanner, receipt, and device setup where available.', 'Hardware Setup para sa devices ng tindahan.', 'Gamitin para sa scanner, receipt, at device setup.', 'Hardware Setup para sa devices sa tindahan.', 'Gamita para sa scanner, receipt, ug device setup.'),
+  sandbox_mode: _helpText('Sandbox lets you test safely without affecting real operations.', 'Use it to try workflows with safe demo-style behavior.', 'Sandbox para makapag-test nang hindi naaapektuhan ang real operations.', 'Gamitin para subukan ang workflows nang ligtas.', 'Sandbox para maka-test nga dili maapektuhan ang real operations.', 'Gamita para sulayan ang workflows nga luwas.'),
+  support: _helpText('Help & Support connects the store to support resources.', 'Open it to read help information or message support when needed.', 'Help & Support para humingi ng tulong.', 'Buksan para magbasa ng help o mag-message sa support.', 'Help & Support para mangayo og tabang.', 'Ablihi aron mobasa og help o mo-message sa support.'),
+  addons: _helpText('Explore Add-Ons shows modules not yet included in the plan.', 'Open it to review available modules and activate a trial or add-on.', 'Explore Add-Ons para makita ang modules na wala pa sa plan.', 'Buksan para pumili ng available modules at mag-activate ng trial o add-on.', 'Explore Add-Ons para makita ang modules nga wala pa sa plan.', 'Ablihi aron mopili og available modules ug activate trial o add-on.')
+};
+
+function _moduleHelpData(moduleCode) {
+  return MODULE_HELP[moduleCode] || _helpText('This module supports one part of your store operations.', 'Open the module, review the information shown, then use the available buttons to add, update, or check records.', 'Ang module na ito ay tumutulong sa isang bahagi ng store operations.', 'Buksan ang module, tingnan ang impormasyon, at gamitin ang buttons para magdagdag, mag-update, o mag-check ng records.', 'Kini nga module mutabang sa usa ka bahin sa store operations.', 'Ablihi ang module, tan-awa ang impormasyon, ug gamita ang buttons para modugang, mo-update, o mo-check og records.');
+}
+
+function _moduleHelpTitle(moduleCode) {
+  var titles = {
+    quick_sell: 'Quick Sell',
+    sales_history: 'Sales History',
+    advanced_reports: 'Advanced Reports',
+    tax_reports: 'BIR / Tax',
+    inventory_movements: 'Stock History',
+    purchase_orders: 'Purchase Orders',
+    purchase_requisitions: 'Requisitions',
+    stock_receiving: 'Receiving Logs',
+    order_fulfillment: 'Fulfillment',
+    branch_transfer: 'Branch Transfers',
+    vendor_payments: 'Vendor Payments',
+    customer_returns: 'Returns',
+    discounts_promotions: 'Promotions',
+    hq_control_center: 'HQ Control',
+    internal_chat: 'Chat',
+    staff_management: 'Staff',
+    custom_role_builder: 'Custom Roles',
+    data_import_tools: 'Import Data',
+    notification_delivery: 'Notifications',
+    alert_rules_engine: 'Alerts',
+    activity_log: 'Staff Activity',
+    hardware_profiles: 'Hardware',
+    sandbox_mode: 'Sandbox',
+    addons: 'Explore Add-Ons'
+  };
+  return titles[moduleCode] || String(moduleCode || '').replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+}
+
+function showModuleHelp(moduleCode, lang) {
+  lang = lang || 'en';
+  var help = _moduleHelpData(moduleCode);
+  var data = help[lang] || help.en;
+  var labels = {
+    en: { title: 'Module Help', what: 'What this is for', how: 'How to use it' },
+    tl: { title: 'Tulong sa Module', what: 'Para saan ito', how: 'Paano gamitin' },
+    ceb: { title: 'Tabang sa Module', what: 'Para asa kini', how: 'Unsaon paggamit' }
+  };
+  var l = labels[lang] || labels.en;
+  var modal = document.getElementById('module-help-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'module-help-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.66);z-index:980;display:flex;align-items:flex-end;justify-content:center;padding:0 12px 12px;';
+    modal.addEventListener('click', function(e) { if (e.target === modal) closeModuleHelp(); });
+    document.body.appendChild(modal);
+  }
+  function tab(code, text) {
+    var active = code === lang;
+    return '<button onclick="showModuleHelp(\'' + _escAttr(moduleCode) + '\',\'' + code + '\')" style="border:1px solid ' + (active ? '#2563eb' : '#dbe3ef') + ';background:' + (active ? '#2563eb' : '#fff') + ';color:' + (active ? '#fff' : '#334155') + ';border-radius:999px;padding:7px 10px;font-size:12px;font-weight:800;">' + text + '</button>';
+  }
+  modal.innerHTML =
+    '<div style="width:100%;max-width:560px;background:#fff;border-radius:20px;box-shadow:0 24px 70px rgba(0,0,0,.32);overflow:hidden;">' +
+    '<div style="background:#0f172a;color:#fff;padding:16px 18px;">' +
+    '<div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">' +
+    '<div><div style="font-size:12px;opacity:.75;font-weight:700;">' + l.title + '</div>' +
+    '<div style="font-size:20px;font-weight:900;line-height:1.2;">' + _escHtml(_moduleHelpTitle(moduleCode)) + '</div></div>' +
+    '<button onclick="closeModuleHelp()" style="border:0;background:rgba(255,255,255,.12);color:#fff;border-radius:10px;width:36px;height:36px;font-size:20px;">&times;</button>' +
+    '</div></div>' +
+    '<div style="padding:14px 18px 18px;">' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">' + tab('en','English') + tab('tl','Tagalog') + tab('ceb','Cebuano') + '</div>' +
+    '<div style="border:1px solid #e5e7eb;border-radius:14px;padding:14px;margin-bottom:10px;background:#f8fafc;">' +
+    '<div style="font-size:12px;font-weight:900;color:#1d4ed8;margin-bottom:6px;">' + l.what + '</div>' +
+    '<div style="font-size:14px;line-height:1.55;color:#111827;">' + _escHtml(data.what) + '</div></div>' +
+    '<div style="border:1px solid #e5e7eb;border-radius:14px;padding:14px;background:#fff;">' +
+    '<div style="font-size:12px;font-weight:900;color:#16a34a;margin-bottom:6px;">' + l.how + '</div>' +
+    '<div style="font-size:14px;line-height:1.55;color:#111827;">' + _escHtml(data.how) + '</div></div>' +
+    '</div></div>';
+}
+
+function closeModuleHelp() {
+  var modal = document.getElementById('module-help-modal');
+  if (modal) modal.remove();
+}
+
 function renderOwnerDashboard(msg) {
   _refreshOwnerAddOnsInBackground();
   var storeName = (state.storeProfile && (state.storeProfile.storeName || state.storeProfile.Store_Name)) || '';
@@ -674,44 +809,42 @@ function renderOwnerDashboard(msg) {
     : '';
 
   var btns = '';
-  if (_hasModule('products'))        btns += '<button class="big-btn" onclick="loadProducts()"> Products</button>';
-  if (_hasModule('quick_sell'))      btns += '<button class="big-btn" onclick="renderQuickSell()"> Quick Sell</button>';
-  if (_hasModule('quick_sell'))      btns += '<button class="big-btn" onclick="renderSalesHistory()"> Sales History</button>';
-  if (_hasModule('inventory'))       btns += '<button class="big-btn" onclick="renderInventoryAdvancedSummary()"> Inventory</button>';
-  if (_hasModule('expenses'))        btns += '<button class="big-btn" onclick="renderExpenses()"> Expenses</button>';
-    if (_hasModule('reports'))         btns += '<button class="big-btn" onclick="renderReports()"> Reports</button>';
-    if (_hasModule('reports'))         btns += '<button class="big-btn" onclick="renderAdvancedReportsHome()"> Advanced Reports</button>';
-    if (_hasModule('tax_reports'))     btns += '<button class="big-btn" onclick="renderBIRData()"> BIR / Tax</button>';
-    if (_hasModule('inventory_movements')) btns += '<button class="big-btn" onclick="renderInventoryMovements()"> Stock History</button>';
-    if (_hasModule('suppliers'))       btns += '<button class="big-btn" onclick="renderSuppliers()"> Suppliers</button>';
-    if (_hasModule('purchase_orders')) btns += '<button class="big-btn" onclick="renderPurchaseOrders()"> Purchase Orders</button>';
-    if (_hasModule('purchase_requisitions')) btns += '<button class="big-btn" onclick="renderPurchaseRequisitions()"> Requisitions</button>';
-    if (_hasModule('stock_receiving')) btns += '<button class="big-btn" onclick="renderReceivingLogs()"> Receiving Logs</button>';
-    if (_hasModule('order_fulfillment')) btns += '<button class="big-btn" onclick="renderOrderFulfillment()"> Fulfillment</button>';
-    if (_hasModule('branch_transfer')) btns += '<button class="big-btn" onclick="renderBranchTransfers()"> Branch Transfers</button>';
-    if (_hasModule('vendor_payments')) btns += '<button class="big-btn" onclick="renderVendorPayments()"> Vendor Payments</button>';
-    if (_hasModule('customer_returns')) btns += '<button class="big-btn" onclick="renderCustomerReturns()"> Returns</button>';
-    if (_hasModule('discounts_promotions')) btns += '<button class="big-btn" onclick="renderDiscountsPromotions()"> Promotions</button>';
-    if (_hasModule('voids')) btns += '<button class="big-btn" onclick="renderVoids()"> Voids</button>';
-  if (_hasModule('hq_control_center')) btns += '<button class="big-btn" onclick="renderHQControlCenter()"> HQ Control</button>';
-  if (_hasModule('internal_chat'))   btns += '<button class="big-btn" onclick="renderChat()"> Chat</button>';
-  if (_hasModule('staff_management') || _hasModule('staff')) btns += '<button class="big-btn" onclick="renderStaffList()"> Staff</button>';
-  if (_hasModule('custom_role_builder')) btns += '<button class="big-btn" onclick="renderCustomRoles()"> Custom Roles</button>';
-  if (_hasModule('approvals'))       btns += '<button class="big-btn" onclick="renderApprovalsQueue()"> Approvals</button>';
-  if (_hasModule('roi'))             btns += '<button class="big-btn" onclick="renderROIMonitor()"> ROI</button>';
-  if (_hasModule('monitors'))        btns += '<button class="big-btn" onclick="renderMonitors()"> Monitors</button>';
-  if (_hasModule('automation_rules'))btns += '<button class="big-btn" onclick="renderAutomationRules()"> Automation</button>';
-    if (_hasModule('data_import_tools')) btns += '<button class="big-btn" onclick="renderDataImport()"> Import Data</button>';
-    if (_hasModule('registry_db')) btns += '<button class="big-btn" onclick="renderRegistryDbStatus()"> Registry DB</button>';
-    if (_hasModule('settings'))        btns += '<button class="big-btn" onclick="renderFullSettings()"> Settings</button>';
-    if (_hasModule('notification_delivery')) btns += '<button class="big-btn" onclick="renderNotificationsCenter()"> Notifications</button>';
-    if (_hasModule('alert_rules_engine') || _hasModule('alerts_dashboard')) btns += '<button class="big-btn" onclick="renderAlertsCenter()"> Alerts</button>';
-    if (_hasModule('activity_log')) btns += '<button class="big-btn" onclick="renderActivityLog()"> Staff Activity</button>';
-  if (_hasModule('feature_marketplace')) btns += '<button class="big-btn" onclick="renderFeatureMarketplace()"> Hub Add-ons</button>';
-  if (_hasModule('hardware_profiles')) btns += '<button class="big-btn" onclick="renderHardwareSetup()"> Hardware</button>';
-  if (_hasModule('sandbox_mode')) btns += '<button class="big-btn" onclick="renderSandboxMode()"> Sandbox</button>';
-  if (_hasModule('support'))         btns += '<button class="big-btn" onclick="renderSupport()"> Help</button>';
-  btns += '<button class="big-btn" onclick="renderAddOnsPanel()" style="border:2px dashed rgba(255,255,255,0.28);background:rgba(255,255,255,0.06);"> Explore Add-Ons</button>';
+  if (_hasModule('products'))        btns += _ownerModuleButton('products', 'Products', 'loadProducts()');
+  if (_hasModule('quick_sell'))      btns += _ownerModuleButton('quick_sell', 'Quick Sell', 'renderQuickSell()');
+  if (_hasModule('quick_sell'))      btns += _ownerModuleButton('sales_history', 'Sales History', 'renderSalesHistory()');
+  if (_hasModule('inventory'))       btns += _ownerModuleButton('inventory', 'Inventory', 'renderInventoryAdvancedSummary()');
+  if (_hasModule('expenses'))        btns += _ownerModuleButton('expenses', 'Expenses', 'renderExpenses()');
+  if (_hasModule('reports'))         btns += _ownerModuleButton('reports', 'Reports', 'renderReports()');
+  if (_hasModule('reports'))         btns += _ownerModuleButton('advanced_reports', 'Advanced Reports', 'renderAdvancedReportsHome()');
+  if (_hasModule('tax_reports'))     btns += _ownerModuleButton('tax_reports', 'BIR / Tax', 'renderBIRData()');
+  if (_hasModule('inventory_movements')) btns += _ownerModuleButton('inventory_movements', 'Stock History', 'renderInventoryMovements()');
+  if (_hasModule('suppliers'))       btns += _ownerModuleButton('suppliers', 'Suppliers', 'renderSuppliers()');
+  if (_hasModule('purchase_orders')) btns += _ownerModuleButton('purchase_orders', 'Purchase Orders', 'renderPurchaseOrders()');
+  if (_hasModule('purchase_requisitions')) btns += _ownerModuleButton('purchase_requisitions', 'Requisitions', 'renderPurchaseRequisitions()');
+  if (_hasModule('stock_receiving')) btns += _ownerModuleButton('stock_receiving', 'Receiving Logs', 'renderReceivingLogs()');
+  if (_hasModule('order_fulfillment')) btns += _ownerModuleButton('order_fulfillment', 'Fulfillment', 'renderOrderFulfillment()');
+  if (_hasModule('branch_transfer')) btns += _ownerModuleButton('branch_transfer', 'Branch Transfers', 'renderBranchTransfers()');
+  if (_hasModule('vendor_payments')) btns += _ownerModuleButton('vendor_payments', 'Vendor Payments', 'renderVendorPayments()');
+  if (_hasModule('customer_returns')) btns += _ownerModuleButton('customer_returns', 'Returns', 'renderCustomerReturns()');
+  if (_hasModule('discounts_promotions')) btns += _ownerModuleButton('discounts_promotions', 'Promotions', 'renderDiscountsPromotions()');
+  if (_hasModule('voids')) btns += _ownerModuleButton('voids', 'Voids', 'renderVoids()');
+  if (_hasModule('hq_control_center')) btns += _ownerModuleButton('hq_control_center', 'HQ Control', 'renderHQControlCenter()');
+  if (_hasModule('internal_chat'))   btns += _ownerModuleButton('internal_chat', 'Chat', 'renderChat()');
+  if (_hasModule('staff_management') || _hasModule('staff')) btns += _ownerModuleButton('staff_management', 'Staff', 'renderStaffList()');
+  if (_hasModule('custom_role_builder')) btns += _ownerModuleButton('custom_role_builder', 'Custom Roles', 'renderCustomRoles()');
+  if (_hasModule('approvals'))       btns += _ownerModuleButton('approvals', 'Approvals', 'renderApprovalsQueue()');
+  if (_hasModule('roi'))             btns += _ownerModuleButton('roi', 'ROI', 'renderROIMonitor()');
+  if (_hasModule('monitors'))        btns += _ownerModuleButton('monitors', 'Monitors', 'renderMonitors()');
+  if (_hasModule('automation_rules'))btns += _ownerModuleButton('automation_rules', 'Automation', 'renderAutomationRules()');
+  if (_hasModule('data_import_tools')) btns += _ownerModuleButton('data_import_tools', 'Import Data', 'renderDataImport()');
+  if (_hasModule('settings'))        btns += _ownerModuleButton('settings', 'Settings', 'renderFullSettings()');
+  if (_hasModule('notification_delivery')) btns += _ownerModuleButton('notification_delivery', 'Notifications', 'renderNotificationsCenter()');
+  if (_hasModule('alert_rules_engine') || _hasModule('alerts_dashboard')) btns += _ownerModuleButton('alert_rules_engine', 'Alerts', 'renderAlertsCenter()');
+  if (_hasModule('activity_log')) btns += _ownerModuleButton('activity_log', 'Staff Activity', 'renderActivityLog()');
+  if (_hasModule('hardware_profiles')) btns += _ownerModuleButton('hardware_profiles', 'Hardware', 'renderHardwareSetup()');
+  if (_hasModule('sandbox_mode')) btns += _ownerModuleButton('sandbox_mode', 'Sandbox', 'renderSandboxMode()');
+  if (_hasModule('support'))         btns += _ownerModuleButton('support', 'Help', 'renderSupport()');
+  btns += _ownerModuleButton('addons', 'Explore Add-Ons', 'renderAddOnsPanel()', 'border:2px dashed rgba(255,255,255,0.28);background:rgba(255,255,255,0.06);');
 
   var quickActions = '';
   if (_hasModule('products')) quickActions += '<button class="btn btn-secondary" onclick="renderAddProductForm()">+ Add New Product</button>';
