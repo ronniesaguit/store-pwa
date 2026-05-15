@@ -660,11 +660,11 @@ function _dashboardHeader_(storeName, subLabel, onlineLabel, isOffline) {
 }
 
 function _ownerModuleButton(moduleCode, label, action, extraStyle) {
-  var buttonStyle = 'padding:12px 10px;font-size:14px;line-height:1.2;border-radius:12px;margin-bottom:0;min-height:44px;' + (extraStyle || '');
-  return '<div class="module-action" style="display:grid;grid-template-columns:minmax(0,1fr) 34px;gap:6px;align-items:stretch;">' +
+  var buttonStyle = 'box-sizing:border-box;width:100%;min-width:0;padding:9px 5px;font-size:12px;line-height:1.15;border-radius:10px;margin-bottom:0;min-height:36px;white-space:normal;overflow-wrap:anywhere;' + (extraStyle || '');
+  return '<div class="module-action" style="min-width:0;display:grid;grid-template-columns:minmax(0,1fr) 26px;gap:4px;align-items:stretch;">' +
     '<button class="big-btn" onclick="' + action + '" style="' + buttonStyle + '">' + label + '</button>' +
     '<button type="button" title="Help" aria-label="Help for ' + _escAttr(label) + '" onclick="event.stopPropagation();showModuleHelp(\'' + _escAttr(moduleCode) + '\')" ' +
-    'style="border:1px solid rgba(255,255,255,0.22);background:rgba(255,255,255,0.12);color:#fff;border-radius:10px;font-weight:900;font-size:13px;min-height:44px;box-shadow:0 6px 14px rgba(0,0,0,.14);">?</button>' +
+    'style="box-sizing:border-box;width:26px;border:1px solid rgba(255,255,255,0.22);background:rgba(255,255,255,0.12);color:#fff;border-radius:9px;font-weight:900;font-size:12px;min-height:36px;padding:0;box-shadow:0 4px 10px rgba(0,0,0,.12);">?</button>' +
     '</div>';
 }
 
@@ -862,7 +862,7 @@ function renderOwnerDashboard(msg) {
     _dashboardHeader_(storeName, ownerName, '', state.isOffline) +
     planLine +
     (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
-    '<div class="grid-buttons">' + btns + '</div>' +
+    '<div class="grid-buttons" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;">' + btns + '</div>' +
     (quickActions ? '<div class="card"><div class="subtitle">Quick Actions</div>' + quickActions + '</div>' : '') +
     paymentCard +
     '</div>';
