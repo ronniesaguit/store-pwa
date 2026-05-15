@@ -253,6 +253,24 @@ function ownerManifest(plan) {
   };
 }
 
+function staffManifest(role) {
+  const code = String(role || 'STAFF').toUpperCase();
+  const modules = featureCatalog().map((f) => f.module_code || f.code);
+  const dashboard = code === 'MANAGER' ? 'manager_dashboard'
+    : code === 'CASHIER' ? 'cashier_dashboard'
+      : code === 'INVENTORY_STAFF' ? 'inventory_dashboard'
+        : 'staff_dashboard';
+  return {
+    dashboard_type: dashboard,
+    role_display_name: code.replace(/_/g, ' '),
+    enabled_modules: modules,
+    granted_permissions: modules.reduce((acc, moduleCode) => {
+      ['view', 'create', 'update', 'delete', 'approve', 'export'].forEach((actionName) => acc.push(moduleCode + '.' + actionName));
+      return acc;
+    }, [])
+  };
+}
+
 async function ownerStoreProfile(env, tenant) {
   const stores = await adminStores(env);
   const matched = stores.find((s) => String(s.API_Key || '').toUpperCase() === String(tenant || '').toUpperCase()) || stores[0] || {};
@@ -302,6 +320,44 @@ async function ownerBootData(env, tenant) {
     inTrial: profile.inTrial,
     manifest: profile.manifest,
     user: session.user,
+    paymentInfo: {
+      gcashNumber: platformSettings(env).GCASH_NUMBER,
+      gcashName: platformSettings(env).GCASH_NAME
+    }
+  };
+}
+
+async function staffBootData(env, tenant, staff) {
+  const profile = await ownerStoreProfile(env, tenant);
+  const categories = await listRecords(env, tenant, 'categories');
+  const products = await listRecords(env, tenant, 'products');
+  const role = String(staff.role_code || staff.roleCode || staff.role || staff.Role || 'STAFF').toUpperCase();
+  const manifest = staffManifest(role);
+  const user = {
+    User_ID: staff.id || staff.userId || staff.staffId || staff.username,
+    Username: staff.username || staff.Username || '',
+    Full_Name: staff.full_name || staff.fullName || staff.name || staff.Full_Name || staff.username || 'Staff',
+    Role: role
+  };
+  const session = {
+    loggedIn: true,
+    user,
+    plan: profile.plan,
+    inTrial: profile.inTrial,
+    manifest,
+    storeName: profile.storeName,
+    ownerName: profile.ownerName
+  };
+  return {
+    session,
+    products,
+    categories,
+    storeName: profile.storeName,
+    ownerName: profile.ownerName,
+    plan: profile.plan,
+    inTrial: profile.inTrial,
+    manifest,
+    user,
     paymentInfo: {
       gcashNumber: platformSettings(env).GCASH_NUMBER,
       gcashName: platformSettings(env).GCASH_NAME
@@ -495,11 +551,25 @@ async function handleLocalAction(action, data, requestBody, env) {
   switch (action) {
     case 'login': {
       const creds = ownerCredentials(env);
-      if (String(data.username || '') !== creds.username || String(data.password || '') !== creds.password) {
-        throw new Error('Invalid username or password');
+      const username = String(data.username || '').trim();
+      const password = String(data.password || '');
+      if (username === creds.username && password === creds.password) {
+        const boot = await ownerBootData(env, tenant);
+        return Object.assign({ token: ownerToken(tenant) }, boot);
       }
-      const boot = await ownerBootData(env, tenant);
-      return Object.assign({ token: ownerToken(tenant) }, boot);
+
+      const staff = (await listRecords(env, tenant, 'staff')).find((u) => {
+        const savedUser = String(u.username || u.Username || '').trim().toLowerCase();
+        const savedPass = String(u.password || u.Password || u.newPassword || '');
+        const status = String(u.status || u.Status || 'active').toLowerCase();
+        return savedUser === username.toLowerCase() && savedPass === password && status !== 'inactive' && status !== 'disabled';
+      });
+      if (staff) {
+        const boot = await staffBootData(env, tenant, staff);
+        return Object.assign({ token: ownerToken(tenant) }, boot);
+      }
+
+      throw new Error('Invalid username or password');
     }
 
     case 'logout':
@@ -1222,7 +1292,7 @@ async function handleLocalAction(action, data, requestBody, env) {
 
     case 'setStaffPassword':
       requireOwner(requestBody);
-      return { changed: true };
+      return patchRecord(env, tenant, 'staff', data.id || data.userId || data.staffId, { password: data.password || data.newPassword || '' });
 
     case 'setStaffStatus':
       requireOwner(requestBody);
@@ -1234,7 +1304,7 @@ async function handleLocalAction(action, data, requestBody, env) {
 
     case 'resetStaffPassword':
       requireOwner(requestBody);
-      return { reset: true };
+      return patchRecord(env, tenant, 'staff', data.userId || data.id, { password: data.newPassword || data.password || '' });
 
     case 'updateNotificationSettings': return putSetting(env, tenant, 'notifications', data);
     case 'updateInventoryAlertSettings': return putSetting(env, tenant, 'inventory_alerts', data);
