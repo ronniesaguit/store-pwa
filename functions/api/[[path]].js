@@ -10,7 +10,10 @@ const LOCAL_ACTIONS = new Set([
   'adminGetStoreSystemHealth', 'adminFlagStoreSystemFunction', 'adminRepairStoreSystemFunction',
   'login', 'logout', 'getBootData', 'getFeatureMarketplace', 'startTrial',
   'getProducts', 'createProduct', 'updateProduct', 'deleteProduct',
-  'getProductByBarcode', 'addProductStock',
+  'getProductByBarcode', 'addProductStock', 'getInventoryAdvancedSummary',
+  'getInventoryMovements', 'createSale', 'getRecentSales', 'getSaleReceipt',
+  'createExpense', 'getTodayExpenses', 'getDailyReport', 'getWeeklyReport',
+  'getMonthlyReport', 'getPeriodReport', 'getFixedCosts', 'getAdvancedReport',
   'getCategories', 'createCategory', 'updateCategory', 'deleteCategory',
   'getRegistryStatus',
   'getReceivingHistory', 'getReceivingById', 'receiveStock',
@@ -395,6 +398,77 @@ function withNumberFields(record, fields) {
   return record;
 }
 
+function dayKey(value) {
+  return String(value || nowIso()).slice(0, 10);
+}
+
+function inDateRange(value, from, to) {
+  const d = dayKey(value);
+  return (!from || d >= from) && (!to || d <= to);
+}
+
+function moneySum(items, pick) {
+  return items.reduce((sum, item) => sum + Number(pick(item) || 0), 0);
+}
+
+async function reportData(env, tenant, from, to) {
+  const sales = (await listRecords(env, tenant, 'sales')).filter((s) => !s.deleted && inDateRange(s.created_at || s.Sale_Date || s.timestamp, from, to));
+  const expenses = (await listRecords(env, tenant, 'expenses')).filter((e) => !e.deleted && inDateRange(e.Expense_Date || e.created_at, from, to));
+  const revenue = moneySum(sales, (s) => s.total || s.Total_Amount || s.amount);
+  const expenseTotal = moneySum(expenses, (e) => e.Amount || e.amount);
+  const cogs = moneySum(sales, (s) => s.cogs || s.COGS);
+  return {
+    dateFrom: from,
+    dateTo: to,
+    sales,
+    expenses,
+    revenue,
+    cogs,
+    grossProfit: revenue - cogs,
+    expenseTotal,
+    netProfit: revenue - cogs - expenseTotal,
+    summary: { revenue, cogs, grossProfit: revenue - cogs, totalExpenses: expenseTotal, netProfit: revenue - cogs - expenseTotal }
+  };
+}
+
+async function advancedReport(env, tenant, type, period) {
+  const today = dayKey();
+  let from = today;
+  if (period === 'last_week') from = dayKey(new Date(Date.now() - 7 * 86400000).toISOString());
+  if (period === 'last_month') from = dayKey(new Date(Date.now() - 30 * 86400000).toISOString());
+  if (period === 'last_quarter') from = dayKey(new Date(Date.now() - 90 * 86400000).toISOString());
+  if (period === 'last_year') from = dayKey(new Date(Date.now() - 365 * 86400000).toISOString());
+  const data = await reportData(env, tenant, from, today);
+  const products = (await listRecords(env, tenant, 'products')).filter((p) => !p.deleted);
+  const movements = (await listRecords(env, tenant, 'inventory_movements')).filter((m) => !m.deleted && inDateRange(m.created_at, from, today));
+  return {
+    type,
+    period,
+    summary: {
+      sales_total: data.revenue,
+      expense_total: data.expenseTotal,
+      transactions_count: data.sales.length,
+      active_staff_count: 0
+    },
+    sections: [
+      { title: 'Sales', items: [
+        { label: 'Revenue', value: data.revenue.toFixed(2) },
+        { label: 'Transactions', value: data.sales.length }
+      ] },
+      { title: 'Inventory', items: [
+        { label: 'Products', value: products.length },
+        { label: 'Low Stock', value: products.filter((p) => Number(p.Current_Stock || 0) <= Number(p.Reorder_Level || 5)).length },
+        { label: 'Movements', value: movements.length }
+      ] },
+      { title: 'Expenses', items: [
+        { label: 'Total Expenses', value: data.expenseTotal.toFixed(2) },
+        { label: 'Net Profit', value: data.netProfit.toFixed(2) }
+      ] }
+    ],
+    alerts: []
+  };
+}
+
 async function handleLocalAction(action, data, requestBody, env) {
   const tenant = tenantId(requestBody);
   switch (action) {
@@ -502,6 +576,43 @@ async function handleLocalAction(action, data, requestBody, env) {
       return current;
     }
 
+    case 'getInventoryAdvancedSummary': {
+      requireOwner(requestBody);
+      const products = (await listRecords(env, tenant, 'products')).filter((p) => !p.deleted);
+      const movements = (await listRecords(env, tenant, 'inventory_movements')).filter((m) => !m.deleted);
+      const low = products.filter((p) => Number(p.Current_Stock || 0) <= Number(p.Reorder_Level || 5) && Number(p.Current_Stock || 0) > 0);
+      const out = products.filter((p) => Number(p.Current_Stock || 0) <= 0);
+      return {
+        low_stock_count: low.length,
+        out_of_stock_count: out.length,
+        pending_approvals_count: 0,
+        frequent_adjustments_count: movements.length,
+        slow_moving_count: 0,
+        alerts: low.concat(out).slice(0, 8).map((p) => ({
+          type: Number(p.Current_Stock || 0) <= 0 ? 'critical' : 'warning',
+          message: (p.Product_Name || 'Product') + ' stock is ' + Number(p.Current_Stock || 0)
+        }))
+      };
+    }
+
+    case 'getInventoryMovements': {
+      requireOwner(requestBody);
+      const products = await listRecords(env, tenant, 'products');
+      const byId = {};
+      products.forEach((p) => { byId[p.Product_ID || p.id] = p; });
+      const limit = Number(data.limit || 50);
+      return (await listRecords(env, tenant, 'inventory_movements')).filter((m) => !m.deleted).slice(0, limit).map((m) => {
+        const p = byId[m.productId || m.Product_ID] || {};
+        return Object.assign({
+          movement_type: m.movement_type || 'stock_update',
+          direction: Number(m.quantity || 0) < 0 ? 'out' : 'in',
+          status: m.status || 'effective',
+          product_name: m.product_name || p.Product_Name || 'Product',
+          reason_code: m.reason || m.reason_code || ''
+        }, m);
+      });
+    }
+
     case 'getCategories':
       requireOwner(requestBody);
       return listRecords(env, tenant, 'categories');
@@ -524,6 +635,120 @@ async function handleLocalAction(action, data, requestBody, env) {
     case 'deleteCategory':
       requireOwner(requestBody);
       return patchRecord(env, tenant, 'categories', String(data.Category_Name || data.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '_'), { deleted: true });
+
+    case 'createSale': {
+      requireOwner(requestBody);
+      const items = Array.isArray(data.items) ? data.items : [];
+      const products = await listRecords(env, tenant, 'products');
+      const byId = {};
+      products.forEach((p) => { byId[p.Product_ID || p.id] = p; });
+      let total = 0;
+      let cogs = 0;
+      const saleItems = [];
+      for (const item of items) {
+        const productId = item.productId || item.Product_ID || item.id;
+        const qty = Number(item.qty || item.quantity || 1);
+        const product = byId[productId];
+        if (!product) continue;
+        const price = Number(product.Selling_Price || item.price || 0);
+        const cost = Number(product.Cost_Price || 0);
+        total += price * qty;
+        cogs += cost * qty;
+        product.Current_Stock = Number(product.Current_Stock || 0) - qty;
+        await putRecord(env, tenant, 'products', product);
+        await putRecord(env, tenant, 'inventory_movements', {
+          productId,
+          product_name: product.Product_Name,
+          movement_type: 'sale',
+          direction: 'out',
+          quantity: -Math.abs(qty),
+          status: 'effective',
+          reason: 'sale',
+          created_at: nowIso()
+        });
+        saleItems.push({ productId, product_name: product.Product_Name, qty, price, total: price * qty });
+      }
+      const sale = {
+        id: id('sale'),
+        Sale_ID: id('sale'),
+        items: saleItems,
+        item_count: saleItems.reduce((sum, item) => sum + Number(item.qty || 0), 0),
+        total,
+        Total_Amount: total,
+        cogs,
+        amount_paid: Number(data.amountPaid || data.amount_paid || total),
+        payment_method: data.paymentMethod || data.payment_method || 'Cash',
+        Payment_Method: data.paymentMethod || data.payment_method || 'Cash',
+        created_at: nowIso(),
+        Sale_Date: nowIso()
+      };
+      sale.Sale_ID = sale.id;
+      return putRecord(env, tenant, 'sales', sale);
+    }
+
+    case 'getRecentSales': {
+      requireOwner(requestBody);
+      const limit = Number(data.limit || 50);
+      const sales = (await listRecords(env, tenant, 'sales')).filter((s) => !s.deleted).slice(0, limit);
+      return { sales };
+    }
+
+    case 'getSaleReceipt': {
+      requireOwner(requestBody);
+      const saleId = data.saleId || data.Sale_ID || data.id;
+      const sale = await getRecord(env, tenant, 'sales', saleId);
+      if (!sale) throw new Error('Sale not found');
+      return { sale };
+    }
+
+    case 'createExpense': {
+      requireOwner(requestBody);
+      const expense = Object.assign({
+        id: id('exp'),
+        Expense_ID: id('exp'),
+        Expense_Date: dayKey(),
+        Expense_Category: 'Others',
+        Description: '',
+        Amount: 0,
+        Payment_Method: 'Cash'
+      }, data);
+      expense.id = expense.Expense_ID || expense.id;
+      expense.Expense_ID = expense.id;
+      return putRecord(env, tenant, 'expenses', withNumberFields(expense, ['Amount', 'Quantity', 'Unit_Price']));
+    }
+
+    case 'getTodayExpenses':
+      requireOwner(requestBody);
+      return (await listRecords(env, tenant, 'expenses')).filter((e) => !e.deleted && dayKey(e.Expense_Date || e.created_at) === dayKey());
+
+    case 'getDailyReport':
+      requireOwner(requestBody);
+      return reportData(env, tenant, data.date || dayKey(), data.date || dayKey());
+
+    case 'getWeeklyReport':
+      requireOwner(requestBody);
+      return reportData(env, tenant, dayKey(new Date(Date.now() - 6 * 86400000).toISOString()), dayKey());
+
+    case 'getMonthlyReport': {
+      requireOwner(requestBody);
+      const y = Number(data.year || new Date().getFullYear());
+      const m = Number(data.month || (new Date().getMonth() + 1));
+      const from = y + '-' + String(m).padStart(2, '0') + '-01';
+      const to = dayKey(new Date(y, m, 0).toISOString());
+      return reportData(env, tenant, from, to);
+    }
+
+    case 'getPeriodReport':
+      requireOwner(requestBody);
+      return reportData(env, tenant, data.dateFrom, data.dateTo);
+
+    case 'getFixedCosts':
+      requireOwner(requestBody);
+      return { rent: 0, salaries: [], otherFixed: 0 };
+
+    case 'getAdvancedReport':
+      requireOwner(requestBody);
+      return advancedReport(env, tenant, data.type || 'sales_analysis', data.period || 'today');
 
     case 'adminLogin': {
       const creds = adminCredentials(env);

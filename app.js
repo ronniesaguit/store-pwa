@@ -2940,34 +2940,34 @@ function renderAddExpenseForm(msg) {
         '<input id="exp-date" type="date" value="' + today + '"></div>' +
 
       '<div class="field"><label>Category</label>' +
-        '<select id="exp-cat" onchange="updateExpenseCategoryHint()">' + catsHtml + '</select>' +
+        '<div style="display:flex;gap:8px;align-items:stretch;">' +
+          '<select id="exp-cat" onchange="updateExpenseCategoryHint()" style="flex:1;min-width:0;">' + catsHtml + '</select>' +
+          _voiceButtonHtml('exp-cat', 'Speak expense category') +
+        '</div>' +
         '<div id="exp-cat-hint" style="font-size:12px;color:#6b7280;margin-top:4px;padding:6px 8px;' +
           'background:#f9fafb;border-radius:6px;">' + firstHint + '</div>' +
       '</div>' +
 
       '<div class="field"><label>Description *</label>' +
-        '<div style="display:flex;gap:6px;align-items:stretch;">' +
-          '<input id="exp-desc" placeholder="e.g. Bought ice, Meralco bill" style="flex:1;min-width:0;">' +
-          '<button id="voice-btn-exp-desc" onclick="startVoiceInput(\'exp-desc\')" ' +
-            'style="background:#7c3aed;color:#fff;border:none;padding:0 12px;border-radius:8px;font-size:20px;cursor:pointer;flex-shrink:0;"></button>' +
-        '</div></div>' +
+        _voiceInputHtml('exp-desc', 'e.g. Bought ice, Meralco bill', 'Speak expense description') +
+      '</div>' +
 
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">' +
         '<div class="field" style="margin:0;"><label>Quantity</label>' +
-          '<input id="exp-qty" type="number" step="1" min="1" value="1" inputmode="numeric" ' +
-            'oninput="calcExpenseAmount()"></div>' +
+          _voiceInputHtml('exp-qty', '1', 'Speak quantity', 'number', '1', 'calcExpenseAmount()', '1') + '</div>' +
         '<div class="field" style="margin:0;"><label>Unit Price ()</label>' +
-          '<input id="exp-unit-price" type="number" step="0.01" placeholder="0.00" inputmode="decimal" ' +
-            'oninput="calcExpenseAmount()"></div>' +
+          _voiceInputHtml('exp-unit-price', '0.00', 'Speak unit price', 'number', '0.01', 'calcExpenseAmount()') + '</div>' +
       '</div>' +
 
       '<div class="field">' +
         '<label>Total Amount () *</label>' +
-        '<input id="exp-amount" type="number" step="0.01" placeholder="Auto-calculated or enter directly" ' +
-          'inputmode="decimal" style="font-size:18px;font-weight:bold;background:#f0fdf4;"></div>' +
+        _voiceInputHtml('exp-amount', 'Auto-calculated or enter directly', 'Speak total amount', 'number', '0.01') + '</div>' +
 
       '<div class="field"><label>Payment Method</label>' +
-        '<select id="exp-pay"><option>Cash</option><option>GCash</option><option>Maya</option><option>Credit</option></select></div>' +
+        '<div style="display:flex;gap:8px;align-items:stretch;">' +
+          '<select id="exp-pay" style="flex:1;min-width:0;"><option>Cash</option><option>GCash</option><option>Maya</option><option>Credit</option></select>' +
+          _voiceButtonHtml('exp-pay', 'Speak payment method') +
+        '</div></div>' +
 
       '<button class="btn btn-primary" onclick="submitExpense()">Save Expense</button>' +
     '</div></div>';
