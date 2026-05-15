@@ -5705,13 +5705,13 @@ function renderAddSupplierForm(msg) {
     '<div class="topbar"><div class="title" style="margin:0;">Add Supplier</div><button class="small-btn" onclick="renderSuppliers()"> Back</button></div>' +
     (msg ? '<div class="message message-error">' + msg + '</div>' : '') +
     '<div class="card">' +
-    '<div class="field"><label>Supplier Name *</label><input id="sup-name" placeholder="e.g. ABC Distributors"></div>' +
-    '<div class="field"><label>Contact Person</label><input id="sup-contact" placeholder="Name"></div>' +
-    '<div class="field"><label>Phone</label><input id="sup-phone" type="tel" placeholder="09xxxxxxxxx"></div>' +
-    '<div class="field"><label>Email</label><input id="sup-email" type="email" placeholder="supplier@email.com"></div>' +
-    '<div class="field"><label>Address</label><input id="sup-address" placeholder="Full address"></div>' +
-    '<div class="field"><label>Payment Terms</label><select id="sup-terms"><option value="cash">Cash on Delivery</option><option value="net7">Net 7 days</option><option value="net15">Net 15 days</option><option value="net30">Net 30 days</option><option value="consignment">Consignment</option></select></div>' +
-    '<div class="field"><label>Notes</label><input id="sup-notes" placeholder="Optional notes"></div>' +
+    '<div class="field"><label>Supplier Name *</label>' + _voiceInputHtml('sup-name', 'e.g. ABC Distributors', 'Speak supplier name') + '</div>' +
+    '<div class="field"><label>Contact Person</label>' + _voiceInputHtml('sup-contact', 'Name', 'Speak contact person') + '</div>' +
+    '<div class="field"><label>Phone</label>' + _voiceInputHtml('sup-phone', '09xxxxxxxxx', 'Speak phone number', 'tel') + '</div>' +
+    '<div class="field"><label>Email</label>' + _voiceInputHtml('sup-email', 'supplier@email.com', 'Speak email', 'email') + '</div>' +
+    '<div class="field"><label>Address</label>' + _voiceInputHtml('sup-address', 'Full address', 'Speak address') + '</div>' +
+    '<div class="field"><label>Payment Terms</label><div style="display:flex;gap:8px;align-items:stretch;"><select id="sup-terms" style="flex:1;min-width:0;"><option value="cash">Cash on Delivery</option><option value="net7">Net 7 days</option><option value="net15">Net 15 days</option><option value="net30">Net 30 days</option><option value="consignment">Consignment</option></select>' + _voiceButtonHtml('sup-terms', 'Speak payment terms') + '</div></div>' +
+    '<div class="field"><label>Notes</label>' + _voiceInputHtml('sup-notes', 'Optional notes', 'Speak supplier notes') + '</div>' +
     '<button class="btn btn-primary" onclick="submitAddSupplier()">Save Supplier</button>' +
     '</div></div>';
 }
@@ -5742,15 +5742,15 @@ async function renderEditSupplierForm(supplierId) {
       '<div class="screen">' +
       '<div class="topbar"><div class="title" style="margin:0;">Edit Supplier</div><button class="small-btn" onclick="renderSupplierDetail(\'' + supplierId + '\')"> Back</button></div>' +
       '<div class="card">' +
-      '<div class="field"><label>Supplier Name *</label><input id="sup-name" value="' + _escAttr(s.name) + '"></div>' +
-      '<div class="field"><label>Contact Person</label><input id="sup-contact" value="' + _escAttr(s.contact_person) + '"></div>' +
-      '<div class="field"><label>Phone</label><input id="sup-phone" value="' + _escAttr(s.phone) + '"></div>' +
-      '<div class="field"><label>Email</label><input id="sup-email" value="' + _escAttr(s.email) + '"></div>' +
-      '<div class="field"><label>Address</label><input id="sup-address" value="' + _escAttr(s.address) + '"></div>' +
-      '<div class="field"><label>Payment Terms</label><select id="sup-terms">' +
+      '<div class="field"><label>Supplier Name *</label>' + _voiceInputHtml('sup-name', 'Supplier name', 'Speak supplier name', null, null, null, s.name || '') + '</div>' +
+      '<div class="field"><label>Contact Person</label>' + _voiceInputHtml('sup-contact', 'Name', 'Speak contact person', null, null, null, s.contact_person || '') + '</div>' +
+      '<div class="field"><label>Phone</label>' + _voiceInputHtml('sup-phone', '09xxxxxxxxx', 'Speak phone number', 'tel', null, null, s.phone || '') + '</div>' +
+      '<div class="field"><label>Email</label>' + _voiceInputHtml('sup-email', 'supplier@email.com', 'Speak email', 'email', null, null, s.email || '') + '</div>' +
+      '<div class="field"><label>Address</label>' + _voiceInputHtml('sup-address', 'Full address', 'Speak address', null, null, null, s.address || '') + '</div>' +
+      '<div class="field"><label>Payment Terms</label><div style="display:flex;gap:8px;align-items:stretch;"><select id="sup-terms" style="flex:1;min-width:0;">' +
       ['cash','net7','net15','net30','consignment'].map(function(t) { return '<option value="' + t + '"' + (s.payment_terms === t ? ' selected' : '') + '>' + t + '</option>'; }).join('') +
-      '</select></div>' +
-      '<div class="field"><label>Notes</label><input id="sup-notes" value="' + _escAttr(s.notes) + '"></div>' +
+      '</select>' + _voiceButtonHtml('sup-terms', 'Speak payment terms') + '</div></div>' +
+      '<div class="field"><label>Notes</label>' + _voiceInputHtml('sup-notes', 'Optional notes', 'Speak supplier notes', null, null, null, s.notes || '') + '</div>' +
       '<button class="btn btn-primary" onclick="submitEditSupplier(\'' + supplierId + '\')">Save Changes</button>' +
       '</div></div>';
   } catch(e) { _showToast(e.message, true); renderSuppliers(); }
@@ -5966,14 +5966,14 @@ function _renderCreatePOForm(suppliers, products, defaultSupplierId) {
     '<div class="field"><label>Supplier *</label><select id="po-supplier">' + supOptions + '</select></div>' +
     '<div class="field"><label>Order Date</label><input id="po-date" type="date" value="' + _todayInput() + '"></div>' +
     '<div class="field"><label>Expected Delivery</label><input id="po-delivery" type="date"></div>' +
-    '<div class="field"><label>Notes</label><input id="po-notes" placeholder="Optional"></div>' +
+    '<div class="field"><label>Notes</label>' + _voiceInputHtml('po-notes', 'Optional', 'Speak purchase order notes') + '</div>' +
     '</div>' +
     '<div class="card"><div class="section-title" style="margin-bottom:8px;">Items</div>' +
     '<div id="po-items"></div>' +
     '<div style="display:grid;grid-template-columns:1fr auto auto;gap:6px;margin-top:8px;align-items:end;">' +
     '<select id="po-item-product">' + prodOptions + '</select>' +
-    '<input id="po-item-qty" type="number" min="1" value="1" style="width:60px;" placeholder="Qty">' +
-    '<input id="po-item-cost" type="number" min="0" step="0.01" style="width:80px;" placeholder="Cost">' +
+    _voiceInputHtml('po-item-qty', 'Qty', 'Speak item quantity', 'number', '1', null, '1') +
+    _voiceInputHtml('po-item-cost', 'Cost', 'Speak item cost', 'number', '0.01') +
     '</div>' +
     '<button class="btn btn-secondary" style="margin-top:6px;" onclick="addPOItem()">+ Add Item</button>' +
     '</div>' +
@@ -6263,13 +6263,13 @@ function _renderCreateBranchTransferForm(branches, products) {
     '<div class="card">' +
     '<div class="field"><label>Source Branch</label><select id="bt-source">' + branchOptions + '</select></div>' +
     '<div class="field"><label>Target Branch</label><select id="bt-target">' + branchOptions + '</select></div>' +
-    '<div class="field"><label>Notes</label><input id="bt-notes" placeholder="Optional"></div>' +
+    '<div class="field"><label>Notes</label>' + _voiceInputHtml('bt-notes', 'Optional', 'Speak transfer notes') + '</div>' +
     '</div>' +
     '<div class="card"><div class="section-title" style="margin-bottom:8px;">Items</div>' +
     '<div id="bt-items"></div>' +
     '<div style="display:grid;grid-template-columns:1fr 80px;gap:8px;margin-top:8px;">' +
     '<select id="bt-product">' + productOptions + '</select>' +
-    '<input id="bt-qty" type="number" min="1" value="1" placeholder="Qty">' +
+    _voiceInputHtml('bt-qty', 'Qty', 'Speak transfer quantity', 'number', '1', null, '1') +
     '</div><button class="btn btn-secondary" style="margin-top:8px;" onclick="addBTItem()">+ Add Item</button></div>' +
     '<button class="btn btn-primary" onclick="submitCreateBranchTransfer()">Create Transfer</button>' +
     '</div>';
@@ -6375,9 +6375,9 @@ async function renderCreateVendorPayment() {
     document.getElementById('app').innerHTML =
       '<div class="screen"><div class="topbar"><div class="title" style="margin:0;">Log Payment</div><button class="small-btn" onclick="renderVendorPayments()"> Back</button></div>' +
       '<div class="card"><div class="field"><label>Supplier</label><select id="vp-supplier">' + options + '</select></div>' +
-      '<div class="field"><label>Amount</label><input id="vp-amount" type="number" min="0" step="0.01"></div>' +
+      '<div class="field"><label>Amount</label>' + _voiceInputHtml('vp-amount', '0.00', 'Speak payment amount', 'number', '0.01') + '</div>' +
       '<div class="field"><label>Date</label><input id="vp-date" type="date" value="' + _todayInput() + '"></div>' +
-      '<div class="field"><label>Reference</label><input id="vp-ref" placeholder="OR / transfer reference"></div>' +
+      '<div class="field"><label>Reference</label>' + _voiceInputHtml('vp-ref', 'OR / transfer reference', 'Speak payment reference') + '</div>' +
       '<button class="btn btn-primary" onclick="submitVendorPayment()">Save Payment</button></div></div>';
   } catch(e) { _showToast(e.message, true); renderVendorPayments(); }
 }
@@ -6420,8 +6420,8 @@ async function renderCreateCustomerReturn() {
     document.getElementById('app').innerHTML =
       '<div class="screen"><div class="topbar"><div class="title" style="margin:0;">Record Return</div><button class="small-btn" onclick="renderCustomerReturns()"> Back</button></div>' +
       '<div class="card"><div class="field"><label>Product</label><select id="ret-product">' + options + '</select></div>' +
-      '<div class="field"><label>Quantity</label><input id="ret-qty" type="number" min="1" value="1"></div>' +
-      '<div class="field"><label>Reason</label><input id="ret-reason" placeholder="Damaged, wrong item, etc."></div>' +
+      '<div class="field"><label>Quantity</label>' + _voiceInputHtml('ret-qty', '1', 'Speak return quantity', 'number', '1', null, '1') + '</div>' +
+      '<div class="field"><label>Reason</label>' + _voiceInputHtml('ret-reason', 'Damaged, wrong item, etc.', 'Speak return reason') + '</div>' +
       '<label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;"><input id="ret-restock" type="checkbox" checked> Return to stock</label>' +
       '<button class="btn btn-primary" onclick="submitCustomerReturn()">Save Return</button></div></div>';
   } catch(e) { _showToast(e.message, true); renderCustomerReturns(); }
@@ -6460,9 +6460,9 @@ async function renderDiscountsPromotions(msg) {
 function renderCreatePromotion() {
   document.getElementById('app').innerHTML =
     '<div class="screen"><div class="topbar"><div class="title" style="margin:0;">New Promotion</div><button class="small-btn" onclick="renderDiscountsPromotions()"> Back</button></div>' +
-    '<div class="card"><div class="field"><label>Name</label><input id="promo-name" placeholder="Weekend sale"></div>' +
+    '<div class="card"><div class="field"><label>Name</label>' + _voiceInputHtml('promo-name', 'Weekend sale', 'Speak promotion name') + '</div>' +
     '<div class="field"><label>Type</label><select id="promo-type"><option value="percent">Percent</option><option value="amount">Fixed Amount</option></select></div>' +
-    '<div class="field"><label>Value</label><input id="promo-value" type="number" min="0" step="0.01"></div>' +
+    '<div class="field"><label>Value</label>' + _voiceInputHtml('promo-value', '0.00', 'Speak promotion value', 'number', '0.01') + '</div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"><div class="field"><label>Starts</label><input id="promo-start" type="date" value="' + _todayInput() + '"></div><div class="field"><label>Ends</label><input id="promo-end" type="date" value="' + _todayInput() + '"></div></div>' +
     '<button class="btn btn-primary" onclick="submitPromotion()">Save Promotion</button></div></div>';
 }
@@ -6501,8 +6501,8 @@ async function renderVoids(msg) {
 function renderCreateVoid() {
   document.getElementById('app').innerHTML =
     '<div class="screen"><div class="topbar"><div class="title" style="margin:0;">Void Sale</div><button class="small-btn" onclick="renderVoids()"> Back</button></div>' +
-    '<div class="card"><div class="field"><label>Sale / Receipt ID</label><input id="void-sale" placeholder="Sale ID or receipt number"></div>' +
-    '<div class="field"><label>Reason</label><input id="void-reason" placeholder="Why this sale is voided"></div>' +
+    '<div class="card"><div class="field"><label>Sale / Receipt ID</label>' + _voiceInputHtml('void-sale', 'Sale ID or receipt number', 'Speak sale or receipt ID') + '</div>' +
+    '<div class="field"><label>Reason</label>' + _voiceInputHtml('void-reason', 'Why this sale is voided', 'Speak void reason') + '</div>' +
     '<button class="btn btn-primary" style="background:#dc2626;" onclick="submitVoidSale()">Void Sale</button></div></div>';
 }
 

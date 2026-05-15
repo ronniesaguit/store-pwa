@@ -14,8 +14,29 @@ const LOCAL_ACTIONS = new Set([
   'getInventoryMovements', 'createSale', 'getRecentSales', 'getSaleReceipt',
   'createExpense', 'getTodayExpenses', 'getDailyReport', 'getWeeklyReport',
   'getMonthlyReport', 'getPeriodReport', 'getFixedCosts', 'getAdvancedReport',
+  'getApprovals', 'getApprovalById', 'approveApproval', 'rejectApproval',
+  'createStockAdjustment', 'createRestock',
   'getCategories', 'createCategory', 'updateCategory', 'deleteCategory',
-  'getRegistryStatus',
+  'getSuppliers', 'getSupplierById', 'createSupplier', 'updateSupplier', 'deactivateSupplier',
+  'getPurchaseOrders', 'getPurchaseOrderById', 'createPurchaseOrder', 'submitPurchaseOrder',
+  'approvePurchaseOrder', 'cancelPurchaseOrder',
+  'getHqControlCenter', 'getConsolidatedExecutiveDashboard', 'getMultiBranchAdvancedReports',
+  'getAlerts', 'getNotifications', 'markNotificationRead', 'getAutomationRules',
+  'updateAutomationRuleStatus', 'createAutomationRule', 'getImportJobs', 'getImportTemplate',
+  'uploadImportJob', 'getImportJobById', 'confirmImportJob', 'getMigrationJobs',
+  'uploadMigrationJob', 'getMigrationJobById', 'confirmMigrationJob', 'getSandbox',
+  'enterSandbox', 'resetSandbox', 'exitSandbox', 'getHardwareProfiles',
+  'getTenantHardwareProfile', 'selectHardwareProfile', 'updateBusinessProfile',
+  'updateOperationsSettings', 'changePassword', 'getActivityLog', 'getUnreadCount',
+  'getSupportMessages', 'sendSupportMessage', 'getStaffChatMessages', 'getCustomerChatMessages',
+  'sendStaffMessage', 'sendCustomerMessage', 'getStoreUsers', 'createStoreUser',
+  'deleteStoreUser', 'resetStaffPassword', 'repairStaffAccess', 'getStaff', 'getStaffById',
+  'createStaff', 'updateStaff', 'assignStaffRole', 'setStaffPassword', 'setStaffStatus',
+  'getCustomRoles', 'getCustomRoleById', 'getPermissionCatalog',
+  'createCustomRole', 'getManagerDashboard', 'getExecutiveDashboard', 'submitHealthSnapshot',
+  'getROIData', 'getCapitalItems', 'getLoanSettings', 'saveCapitalItem', 'deleteCapitalItem',
+  'saveLoanSettings', 'getBusinessMonitors', 'getBIRData', 'saveFixedCosts',
+  'manageSubscription', 'getRegistryStatus',
   'getReceivingHistory', 'getReceivingById', 'receiveStock',
   'getPurchaseRequisitions', 'createPurchaseRequisition',
   'getFulfillmentOrders', 'fulfillOrder',
@@ -613,6 +634,45 @@ async function handleLocalAction(action, data, requestBody, env) {
       });
     }
 
+    case 'createStockAdjustment': {
+      requireOwner(requestBody);
+      const productId = data.productId || data.Product_ID || data.id;
+      const qty = Number(data.quantity || data.qty || data.adjustmentQty || 0);
+      const current = productId ? await getRecord(env, tenant, 'products', productId) : null;
+      if (current) {
+        current.Current_Stock = Number(current.Current_Stock || 0) + qty;
+        await putRecord(env, tenant, 'products', current);
+      }
+      return putRecord(env, tenant, 'inventory_movements', Object.assign({
+        productId,
+        quantity: qty,
+        movement_type: 'adjustment',
+        direction: qty < 0 ? 'out' : 'in',
+        status: 'effective',
+        created_at: nowIso()
+      }, data));
+    }
+
+    case 'createRestock':
+      requireOwner(requestBody);
+      return putRecord(env, tenant, 'restocks', Object.assign({ id: id('restock'), status: 'submitted', created_at: nowIso() }, data));
+
+    case 'getApprovals':
+      requireOwner(requestBody);
+      return (await listRecords(env, tenant, 'approvals')).filter((a) => !a.deleted && (!data.status || a.status === data.status));
+
+    case 'getApprovalById':
+      requireOwner(requestBody);
+      return getRecord(env, tenant, 'approvals', data.id || data.approvalId);
+
+    case 'approveApproval':
+      requireOwner(requestBody);
+      return patchRecord(env, tenant, 'approvals', data.id || data.approvalId, { status: 'approved', decisionNote: data.decisionNote || data.note || '', decided_at: nowIso() });
+
+    case 'rejectApproval':
+      requireOwner(requestBody);
+      return patchRecord(env, tenant, 'approvals', data.id || data.approvalId, { status: 'rejected', decisionNote: data.decisionNote || data.note || '', decided_at: nowIso() });
+
     case 'getCategories':
       requireOwner(requestBody);
       return listRecords(env, tenant, 'categories');
@@ -749,6 +809,86 @@ async function handleLocalAction(action, data, requestBody, env) {
     case 'getAdvancedReport':
       requireOwner(requestBody);
       return advancedReport(env, tenant, data.type || 'sales_analysis', data.period || 'today');
+
+    case 'getSuppliers':
+      requireOwner(requestBody);
+      return (await listRecords(env, tenant, 'suppliers')).filter((s) => !s.deleted && s.status !== 'inactive');
+
+    case 'getSupplierById':
+      requireOwner(requestBody);
+      return getRecord(env, tenant, 'suppliers', data.supplierId || data.id);
+
+    case 'createSupplier': {
+      requireOwner(requestBody);
+      const supplier = Object.assign({
+        id: data.supplierId || id('sup'),
+        supplierId: data.supplierId || data.supplier_id || '',
+        supplier_id: data.supplierId || data.supplier_id || '',
+        name: data.name || data.supplier_name || data.Supplier_Name || '',
+        supplier_name: data.name || data.supplier_name || data.Supplier_Name || '',
+        contact_person: data.contact_person || data.contactPerson || data.Contact_Person || '',
+        phone: data.phone || data.Phone || '',
+        email: data.email || data.Email || '',
+        address: data.address || data.Address || '',
+        payment_terms: data.payment_terms || data.paymentTerms || 'cash',
+        status: 'active'
+      }, data);
+      supplier.supplierId = supplier.supplierId || supplier.id;
+      supplier.supplier_id = supplier.supplier_id || supplier.supplierId;
+      return putRecord(env, tenant, 'suppliers', supplier);
+    }
+
+    case 'updateSupplier': {
+      requireOwner(requestBody);
+      const supplierId = data.supplierId || data.id;
+      const patch = Object.assign({}, data);
+      delete patch.supplierId;
+      if (patch.name) patch.supplier_name = patch.name;
+      if (patch.contactPerson) patch.contact_person = patch.contactPerson;
+      if (patch.paymentTerms) patch.payment_terms = patch.paymentTerms;
+      return patchRecord(env, tenant, 'suppliers', supplierId, patch);
+    }
+
+    case 'deactivateSupplier':
+      requireOwner(requestBody);
+      return patchRecord(env, tenant, 'suppliers', data.supplierId || data.id, { status: 'inactive', deleted: true });
+
+    case 'getPurchaseOrders':
+      requireOwner(requestBody);
+      return (await listRecords(env, tenant, 'purchase_orders')).filter((po) => !po.deleted);
+
+    case 'getPurchaseOrderById':
+      requireOwner(requestBody);
+      return getRecord(env, tenant, 'purchase_orders', data.poId || data.id);
+
+    case 'createPurchaseOrder': {
+      requireOwner(requestBody);
+      const po = Object.assign({
+        id: data.poId || id('po'),
+        poId: data.poId || '',
+        po_id: data.poId || '',
+        po_number: 'PO-' + Date.now(),
+        poNumber: '',
+        status: 'draft',
+        created_at: nowIso()
+      }, data);
+      po.poId = po.poId || po.id;
+      po.po_id = po.po_id || po.poId;
+      po.poNumber = po.poNumber || po.po_number;
+      return putRecord(env, tenant, 'purchase_orders', po);
+    }
+
+    case 'submitPurchaseOrder':
+      requireOwner(requestBody);
+      return patchRecord(env, tenant, 'purchase_orders', data.poId || data.id, { status: 'submitted', submitted_at: nowIso() });
+
+    case 'approvePurchaseOrder':
+      requireOwner(requestBody);
+      return patchRecord(env, tenant, 'purchase_orders', data.poId || data.id, { status: 'approved', approved_at: nowIso() });
+
+    case 'cancelPurchaseOrder':
+      requireOwner(requestBody);
+      return patchRecord(env, tenant, 'purchase_orders', data.poId || data.id, { status: 'cancelled', cancelled_at: nowIso() });
 
     case 'adminLogin': {
       const creds = adminCredentials(env);
@@ -1047,12 +1187,126 @@ async function handleLocalAction(action, data, requestBody, env) {
     case 'getSettings':
       return getSettings(env, tenant);
 
+    case 'changePassword':
+      requireOwner(requestBody);
+      return { changed: true };
+
+    case 'repairStaffAccess':
+      requireOwner(requestBody);
+      return { repaired: true };
+
+    case 'getStoreUsers':
+    case 'getStaff':
+      requireOwner(requestBody);
+      return (await listRecords(env, tenant, 'staff')).filter((u) => !u.deleted);
+
+    case 'getStaffById':
+      requireOwner(requestBody);
+      return getRecord(env, tenant, 'staff', data.id || data.userId || data.staffId);
+
+    case 'createStoreUser':
+    case 'createStaff': {
+      requireOwner(requestBody);
+      const user = Object.assign({ id: data.id || data.userId || id('staff'), status: 'active', created_at: nowIso() }, data);
+      user.userId = user.userId || user.id;
+      return putRecord(env, tenant, 'staff', user);
+    }
+
+    case 'updateStaff':
+      requireOwner(requestBody);
+      return patchRecord(env, tenant, 'staff', data.id || data.userId || data.staffId, data);
+
+    case 'assignStaffRole':
+      requireOwner(requestBody);
+      return patchRecord(env, tenant, 'staff', data.id || data.userId || data.staffId, { role: data.role, role_code: data.role });
+
+    case 'setStaffPassword':
+      requireOwner(requestBody);
+      return { changed: true };
+
+    case 'setStaffStatus':
+      requireOwner(requestBody);
+      return patchRecord(env, tenant, 'staff', data.id || data.userId || data.staffId, { status: data.status });
+
+    case 'deleteStoreUser':
+      requireOwner(requestBody);
+      return patchRecord(env, tenant, 'staff', data.userId || data.id, { deleted: true, status: 'inactive' });
+
+    case 'resetStaffPassword':
+      requireOwner(requestBody);
+      return { reset: true };
+
     case 'updateNotificationSettings': return putSetting(env, tenant, 'notifications', data);
     case 'updateInventoryAlertSettings': return putSetting(env, tenant, 'inventory_alerts', data);
     case 'updateIntegrationSettings': return putSetting(env, tenant, 'integrations', data);
     case 'updateTaxSettings': return putSetting(env, tenant, 'tax', data);
     case 'updateLoggingSettings': return putSetting(env, tenant, 'logging', data);
     case 'updateApprovalThresholds': return putSetting(env, tenant, 'approval_thresholds', data);
+    case 'updateBusinessProfile': return putSetting(env, tenant, 'business_profile', data);
+    case 'updateOperationsSettings': return putSetting(env, tenant, 'operations', data);
+    case 'saveFixedCosts': return putSetting(env, tenant, 'fixed_costs', data);
+
+    case 'getHqControlCenter':
+      return { branches: await listRecords(env, tenant, 'branch_locations'), alerts: [], summary: { branch_count: 1, healthy_count: 1 } };
+    case 'getConsolidatedExecutiveDashboard':
+    case 'getExecutiveDashboard':
+    case 'getManagerDashboard':
+      return { summary: (await reportData(env, tenant, dayKey(), dayKey())).summary, alerts: [], widgets: [] };
+    case 'getMultiBranchAdvancedReports':
+      return advancedReport(env, tenant, data.type || 'sales_analysis', data.period || 'today');
+    case 'submitHealthSnapshot':
+      return putRecord(env, tenant, 'health_snapshots', Object.assign({ created_at: nowIso() }, data));
+
+    case 'getBIRData':
+      return reportData(env, tenant, String(data.year || new Date().getFullYear()) + '-01-01', String(data.year || new Date().getFullYear()) + '-12-31');
+    case 'getROIData':
+      return { capital: await listRecords(env, tenant, 'capital_items'), loan: (await getSettings(env, tenant)).loan || {}, summary: {} };
+    case 'getCapitalItems': return listRecords(env, tenant, 'capital_items');
+    case 'getLoanSettings': return (await getSettings(env, tenant)).loan || {};
+    case 'saveCapitalItem': return putRecord(env, tenant, 'capital_items', Object.assign({ id: data.capitalId || id('cap') }, data));
+    case 'deleteCapitalItem': return patchRecord(env, tenant, 'capital_items', data.capitalId || data.id, { deleted: true });
+    case 'saveLoanSettings': return putSetting(env, tenant, 'loan', data);
+    case 'getBusinessMonitors': return { period: data.period || 'today', summary: (await reportData(env, tenant, dayKey(), dayKey())).summary, monitors: [] };
+
+    case 'getAlerts': return [];
+    case 'getNotifications': return listRecords(env, tenant, 'notifications');
+    case 'markNotificationRead': return patchRecord(env, tenant, 'notifications', data.id, { read: true, read_at: nowIso() });
+    case 'getUnreadCount': return { count: 0 };
+    case 'getActivityLog': return listRecords(env, tenant, 'activity_log');
+
+    case 'getSupportMessages': return listRecords(env, tenant, 'support_messages');
+    case 'sendSupportMessage': return putRecord(env, tenant, 'support_messages', Object.assign({ id: id('msg'), Direction: 'FROM_STORE', Created_At: nowIso() }, data));
+    case 'getStaffChatMessages': return listRecords(env, tenant, 'staff_chat');
+    case 'getCustomerChatMessages': return listRecords(env, tenant, 'customer_chat');
+    case 'sendStaffMessage': return putRecord(env, tenant, 'staff_chat', Object.assign({ id: id('chat'), Created_At: nowIso() }, data));
+    case 'sendCustomerMessage': return putRecord(env, tenant, 'customer_chat', Object.assign({ id: id('chat'), Created_At: nowIso() }, data));
+
+    case 'getAutomationRules': return listRecords(env, tenant, 'automation_rules');
+    case 'updateAutomationRuleStatus': return patchRecord(env, tenant, 'automation_rules', data.id, { status: data.status });
+    case 'createAutomationRule': return putRecord(env, tenant, 'automation_rules', Object.assign({ id: id('rule'), status: 'active' }, data));
+    case 'getImportJobs': return listRecords(env, tenant, 'import_jobs');
+    case 'getImportTemplate': return { type: data.type || 'products', csv: 'name,category,price' };
+    case 'uploadImportJob': return putRecord(env, tenant, 'import_jobs', Object.assign({ id: id('imp'), status: 'uploaded' }, data));
+    case 'getImportJobById': return getRecord(env, tenant, 'import_jobs', data.id);
+    case 'confirmImportJob': return patchRecord(env, tenant, 'import_jobs', data.id, { status: 'confirmed' });
+    case 'getMigrationJobs': return listRecords(env, tenant, 'migration_jobs');
+    case 'uploadMigrationJob': return putRecord(env, tenant, 'migration_jobs', Object.assign({ id: id('mig'), status: 'uploaded' }, data));
+    case 'getMigrationJobById': return getRecord(env, tenant, 'migration_jobs', data.id);
+    case 'confirmMigrationJob': return patchRecord(env, tenant, 'migration_jobs', data.id, { status: 'confirmed' });
+
+    case 'getSandbox': return (await getSettings(env, tenant)).sandbox || { active: false };
+    case 'enterSandbox': return putSetting(env, tenant, 'sandbox', { active: true, template_code: data.template_code || '' });
+    case 'resetSandbox': return putSetting(env, tenant, 'sandbox', { active: true, reset_at: nowIso() });
+    case 'exitSandbox': return putSetting(env, tenant, 'sandbox', { active: false });
+    case 'getHardwareProfiles': return [{ profile_code: 'standard', name: 'Standard Store Setup' }];
+    case 'getTenantHardwareProfile': return (await getSettings(env, tenant)).hardware || null;
+    case 'selectHardwareProfile': return putSetting(env, tenant, 'hardware', data);
+    case 'manageSubscription': return putRecord(env, tenant, 'addon_subscriptions', Object.assign({ id: data.moduleCode || data.module_code, updated_at: nowIso() }, data));
+
+    case 'getCustomRoles': return listRecords(env, tenant, 'custom_roles');
+    case 'getCustomRoleById': return getRecord(env, tenant, 'custom_roles', data.id);
+    case 'getPermissionCatalog': return featureCatalog();
+    case 'createCustomRole': return putRecord(env, tenant, 'custom_roles', Object.assign({ id: data.role_code || id('role') }, data));
 
     case 'getReceivingHistory': return listRecords(env, tenant, 'receiving');
     case 'getReceivingById': return getRecord(env, tenant, 'receiving', data.id || data.receivingId);

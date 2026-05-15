@@ -1,5 +1,5 @@
 ﻿// sw.js â€” Service Worker for offline-first Store PWA
-const CACHE = 'store-pwa-v80';
+const CACHE = 'store-pwa-v81';
 const STATIC_ASSETS = [
   './',
   './index.html',
