@@ -660,10 +660,11 @@ function _dashboardHeader_(storeName, subLabel, onlineLabel, isOffline) {
 }
 
 function _ownerModuleButton(moduleCode, label, action, extraStyle) {
-  return '<div class="module-action" style="display:grid;grid-template-columns:minmax(0,1fr) 42px;gap:8px;align-items:stretch;">' +
-    '<button class="big-btn" onclick="' + action + '"' + (extraStyle ? ' style="' + extraStyle + '"' : '') + '>' + label + '</button>' +
+  var buttonStyle = 'padding:12px 10px;font-size:14px;line-height:1.2;border-radius:12px;margin-bottom:0;min-height:44px;' + (extraStyle || '');
+  return '<div class="module-action" style="display:grid;grid-template-columns:minmax(0,1fr) 34px;gap:6px;align-items:stretch;">' +
+    '<button class="big-btn" onclick="' + action + '" style="' + buttonStyle + '">' + label + '</button>' +
     '<button type="button" title="Help" aria-label="Help for ' + _escAttr(label) + '" onclick="event.stopPropagation();showModuleHelp(\'' + _escAttr(moduleCode) + '\')" ' +
-    'style="border:1px solid rgba(255,255,255,0.22);background:rgba(255,255,255,0.12);color:#fff;border-radius:12px;font-weight:900;font-size:16px;box-shadow:0 8px 18px rgba(0,0,0,.16);">?</button>' +
+    'style="border:1px solid rgba(255,255,255,0.22);background:rgba(255,255,255,0.12);color:#fff;border-radius:10px;font-weight:900;font-size:13px;min-height:44px;box-shadow:0 6px 14px rgba(0,0,0,.14);">?</button>' +
     '</div>';
 }
 
