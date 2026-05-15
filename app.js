@@ -2140,10 +2140,13 @@ async function renderAddProductForm(msg, scannedCode, existingImage) {
   _pendingProductImage = existingImage || null;
   // Always fetch fresh categories so the dropdown is never stale or empty
   if (!state.isOffline) {
-    try { state.categories = await API.call('getCategories'); } catch(e) {}
+    try {
+      state.categories = _mergeCategories(state.categories, await API.call('getCategories'));
+      await DB.saveCategories(state.categories);
+    } catch(e) {}
   }
   var catsHtml = (state.categories || []).map(function(c) {
-    return '<option value="' + c.Category_Name + '">' + c.Category_Name + '</option>';
+    return '<option value="' + _escAttr(c.Category_Name) + '">' + _escHtml(c.Category_Name) + '</option>';
   }).join('');
   var initialCode  = scannedCode || '';
   var imgPreview   = existingImage
@@ -2159,14 +2162,10 @@ async function renderAddProductForm(msg, scannedCode, existingImage) {
     '<div class="card">' +
       '<div class="field">' +
         '<button class="btn btn-primary" style="background:#7c3aed;margin:0 0 10px 0;" onclick="openScannerModal(\'addProduct\')"> Scan Barcode</button>' +
-        '<input id="p-barcode" value="' + initialCode + '" placeholder="Barcode number">' +
+        _voiceInputHtml('p-barcode', 'Barcode number', 'Speak barcode') +
       '</div>' +
       '<div class="field"><label>Product Name *</label>' +
-        '<div style="display:flex;gap:6px;align-items:stretch;">' +
-          '<input id="p-name" placeholder="Full product name" style="flex:1;min-width:0;">' +
-          '<button id="voice-btn-p-name" onclick="startVoiceInput(\'p-name\')" title="Speak product name" ' +
-            'style="background:#7c3aed;color:#fff;border:none;padding:0 12px;border-radius:8px;font-size:20px;cursor:pointer;flex-shrink:0;"></button>' +
-        '</div>' +
+        _voiceInputHtml('p-name', 'Full product name', 'Speak product name') +
       '</div>' +
       '<div class="field"><label>Product Photo</label>' +
         '<div style="display:flex;gap:10px;align-items:center;">' +
@@ -2178,23 +2177,66 @@ async function renderAddProductForm(msg, scannedCode, existingImage) {
       '<div class="field"><label>Category</label>' +
         '<div style="display:flex;gap:8px;align-items:center;">' +
           '<select id="p-category" style="flex:1;"><option value="">Select Category</option>' + catsHtml + '</select>' +
-          '<button class="small-btn" onclick="showCategoryModal()" style="background:#dbeafe;padding:10px;">+ New</button>' +
+          _voiceButtonHtml('p-category', 'Speak category') +
+          '<button class="small-btn" onclick="showCategoryModal()" style="background:#dbeafe;padding:10px;white-space:nowrap;">+ New</button>' +
         '</div>' +
       '</div>' +
-      '<div class="field"><label>Cost Price ()</label><input id="p-cost" type="number" step="0.01" placeholder="0.00" oninput="calcSellingPrice()"></div>' +
-      '<div class="field"><label>Profit Margin (%)</label><input id="p-margin" type="number" value="20" oninput="calcSellingPrice()"></div>' +
-      '<div class="field"><label>Selling Price () *</label><input id="p-price" type="number" step="0.01" placeholder="Auto-calculated"></div>' +
-      '<div class="field"><label>Starting Stock</label><input id="p-stock" type="number" value="0" disabled><div class="hint">For now, add stock after saving the product using Inventory  Add Stock.</div></div>' +
-      '<div class="field"><label>Reorder Level</label><input id="p-reorder" type="number" value="5"></div>' +
+      '<div class="field"><label>Cost Price ()</label>' + _voiceInputHtml('p-cost', '0.00', 'Speak cost price', 'number', '0.01', 'calcSellingPrice()') + '</div>' +
+      '<div class="field"><label>Profit Margin (%)</label>' + _voiceInputHtml('p-margin', '20', 'Speak profit margin', 'number', '1', 'calcSellingPrice()', '20') + '</div>' +
+      '<div class="field"><label>Selling Price () *</label>' + _voiceInputHtml('p-price', 'Auto-calculated', 'Speak selling price', 'number', '0.01') + '</div>' +
+      '<div class="field"><label>Starting Stock</label>' + _voiceInputHtml('p-stock', '0', 'Speak starting stock', 'number', '1', null, '0') + '<div class="hint">Initial quantity saved with this product.</div></div>' +
+      '<div class="field"><label>Reorder Level</label>' + _voiceInputHtml('p-reorder', '5', 'Speak reorder level', 'number', '1', null, '5') + '</div>' +
       '<button class="btn btn-primary" onclick="submitProduct()">Save Product</button>' +
     '</div>' +
     _renderCategoryModalHtml() +
     '</div>';
+  var barcode = document.getElementById('p-barcode');
+  if (barcode) barcode.value = initialCode;
 }
 
 //  Voice to Text 
 
 var _voiceRec = null;
+
+function _voiceButtonHtml(fieldId, title) {
+  return '<button id="voice-btn-' + _escAttr(fieldId) + '" type="button" onclick="startVoiceInput(\'' + _escAttr(fieldId) + '\')" title="' + _escAttr(title || 'Voice to text') + '" aria-label="' + _escAttr(title || 'Voice to text') + '" ' +
+    'style="width:44px;min-width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;background:#7c3aed;color:#fff;border:none;border-radius:10px;font-size:20px;cursor:pointer;flex-shrink:0;box-shadow:0 4px 10px rgba(124,58,237,.22);">Mic</button>';
+}
+
+function _voiceInputHtml(fieldId, placeholder, title, type, step, oninput, value) {
+  var attrs = 'id="' + _escAttr(fieldId) + '" placeholder="' + _escAttr(placeholder || '') + '" style="flex:1;min-width:0;"';
+  if (type) attrs += ' type="' + _escAttr(type) + '"';
+  if (step) attrs += ' step="' + _escAttr(step) + '"';
+  if (oninput) attrs += ' oninput="' + _escAttr(oninput) + '"';
+  if (value !== undefined && value !== null) attrs += ' value="' + _escAttr(value) + '"';
+  return '<div style="display:flex;gap:8px;align-items:stretch;"><input ' + attrs + '>' + _voiceButtonHtml(fieldId, title) + '</div>';
+}
+
+function _voiceValueForField(field, text) {
+  if (!field) return text;
+  if (String(field.type || '').toLowerCase() === 'number') {
+    var n = String(text || '').replace(/,/g, '').match(/-?\d+(\.\d+)?/);
+    return n ? n[0] : '';
+  }
+  if (String(field.tagName || '').toUpperCase() === 'SELECT') {
+    var spoken = String(text || '').trim();
+    var key = spoken.toLowerCase();
+    var opts = Array.prototype.slice.call(field.options || []);
+    var match = opts.find(function(o) { return String(o.text || o.value).trim().toLowerCase() === key; }) ||
+      opts.find(function(o) { return String(o.text || o.value).trim().toLowerCase().indexOf(key) !== -1; });
+    if (match) return match.value;
+    var opt = document.createElement('option');
+    opt.value = spoken;
+    opt.textContent = spoken;
+    field.appendChild(opt);
+    if (field.id === 'p-category' && spoken) {
+      state.categories = _mergeCategories(state.categories, [{ Category_Name: spoken, Is_Active: 'TRUE', Sort_Order: 99, _local: true }]);
+      try { DB.saveCategories(state.categories); } catch(e) {}
+    }
+    return spoken;
+  }
+  return text;
+}
 
 function startVoiceInput(fieldId) {
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -2203,23 +2245,29 @@ function startVoiceInput(fieldId) {
 
   var btn   = document.getElementById('voice-btn-' + fieldId);
   var field = document.getElementById(fieldId);
-  if (btn) { btn.textContent = ''; btn.style.background = '#dc2626'; }
+  if (btn) { btn.textContent = '...'; btn.style.background = '#dc2626'; }
 
   _voiceRec = new SR();
   _voiceRec.lang = 'en-PH';
-  _voiceRec.interimResults = false;
-  _voiceRec.maxAlternatives = 1;
+  _voiceRec.interimResults = true;
+  _voiceRec.continuous = false;
+  _voiceRec.maxAlternatives = 3;
 
   _voiceRec.onresult = function(e) {
-    var text = e.results[0][0].transcript;
-    if (field) { field.value = text; field.dispatchEvent(new Event('input')); }
-    _showToast('Got: ' + text.substring(0, 30), false);
+    var result = e.results[e.results.length - 1];
+    var text = result && result[0] ? result[0].transcript.trim() : '';
+    if (field && text) {
+      field.value = _voiceValueForField(field, text);
+      field.dispatchEvent(new Event('input'));
+      field.dispatchEvent(new Event('change'));
+    }
+    if (result && result.isFinal) _showToast('Got: ' + text.substring(0, 30), false);
   };
   _voiceRec.onerror = function(e) {
     _showToast('Voice error: ' + e.error, true);
   };
   _voiceRec.onend = function() {
-    if (btn) { btn.textContent = ''; btn.style.background = '#7c3aed'; }
+    if (btn) { btn.textContent = 'Mic'; btn.style.background = '#7c3aed'; }
     _voiceRec = null;
   };
   _voiceRec.start();
@@ -2337,7 +2385,7 @@ async function submitProduct() {
     Barcode:       (document.getElementById('p-barcode')  || {}).value || '',
     Cost_Price:    (document.getElementById('p-cost')     || {}).value || 0,
     Selling_Price: price,
-    Current_Stock: 0,
+    Current_Stock: Math.max(0, Number((document.getElementById('p-stock') || {}).value || 0)),
     Reorder_Level: (document.getElementById('p-reorder') || {}).value || 5,
     Image:         _pendingProductImage || ''
   };
@@ -2393,23 +2441,50 @@ async function editProduct(id) {
 
 //  Categories 
 
+function _categoryNameOf(c) {
+  return String((c && (c.Category_Name || c.category_name || c.name || c.Name)) || '').trim();
+}
+
+function _jsArg(str) {
+  return String(str || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\r?\n/g, ' ');
+}
+
+function _mergeCategories(localCats, remoteCats) {
+  var map = {};
+  function add(c) {
+    var name = _categoryNameOf(c);
+    if (!name) return;
+    var key = name.toLowerCase();
+    if (!map[key]) map[key] = Object.assign({}, c, { Category_Name: name });
+  }
+  (remoteCats || []).forEach(add);
+  (localCats || []).forEach(add);
+  return Object.keys(map).sort(function(a, b) {
+    return map[a].Category_Name.localeCompare(map[b].Category_Name);
+  }).map(function(k) { return map[k]; });
+}
+
+function _categoryRowHtml(c) {
+  var name = _categoryNameOf(c);
+  var safe = _jsArg(name);
+  return '<div class="category-item"><span>' + _escHtml(name) + '</span>' +
+    '<div><button class="category-edit" onclick="editCategory(\'' + safe + '\')">Edit</button>' +
+    '<button class="category-delete" onclick="deleteCategory(\'' + safe + '\')">Delete</button>' +
+    '</div></div>';
+}
+
 function _renderCategoryModalHtml() {
   var cats = state.categories || [];
   var listHtml = cats.length
-    ? cats.map(function(c) {
-        return '<div class="category-item"><span>' + c.Category_Name + '</span>' +
-          '<div><button class="category-edit" onclick="editCategory(\'' + c.Category_Name + '\')">Edit</button>' +
-          '<button class="category-delete" onclick="deleteCategory(\'' + c.Category_Name + '\')">Delete</button>' +
-          '</div></div>';
-      }).join('')
+    ? cats.map(_categoryRowHtml).join('')
     : '<div style="padding:10px;color:#6b7280;">No categories yet</div>';
 
   return '<div id="category-modal" class="modal">' +
     '<div class="modal-content">' +
-    '<button class="modal-close" onclick="closeCategoryModal()"></button>' +
+    '<button class="modal-close" onclick="closeCategoryModal()" style="display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#111827;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:999px;width:34px;height:34px;">&times;</button>' +
     '<div class="modal-title">Manage Categories</div>' +
     '<div class="field">' +
-      '<input id="new-category-name" placeholder="New category name">' +
+      _voiceInputHtml('new-category-name', 'New category name', 'Speak category name') +
       '<button class="btn btn-primary" style="margin-top:8px;" onclick="addNewCategory()">Add Category</button>' +
     '</div>' +
     '<div class="category-list">' + listHtml + '</div>' +
@@ -2422,12 +2497,7 @@ function closeCategoryModal() { var m = document.getElementById('category-modal'
 function _updateCategoryList() {
   var cats = state.categories || [];
   var html = cats.length
-    ? cats.map(function(c) {
-        return '<div class="category-item"><span>' + c.Category_Name + '</span>' +
-          '<div><button class="category-edit" onclick="editCategory(\'' + c.Category_Name + '\')">Edit</button>' +
-          '<button class="category-delete" onclick="deleteCategory(\'' + c.Category_Name + '\')">Delete</button>' +
-          '</div></div>';
-      }).join('')
+    ? cats.map(_categoryRowHtml).join('')
     : '<div style="padding:10px;color:#6b7280;">No categories yet</div>';
   var el = document.querySelector('#category-modal .category-list');
   if (el) el.innerHTML = html;
@@ -2439,7 +2509,8 @@ function _updateCategoryDropdown() {
   var cur = sel.value;
   sel.innerHTML = '<option value="">Select Category</option>' +
     (state.categories || []).map(function(c) {
-      return '<option value="' + c.Category_Name + '">' + c.Category_Name + '</option>';
+      var name = _categoryNameOf(c);
+      return '<option value="' + _escAttr(name) + '">' + _escHtml(name) + '</option>';
     }).join('');
   sel.value = cur;
 }
@@ -2473,39 +2544,31 @@ async function addNewCategory() {
   }
 
   try {
-    // Save to server
-    await API.call('createCategory', { Category_Name: name });
-    if (inp) inp.value = '';
-
-    // Add to state immediately
     if (!state.categories) state.categories = [];
-    state.categories.push({ Category_Name: name, Is_Active: 'TRUE', Sort_Order: 99 });
-
-    // Save current full list to IndexedDB
+    state.categories = _mergeCategories(state.categories, [{ Category_Name: name, Is_Active: 'TRUE', Sort_Order: 99, _local: true }]);
+    if (inp) inp.value = '';
     try { await DB.saveCategories(state.categories); } catch(e) {}
-
     _updateCategoryList();
     _updateCategoryDropdown();
+    var sel = document.getElementById('p-category');
+    if (sel) sel.value = name;
     _showToast('Category "' + name + '" added!', false);
 
-    // Fetch fresh list from server (flush already happened) and merge
+    try {
+      await API.call('createCategory', { Category_Name: name });
+    } catch(apiErr) {
+      try { await DB.addToSyncQueue({ action: 'createCategory', data: { Category_Name: name } }); } catch(qErr) {}
+    }
+
+    // Fetch fresh list from server and merge without losing local categories
     try {
       var fresh = await API.call('getCategories');
-      // Merge: keep any local entries not yet on server
-      fresh.forEach(function(s) {
-        if (!state.categories.find(function(c) { return c.Category_Name === s.Category_Name; })) {
-          state.categories.push(s);
-        }
-      });
-      // Remove any that server explicitly deleted (not in fresh AND not just added)
-      state.categories = fresh.concat(
-        state.categories.filter(function(c) {
-          return !fresh.find(function(s) { return s.Category_Name === c.Category_Name; });
-        })
-      );
+      state.categories = _mergeCategories(state.categories, fresh);
       await DB.saveCategories(state.categories);
       _updateCategoryList();
       _updateCategoryDropdown();
+      var freshSel = document.getElementById('p-category');
+      if (freshSel) freshSel.value = name;
     } catch(e) {} // server refresh failure is non-fatal
 
   } catch(err) {
