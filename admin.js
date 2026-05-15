@@ -424,6 +424,132 @@ function _topbar(title, backFn) {
     '</div>';
 }
 
+function _jsStr(value) {
+  return String(value || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\r?\n/g, ' ');
+}
+
+function _adminHelpText(enWhat, enHow, tlWhat, tlHow, cbWhat, cbHow) {
+  return {
+    en: { what: enWhat, how: enHow },
+    tl: { what: tlWhat || enWhat, how: tlHow || enHow },
+    ceb: { what: cbWhat || tlWhat || enWhat, how: cbHow || tlHow || enHow }
+  };
+}
+
+var ADMIN_MODULE_HELP = {
+  products: _adminHelpText('Products lets a store maintain the items it sells.', 'Use this module when checking whether the store can add products, update prices, and organize product records.', 'Products ang module para ayusin ang mga paninda ng store.', 'Gamitin ito para makita kung puwedeng magdagdag ng products, mag-update ng presyo, at mag-ayos ng records.', 'Products ang module para dumalahon ang mga baligya sa store.', 'Gamita kini aron makita kung makadugang og products, maka-update sa presyo, ug maka-organize sa records.'),
+  inventory: _adminHelpText('Inventory monitors stock count, stock status, and stock movement.', 'Use this module to confirm the store has stock tracking, receiving, adjustment, and inventory visibility.', 'Inventory ang module para bantayan ang dami at galaw ng stock.', 'Gamitin ito para i-confirm ang stock tracking, receiving, adjustment, at inventory visibility.', 'Inventory ang module para bantayan ang gidaghanon ug lihok sa stock.', 'Gamita kini aron i-confirm ang stock tracking, receiving, adjustment, ug inventory visibility.'),
+  quick_sell: _adminHelpText('Quick Sell is the store selling screen for fast transactions.', 'Enable or review this module when a store needs POS sales entry and payment recording.', 'Quick Sell ang mabilis na sales/POS screen ng store.', 'I-enable o i-review ito kapag kailangan ng store ng sales entry at payment recording.', 'Quick Sell mao ang paspas nga sales/POS screen sa store.', 'I-enable o i-review kini kung kinahanglan sa store og sales entry ug payment recording.'),
+  expenses: _adminHelpText('Expenses records the operating costs of the store.', 'Use this module to allow expense entry, cost review, and profit reporting support.', 'Expenses ang module para sa gastos ng store.', 'Gamitin ito para payagan ang expense entry, cost review, at profit reporting.', 'Expenses ang module para sa gasto sa store.', 'Gamita kini para sa expense entry, cost review, ug profit reporting.'),
+  reports: _adminHelpText('Reports gives the store summaries for sales, stock, and performance.', 'Use this module to confirm the store has the correct report level for its plan.', 'Reports ang module para sa sales, stock, at performance summary.', 'Gamitin ito para i-confirm ang tamang report level ng plan.', 'Reports ang module para sa sales, stock, ug performance summary.', 'Gamita kini aron i-confirm ang sakto nga report level sa plan.'),
+  advanced_reports: _adminHelpText('Advanced Reports provides deeper business analysis.', 'Enable this when the plan should include broader sales, stock, and financial reporting.', 'Advanced Reports para sa mas malalim na business analysis.', 'I-enable ito kung kasama sa plan ang mas malawak na sales, stock, at financial reporting.', 'Advanced Reports para sa mas lawom nga business analysis.', 'I-enable kini kung apil sa plan ang mas lapad nga sales, stock, ug financial reporting.'),
+  tax_reports: _adminHelpText('BIR / Tax prepares tax-related store totals.', 'Use this module when a store needs quarterly, annual, or taxable sales summaries.', 'BIR / Tax para sa tax-related totals ng store.', 'Gamitin ito kung kailangan ng quarterly, annual, o taxable sales summaries.', 'BIR / Tax para sa tax-related totals sa store.', 'Gamita kini kung kinahanglan og quarterly, annual, o taxable sales summaries.'),
+  suppliers: _adminHelpText('Suppliers stores vendor information for purchasing.', 'Enable this module for stores that manage supplier contacts and purchase workflows.', 'Suppliers ang module para sa vendor information.', 'I-enable ito para sa stores na may supplier contacts at purchase workflows.', 'Suppliers ang module para sa vendor information.', 'I-enable kini para sa stores nga naay supplier contacts ug purchase workflows.'),
+  purchase_orders: _adminHelpText('Purchase Orders tracks orders sent to suppliers.', 'Use this module when the store needs purchase order creation, review, approval, or receiving.', 'Purchase Orders para sa orders papunta sa suppliers.', 'Gamitin ito kung kailangan ng PO creation, review, approval, o receiving.', 'Purchase Orders para sa orders padulong sa suppliers.', 'Gamita kini kung kinahanglan og PO creation, review, approval, o receiving.'),
+  purchase_requisitions: _adminHelpText('Purchase Requisitions are internal buying requests.', 'Use this module when staff should request items before purchase orders are made.', 'Purchase Requisitions ang internal request bago bumili.', 'Gamitin ito kapag dapat mag-request muna ang staff bago gumawa ng purchase order.', 'Purchase Requisitions ang internal request sa dili pa mopalit.', 'Gamita kini kung ang staff kinahanglan mo-request una sa dili pa purchase order.'),
+  stock_receiving: _adminHelpText('Receiving Logs record incoming stocks.', 'Use this module to let stores receive items and update inventory records.', 'Receiving Logs ang tala ng dumating na stock.', 'Gamitin ito para makapag-receive ng items at ma-update ang inventory.', 'Receiving Logs ang record sa niabot nga stock.', 'Gamita kini aron makadawat og items ug ma-update ang inventory.'),
+  order_fulfillment: _adminHelpText('Order Fulfillment tracks orders that must be prepared or delivered.', 'Enable this module for stores handling order preparation, pickup, or delivery completion.', 'Order Fulfillment para sa orders na ihahanda o ide-deliver.', 'I-enable ito para sa preparation, pickup, o delivery completion.', 'Order Fulfillment para sa orders nga andamon o i-deliver.', 'I-enable kini para sa preparation, pickup, o delivery completion.'),
+  branch_transfer: _adminHelpText('Stock Transfer moves inventory between branches.', 'Use this module when a business has multiple branches and needs source/target stock updates.', 'Stock Transfer para ilipat ang inventory sa ibang branch.', 'Gamitin ito kung may multiple branches at kailangan ng source/target stock updates.', 'Stock Transfer para ibalhin ang inventory sa laing branch.', 'Gamita kini kung naay multiple branches ug kinahanglan og source/target stock updates.'),
+  vendor_payments: _adminHelpText('Vendor Payments records supplier payments.', 'Enable this module when stores need payment logging and supplier payment reports.', 'Vendor Payments para sa bayad sa suppliers.', 'I-enable ito kung kailangan ng payment logging at supplier payment reports.', 'Vendor Payments para sa bayad sa suppliers.', 'I-enable kini kung kinahanglan og payment logging ug supplier payment reports.'),
+  customer_returns: _adminHelpText('Customer Returns handles returned items.', 'Use this module when stores need return records and inventory updates from returns.', 'Customer Returns para sa items na binalik ng customer.', 'Gamitin ito kung kailangan ng return records at inventory updates.', 'Customer Returns para sa items nga gibalik sa customer.', 'Gamita kini kung kinahanglan og return records ug inventory updates.'),
+  discounts_promotions: _adminHelpText('Discounts / Promotions manages offers and discounts.', 'Enable this module when owners need promo setup and reporting.', 'Discounts / Promotions para sa offers at discounts.', 'I-enable ito kung kailangan ng promo setup at reporting.', 'Discounts / Promotions para sa offers ug discounts.', 'I-enable kini kung kinahanglan og promo setup ug reporting.'),
+  voids: _adminHelpText('Voids records cancelled or reversed transactions.', 'Use this module to keep cancellations controlled and auditable.', 'Voids para sa cancelled transactions.', 'Gamitin ito para controlled at may audit trail ang cancellations.', 'Voids para sa cancelled transactions.', 'Gamita kini aron controlled ug naay audit trail ang cancellations.'),
+  staff_management: _adminHelpText('Staff Management controls staff accounts and access.', 'Use this module when a store needs staff users, role assignment, and access control.', 'Staff Management para sa accounts at access ng staff.', 'Gamitin ito kung kailangan ng staff users, roles, at access control.', 'Staff Management para sa accounts ug access sa staff.', 'Gamita kini kung kinahanglan og staff users, roles, ug access control.'),
+  approvals: _adminHelpText('Approvals routes sensitive actions for manager or owner decision.', 'Enable this module when workflows need approve/reject control.', 'Approvals para sa actions na kailangan ng approval.', 'I-enable ito kung kailangan ng approve/reject control.', 'Approvals para sa actions nga kinahanglan og approval.', 'I-enable kini kung kinahanglan og approve/reject control.'),
+  hq_control_center: _adminHelpText('HQ Control Center monitors multiple branches from one view.', 'Use this module for businesses that need branch comparison and central control.', 'HQ Control Center para bantayan ang maraming branches.', 'Gamitin ito para sa branch comparison at central control.', 'HQ Control Center para bantayan ang daghang branches.', 'Gamita kini para sa branch comparison ug central control.'),
+  notification_delivery: _adminHelpText('Notification Delivery sends important alerts and updates.', 'Use this module to confirm alerts can reach owners and staff.', 'Notification Delivery para ipadala ang alerts at updates.', 'Gamitin ito para siguraduhin na umaabot ang alerts sa owners at staff.', 'Notification Delivery para ipadala ang alerts ug updates.', 'Gamita kini aron masiguro nga maabot ang alerts sa owners ug staff.'),
+  alert_rules_engine: _adminHelpText('Alerts Engine checks business conditions and raises warnings.', 'Use this module to support low-stock, branch, and workflow alerts.', 'Alerts Engine para mag-check ng conditions at warnings.', 'Gamitin ito para sa low-stock, branch, at workflow alerts.', 'Alerts Engine para mo-check sa conditions ug warnings.', 'Gamita kini para sa low-stock, branch, ug workflow alerts.'),
+  activity_log: _adminHelpText('Activity Logs keep a record of important store actions.', 'Use this module to support audit history, staff activity, and troubleshooting.', 'Activity Logs ang record ng importanteng actions.', 'Gamitin ito para sa audit history, staff activity, at troubleshooting.', 'Activity Logs ang record sa importanteng actions.', 'Gamita kini para sa audit history, staff activity, ug troubleshooting.'),
+  settings: _adminHelpText('Settings controls store defaults and configuration.', 'Use this module when stores need configurable payment, tax, user, and app defaults.', 'Settings para sa defaults at configuration ng store.', 'Gamitin ito para sa payment, tax, user, at app defaults.', 'Settings para sa defaults ug configuration sa store.', 'Gamita kini para sa payment, tax, user, ug app defaults.'),
+  support: _adminHelpText('Help & Support gives the store a support path.', 'Enable this module when the store should access help information or send support requests.', 'Help & Support para sa tulong at support requests.', 'I-enable ito kung kailangan ng store ng help information o support request.', 'Help & Support para sa tabang ug support requests.', 'I-enable kini kung kinahanglan sa store og help information o support request.')
+};
+
+function _adminModuleHelpData(code, name, desc) {
+  var key = _moduleCodeKey(code || name || '');
+  var aliases = {
+    sales_pos: 'quick_sell',
+    cashier: 'quick_sell',
+    receipts: 'quick_sell',
+    basic_reports: 'reports',
+    inventory_movements: 'inventory',
+    restock_requests: 'purchase_requisitions',
+    branch_transfers: 'branch_transfer',
+    stock_transfer: 'branch_transfer',
+    returns: 'customer_returns',
+    promotions: 'discounts_promotions',
+    internal_chat: 'support',
+    monitors: 'reports'
+  };
+  var mapped = aliases[key] || key;
+  if (ADMIN_MODULE_HELP[mapped]) return ADMIN_MODULE_HELP[mapped];
+  var title = name || String(code || 'Module').replace(/_/g, ' ');
+  var detail = desc || (title + ' supports one store operation or workflow.');
+  return _adminHelpText(
+    title + ' is an operational module available to store owners.',
+    'Use this Admin view to confirm whether ' + title + ' is included in a bundle or available as an add-on. ' + detail,
+    title + ' ay operational module na maaaring gamitin ng store owner.',
+    'Gamitin ang Admin view para i-confirm kung kasama sa bundle o available bilang add-on ang ' + title + '.',
+    title + ' usa ka operational module nga magamit sa store owner.',
+    'Gamita ang Admin view aron i-confirm kung apil sa bundle o available isip add-on ang ' + title + '.'
+  );
+}
+
+function _adminModuleHelpButton(code, name, desc, tone) {
+  var colors = tone === 'addon'
+    ? '#fed7aa;background:#fff7ed;color:#9a3412;'
+    : tone === 'catalog'
+      ? '#bfdbfe;background:#eff6ff;color:#1d4ed8;'
+      : '#bbf7d0;background:#ecfdf5;color:#065f46;';
+  return '<button type="button" title="Help" aria-label="Help for ' + _esc(name || code) + '" onclick="event.preventDefault();event.stopPropagation();showAdminModuleHelp(\'' + _jsStr(code) + '\',\'' + _jsStr(name) + '\',\'' + _jsStr(desc) + '\')" style="border:1px solid ' + colors + 'border-radius:999px;width:28px;height:28px;font-weight:900;font-size:13px;line-height:1;">?</button>';
+}
+
+function showAdminModuleHelp(code, name, desc, lang) {
+  lang = lang || 'en';
+  var help = _adminModuleHelpData(code, name, desc);
+  var data = help[lang] || help.en;
+  var labels = {
+    en: { title: 'Admin Module Help', what: 'What this module is for', how: 'How to use it' },
+    tl: { title: 'Tulong sa Admin Module', what: 'Para saan ang module na ito', how: 'Paano gamitin' },
+    ceb: { title: 'Tabang sa Admin Module', what: 'Para asa kini nga module', how: 'Unsaon paggamit' }
+  };
+  var l = labels[lang] || labels.en;
+  var modal = document.getElementById('admin-module-help-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'admin-module-help-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.66);z-index:980;display:flex;align-items:flex-end;justify-content:center;padding:0 12px 12px;';
+    modal.addEventListener('click', function(e) { if (e.target === modal) closeAdminModuleHelp(); });
+    document.body.appendChild(modal);
+  }
+  function tab(codeLang, text) {
+    var active = codeLang === lang;
+    return '<button onclick="showAdminModuleHelp(\'' + _jsStr(code) + '\',\'' + _jsStr(name) + '\',\'' + _jsStr(desc) + '\',\'' + codeLang + '\')" style="border:1px solid ' + (active ? '#2563eb' : '#dbe3ef') + ';background:' + (active ? '#2563eb' : '#fff') + ';color:' + (active ? '#fff' : '#334155') + ';border-radius:999px;padding:7px 10px;font-size:12px;font-weight:800;">' + text + '</button>';
+  }
+  modal.innerHTML =
+    '<div style="width:100%;max-width:560px;background:#fff;border-radius:20px;box-shadow:0 24px 70px rgba(0,0,0,.32);overflow:hidden;">' +
+    '<div style="background:#1e3a5f;color:#fff;padding:16px 18px;">' +
+    '<div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">' +
+    '<div><div style="font-size:12px;opacity:.78;font-weight:700;">' + l.title + '</div>' +
+    '<div style="font-size:20px;font-weight:900;line-height:1.2;">' + _esc(name || code || 'Module') + '</div>' +
+    (code ? '<div style="font-size:11px;opacity:.72;margin-top:3px;font-family:monospace;">' + _esc(code) + '</div>' : '') + '</div>' +
+    '<button onclick="closeAdminModuleHelp()" style="border:0;background:rgba(255,255,255,.12);color:#fff;border-radius:10px;width:36px;height:36px;font-size:20px;">&times;</button>' +
+    '</div></div>' +
+    '<div style="padding:14px 18px 18px;">' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">' + tab('en','English') + tab('tl','Tagalog') + tab('ceb','Cebuano') + '</div>' +
+    '<div style="border:1px solid #e5e7eb;border-radius:14px;padding:14px;margin-bottom:10px;background:#f8fafc;">' +
+    '<div style="font-size:12px;font-weight:900;color:#1d4ed8;margin-bottom:6px;">' + l.what + '</div>' +
+    '<div style="font-size:14px;line-height:1.55;color:#111827;">' + _esc(data.what) + '</div></div>' +
+    '<div style="border:1px solid #e5e7eb;border-radius:14px;padding:14px;background:#fff;">' +
+    '<div style="font-size:12px;font-weight:900;color:#16a34a;margin-bottom:6px;">' + l.how + '</div>' +
+    '<div style="font-size:14px;line-height:1.55;color:#111827;">' + _esc(data.how) + '</div></div>' +
+    '</div></div>';
+}
+
+function closeAdminModuleHelp() {
+  var modal = document.getElementById('admin-module-help-modal');
+  if (modal) modal.remove();
+}
+
 //  Login 
 
 function renderAdminLogin(msg) {
@@ -1142,15 +1268,17 @@ async function renderModuleCatalog() {
   var planIds = ['TRIAL', 'NEGOSYO_HUB', 'BUSINESS_HUB', 'NEXORA_HUB', 'CUSTOM'];
   var moduleRows = all.map(function(m, i) {
     var code = _moduleCodeOf(m);
+    var name = _moduleNameOf(m);
+    var desc = _moduleDescOf(m);
     var price = m.price != null ? 'PHP ' + _esc(String(m.price)) + '/mo' : 'Bundle';
     return '<div style="display:grid;grid-template-columns:34px 1fr;gap:10px;padding:10px 0;border-bottom:1px solid #f3f4f6;">' +
       '<div style="font-weight:800;color:#64748b;">' + (i + 1) + '</div>' +
       '<div><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">' +
-      '<div><div style="font-size:13px;font-weight:800;color:#111827;">' + _esc(_moduleNameOf(m)) + '</div>' +
+      '<div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span style="font-size:13px;font-weight:800;color:#111827;">' + _esc(name) + '</span>' + _adminModuleHelpButton(code, name, desc, 'catalog') + '</div>' +
       '<div style="font-family:monospace;font-size:11px;color:#64748b;">' + _esc(code) + '</div></div>' +
       '<div style="white-space:nowrap;font-size:11px;font-weight:800;color:#166534;background:#dcfce7;border-radius:999px;padding:2px 8px;">' + price + '</div>' +
       '</div>' +
-      (_moduleDescOf(m) ? '<div class="muted" style="font-size:11px;margin-top:3px;">' + _esc(_moduleDescOf(m)) + '</div>' : '') +
+      (desc ? '<div class="muted" style="font-size:11px;margin-top:3px;">' + _esc(desc) + '</div>' : '') +
       '</div></div>';
   }).join('');
 
@@ -1160,10 +1288,16 @@ async function renderModuleCatalog() {
     var tier = _planTier(planId) || {};
     var addOnPrice = _addOnPriceForPlan(planId);
     var coreChips = core.map(function(m) {
-      return '<span style="display:inline-block;background:#ecfdf5;color:#065f46;border:1px solid #bbf7d0;border-radius:999px;padding:4px 8px;margin:0 4px 6px 0;font-size:11px;font-weight:700;">' + _esc(_moduleNameOf(m)) + '</span>';
+      var code = _moduleCodeOf(m);
+      var name = _moduleNameOf(m);
+      var desc = _moduleDescOf(m);
+      return '<span style="display:inline-flex;align-items:center;gap:6px;background:#ecfdf5;color:#065f46;border:1px solid #bbf7d0;border-radius:999px;padding:4px 6px 4px 8px;margin:0 4px 6px 0;font-size:11px;font-weight:700;">' + _esc(name) + _adminModuleHelpButton(code, name, desc, 'included') + '</span>';
     }).join('');
     var addOnChips = (planId === 'CUSTOM' ? [] : addOns).map(function(m) {
-      return '<span style="display:inline-block;background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;border-radius:999px;padding:4px 8px;margin:0 4px 6px 0;font-size:11px;font-weight:700;">' + _esc(_moduleNameOf(m)) + '</span>';
+      var code = _moduleCodeOf(m);
+      var name = _moduleNameOf(m);
+      var desc = _moduleDescOf(m);
+      return '<span style="display:inline-flex;align-items:center;gap:6px;background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;border-radius:999px;padding:4px 6px 4px 8px;margin:0 4px 6px 0;font-size:11px;font-weight:700;">' + _esc(name) + _adminModuleHelpButton(code, name, desc, 'addon') + '</span>';
     }).join('');
 
     return '<div class="card">' +
@@ -2178,10 +2312,14 @@ function _renderPlanBundleSummary(planId) {
   var core = _planCoreModuleCatalog(planId) || [];
 
   var coreHtml = core.length ? core.map(function(feature) {
+    var code = _moduleCodeOf(feature);
     var name = _moduleNameOf(feature);
     var desc = _moduleDescOf(feature);
     return '<div style="background:#ecfdf5;border:1px solid #bbf7d0;border-radius:10px;padding:10px 12px;margin-bottom:8px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">' +
       '<div style="font-size:13px;font-weight:800;color:#065f46;">Included: ' + _esc(name) + '</div>' +
+      _adminModuleHelpButton(code, name, desc, 'included') +
+      '</div>' +
       (desc ? '<div class="muted" style="font-size:11px;margin-top:2px;">' + _esc(desc) + '</div>' : '') +
       '</div>';
   }).join('') : '<div class="muted">No included modules for this plan.</div>';
@@ -2220,7 +2358,10 @@ function _renderAddOnSelector(containerId, planId, selectedModuleCodes) {
         '<div style="display:flex;align-items:flex-start;gap:10px;">' +
         '<input type="checkbox" data-module-code="' + _esc(code) + '"' + (selectedMap[_moduleCodeKey(code)] ? ' checked' : '') + ' style="margin-top:3px;">' +
         '<div style="flex:1;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">' +
         '<div style="font-size:13px;font-weight:800;color:#9a3412;">Add-on: ' + _esc(name) + '</div>' +
+        _adminModuleHelpButton(code, name, desc, 'addon') +
+        '</div>' +
         (desc ? '<div class="muted" style="font-size:11px;margin-top:2px;">' + _esc(desc) + '</div>' : '') +
         '<div style="font-size:11px;color:#9a3412;margin-top:4px;">Optional add-on' + (addOnPrice ? ' - ' + addOnPrice + '/mo' : '') + '</div>' +
         '</div></div></label>';
