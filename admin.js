@@ -2091,11 +2091,11 @@ function _allModuleCatalog() {
     });
   }
 
-  addList(_featureCatalog());
-
   try {
     if (HUB && HUB.getCustomModuleCatalog) addList(HUB.getCustomModuleCatalog() || []);
   } catch(e) {}
+
+  addList(_featureCatalog());
 
   try {
     if (!Object.keys(map).length && typeof _fallbackModuleCatalog === 'function') addList(_fallbackModuleCatalog() || []);
@@ -2209,9 +2209,9 @@ function _renderAddOnSelector(containerId, planId, selectedModuleCodes) {
   (selectedModuleCodes || []).forEach(function(code) { selectedMap[_moduleCodeKey(code)] = true; });
 
   container.innerHTML =
-    '<div class="section-title">Additional Add-ons</div>' +
+    '<div class="section-title">Available Add-On Modules</div>' +
     _renderPlanBundleSummary(planId) +
-    '<div class="hint" style="margin-bottom:10px;">Brown modules are not included yet. Tick optional modules to add them on top of the selected plan.</div>' +
+    '<div class="hint" style="margin-bottom:10px;">These are the same operational add-on modules the owner will see for this plan.</div>' +
     (addOns.length ? addOns.map(function(feature) {
       var code = _moduleCodeOf(feature);
       var name = _moduleNameOf(feature);
