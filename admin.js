@@ -1234,16 +1234,196 @@ async function renderHealthMonitor() {
         '</div>' : '') +
       '<div class="muted" style="font-size:11px;">Last seen: ' + lastSeen + '</div>' +
       '</div>' +
-      '<button class="small-btn" style="margin-left:8px;margin-top:4px;" onclick="event.stopPropagation();renderSendMessageToStore(\'' + st.Store_ID + '\',\'' + _esc(st.Store_Name) + '\')"> Message</button>' +
+      '<div style="display:flex;flex-direction:column;gap:6px;margin-left:8px;">' +
+      '<button class="small-btn" style="margin-top:4px;" onclick="event.stopPropagation();renderStoreSnapshot(\'' + st.Store_ID + '\')">Business</button>' +
+      '<button class="small-btn" style="background:#1d4ed8;color:#fff;margin-top:0;" onclick="event.stopPropagation();renderStoreSystemHealth(\'' + st.Store_ID + '\')">App Health</button>' +
+      '<button class="small-btn" style="margin-top:0;" onclick="event.stopPropagation();renderSendMessageToStore(\'' + st.Store_ID + '\',\'' + _esc(st.Store_Name) + '\')">Message</button>' +
+      '</div>' +
       '</div></div>';
   }).join('');
 
   _app('<div class="screen">' +
     _topbar(' Store Health Monitor', 'renderDashboard()') +
-    '<div style="font-size:12px;color:#6b7280;margin-bottom:8px;text-align:center;">Click a store to view full snapshot  Updated on each owner login</div>' +
+    '<div style="font-size:12px;color:#6b7280;margin-bottom:8px;text-align:center;">Business monitors track owner operations. App Health checks and repairs the system functions per store.</div>' +
     '<div class="card" style="padding:0;">' +
     (rows || '<div class="muted" style="padding:12px;">No stores yet.</div>') +
     '</div></div>');
+}
+
+function _systemFunctionTemplates(moduleCode, moduleName) {
+  var common = [
+    { id: 'screen_load', name: moduleName + ' screen opens' },
+    { id: 'data_read', name: moduleName + ' data loads' },
+    { id: 'data_save', name: moduleName + ' save/update works' },
+    { id: 'permission_gate', name: moduleName + ' permission check' }
+  ];
+  var map = {
+    quick_sell: [
+      { id: 'pos_cart', name: 'Cart and item entry' },
+      { id: 'sale_save', name: 'Sale recording' },
+      { id: 'receipt', name: 'Receipt view/print' },
+      { id: 'stock_deduct', name: 'Inventory deduction' }
+    ],
+    products: [
+      { id: 'product_list', name: 'Product list loads' },
+      { id: 'product_create', name: 'Add product' },
+      { id: 'product_update', name: 'Edit product' },
+      { id: 'barcode_lookup', name: 'Barcode lookup' }
+    ],
+    inventory: [
+      { id: 'stock_read', name: 'Stock levels load' },
+      { id: 'stock_receive', name: 'Add/receive stock' },
+      { id: 'stock_adjust', name: 'Stock adjustment' },
+      { id: 'movement_log', name: 'Movement logging' }
+    ],
+    expenses: [
+      { id: 'expense_list', name: 'Expense list loads' },
+      { id: 'expense_create', name: 'Record expense' },
+      { id: 'fixed_costs', name: 'Fixed costs save' },
+      { id: 'expense_report', name: 'Expense reporting' }
+    ],
+    reports: [
+      { id: 'daily_report', name: 'Daily report' },
+      { id: 'weekly_report', name: 'Weekly report' },
+      { id: 'monthly_report', name: 'Monthly report' },
+      { id: 'period_report', name: 'Custom period report' }
+    ],
+    staff_management: [
+      { id: 'staff_list', name: 'Staff list loads' },
+      { id: 'staff_create', name: 'Create staff' },
+      { id: 'role_assign', name: 'Role assignment' },
+      { id: 'password_reset', name: 'Password reset' }
+    ],
+    purchase_orders: [
+      { id: 'po_list', name: 'Purchase order list' },
+      { id: 'po_create', name: 'Create purchase order' },
+      { id: 'po_approve', name: 'Approve purchase order' },
+      { id: 'po_receive', name: 'Receive from purchase order' }
+    ],
+    suppliers: [
+      { id: 'supplier_list', name: 'Supplier list loads' },
+      { id: 'supplier_create', name: 'Create supplier' },
+      { id: 'supplier_update', name: 'Update supplier' },
+      { id: 'supplier_status', name: 'Supplier status changes' }
+    ],
+    branch_transfer: [
+      { id: 'transfer_list', name: 'Transfer list loads' },
+      { id: 'transfer_create', name: 'Create transfer' },
+      { id: 'transfer_approve', name: 'Approve/send transfer' },
+      { id: 'transfer_receive', name: 'Receive transfer' }
+    ],
+    internal_chat: [
+      { id: 'message_list', name: 'Messages load' },
+      { id: 'message_send', name: 'Send message' },
+      { id: 'thread_refresh', name: 'Conversation refresh' },
+      { id: 'unread_count', name: 'Unread count' }
+    ]
+  };
+  return map[moduleCode] || common;
+}
+
+function _systemCheckCatalog() {
+  return _customModuleCatalog().map(function(m) {
+    var code = _moduleCodeKey(_moduleCodeOf(m));
+    var name = _moduleNameOf(m);
+    return { code: code, name: name, functions: _systemFunctionTemplates(code, name) };
+  });
+}
+
+function _systemCheckKey(moduleCode, functionId) {
+  return _moduleCodeKey(moduleCode) + '__' + String(functionId || '').trim();
+}
+
+function _systemStatusRecord(statusMap, moduleCode, functionId) {
+  return statusMap[_systemCheckKey(moduleCode, functionId)] || { status: 'ok', message: 'Working', lastCheckedAt: '' };
+}
+
+function _systemStatusPill(record) {
+  var bad = String(record.status || 'ok') === 'problem';
+  return '<span style="display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:800;' +
+    (bad ? 'background:#fee2e2;color:#991b1b;border:1px solid #fecaca;' : 'background:#dcfce7;color:#166534;border:1px solid #bbf7d0;') +
+    '"><span style="width:8px;height:8px;border-radius:50%;background:' + (bad ? '#dc2626' : '#16a34a') + ';display:inline-block;"></span>' +
+    (bad ? 'Problem' : 'Working') + '</span>';
+}
+
+async function renderStoreSystemHealth(storeId) {
+  _app('<div style="text-align:center;padding:60px 20px;color:#6b7280;">Loading app system health</div>');
+  var store = (adminState.stores || []).filter(function(s) { return String(s.Store_ID) === String(storeId); })[0] || {};
+  var data;
+  try {
+    data = await ADMIN_API.call('adminGetStoreSystemHealth', { storeId: storeId });
+  } catch(e) {
+    _app('<div class="screen">' + _topbar('App System Health', 'renderHealthMonitor()') +
+      '<div class="msg-err">Failed to load system health: ' + _esc(e.message) + '</div></div>');
+    return;
+  }
+  var statusMap = {};
+  (data.checks || []).forEach(function(c) { statusMap[_systemCheckKey(c.moduleCode, c.functionId)] = c; });
+  var catalog = _systemCheckCatalog();
+  var totals = { checks: 0, ok: 0, problem: 0 };
+  catalog.forEach(function(mod) {
+    mod.functions.forEach(function(fn) {
+      totals.checks++;
+      var rec = _systemStatusRecord(statusMap, mod.code, fn.id);
+      if (String(rec.status || 'ok') === 'problem') totals.problem++;
+      else totals.ok++;
+    });
+  });
+  var modulesHtml = catalog.map(function(mod) {
+    var rows = mod.functions.map(function(fn) {
+      var rec = _systemStatusRecord(statusMap, mod.code, fn.id);
+      var isProblem = String(rec.status || 'ok') === 'problem';
+      return '<div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid #f3f4f6;">' +
+        '<div><div style="font-size:13px;font-weight:700;color:#111827;">' + _esc(fn.name) + '</div>' +
+        '<div class="muted" style="font-size:11px;">' + _esc(rec.message || 'Working') + '</div></div>' +
+        '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">' +
+        _systemStatusPill(rec) +
+        (isProblem
+          ? '<button class="small-btn" style="background:#16a34a;color:#fff;" onclick="_repairSystemFunction(\'' + _esc(mod.code) + '\',\'' + _esc(fn.id) + '\',\'' + _esc(fn.name).replace(/'/g, '&#39;') + '\',\'' + _esc(storeId) + '\')">Self Repair</button>'
+          : '<button class="small-btn" style="background:#fee2e2;color:#991b1b;" onclick="_flagSystemFunction(\'' + _esc(mod.code) + '\',\'' + _esc(fn.id) + '\',\'' + _esc(fn.name).replace(/'/g, '&#39;') + '\',\'' + _esc(storeId) + '\')">Report Problem</button>') +
+        '</div></div>';
+    }).join('');
+    var problemCount = mod.functions.filter(function(fn) {
+      return String(_systemStatusRecord(statusMap, mod.code, fn.id).status || 'ok') === 'problem';
+    }).length;
+    return '<div class="card">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px;">' +
+      '<div><div class="section-title" style="margin-bottom:2px;">' + _esc(mod.name) + '</div>' +
+      '<div class="muted" style="font-size:11px;">' + mod.functions.length + ' system functions monitored</div></div>' +
+      '<div style="font-size:11px;font-weight:800;border-radius:999px;padding:4px 8px;' + (problemCount ? 'background:#fee2e2;color:#991b1b;' : 'background:#dcfce7;color:#166534;') + '">' +
+      (problemCount ? problemCount + ' problem' + (problemCount > 1 ? 's' : '') : 'All green') + '</div>' +
+      '</div>' + rows + '</div>';
+  }).join('');
+  _app('<div class="screen">' +
+    _topbar('App System Health', 'renderHealthMonitor()') +
+    '<div class="card" style="background:#0f172a;color:#fff;">' +
+    '<div style="font-size:18px;font-weight:900;margin-bottom:4px;">' + _esc(store.Store_Name || storeId) + '</div>' +
+    '<div style="font-size:12px;opacity:.78;margin-bottom:12px;">Remote system monitor and self-repair console</div>' +
+    '<div class="stat-grid">' +
+    '<div class="stat-card"><div class="val">' + totals.checks + '</div><div class="lbl">Functions</div></div>' +
+    '<div class="stat-card"><div class="val" style="color:#16a34a;">' + totals.ok + '</div><div class="lbl">Working</div></div>' +
+    '<div class="stat-card"><div class="val" style="color:#dc2626;">' + totals.problem + '</div><div class="lbl">Problems</div></div>' +
+    '</div>' +
+    '<div style="font-size:12px;line-height:1.5;opacity:.86;margin-top:10px;">Self Repair first clears current glitches, then restores the last working event if needed. A successful repair turns the indicator back to green.</div>' +
+    '</div>' +
+    modulesHtml +
+    '</div>');
+}
+
+async function _flagSystemFunction(moduleCode, functionId, functionName, storeId) {
+  try {
+    await ADMIN_API.call('adminFlagStoreSystemFunction', { storeId: storeId, moduleCode: moduleCode, functionId: functionId, functionName: functionName });
+    _toast('Problem reported for ' + functionName, true);
+    renderStoreSystemHealth(storeId);
+  } catch(e) { _toast('Could not flag problem: ' + e.message, true); }
+}
+
+async function _repairSystemFunction(moduleCode, functionId, functionName, storeId) {
+  try {
+    await ADMIN_API.call('adminRepairStoreSystemFunction', { storeId: storeId, moduleCode: moduleCode, functionId: functionId, functionName: functionName });
+    _toast(functionName + ' repaired');
+    renderStoreSystemHealth(storeId);
+  } catch(e) { _toast('Repair failed: ' + e.message, true); }
 }
 
 async function renderStoreSnapshot(storeId) {

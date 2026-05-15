@@ -7,6 +7,7 @@ const LOCAL_ACTIONS = new Set([
   'adminCopyStoreToDedicatedDb', 'adminSavePlatformSettings', 'adminChangePassword',
   'adminGetAllStoreHealth', 'adminGetStoreSnapshot', 'adminGetUnreadCount',
   'adminGetAllMessages', 'adminGetStoreMessages', 'adminSendMessage',
+  'adminGetStoreSystemHealth', 'adminFlagStoreSystemFunction', 'adminRepairStoreSystemFunction',
   'login', 'logout', 'getBootData', 'getFeatureMarketplace', 'startTrial',
   'getProducts', 'createProduct', 'updateProduct', 'deleteProduct',
   'getProductByBarcode', 'addProductStock',
@@ -727,6 +728,59 @@ async function handleLocalAction(action, data, requestBody, env) {
         recentSales: [],
         recentExpenses: []
       };
+    }
+
+    case 'adminGetStoreSystemHealth': {
+      requireAdmin(requestBody);
+      const storeId = String(data.storeId || '').trim();
+      if (!storeId) throw new Error('Store ID is required');
+      const checks = await listRecords(env, 'admin', 'system_health_' + storeId);
+      return { storeId, checks: checks.filter((c) => !c.deleted) };
+    }
+
+    case 'adminFlagStoreSystemFunction': {
+      requireAdmin(requestBody);
+      const storeId = String(data.storeId || '').trim();
+      const moduleCode = String(data.moduleCode || '').trim();
+      const functionId = String(data.functionId || '').trim();
+      if (!storeId || !moduleCode || !functionId) throw new Error('Store, module, and function are required');
+      const recordId = moduleCode + '__' + functionId;
+      return putRecord(env, 'admin', 'system_health_' + storeId, {
+        id: recordId,
+        storeId,
+        moduleCode,
+        functionId,
+        functionName: data.functionName || functionId,
+        status: 'problem',
+        severity: data.severity || 'high',
+        message: data.message || 'Reported issue needs remote repair.',
+        lastCheckedAt: nowIso(),
+        reportedAt: nowIso()
+      });
+    }
+
+    case 'adminRepairStoreSystemFunction': {
+      requireAdmin(requestBody);
+      const storeId = String(data.storeId || '').trim();
+      const moduleCode = String(data.moduleCode || '').trim();
+      const functionId = String(data.functionId || '').trim();
+      if (!storeId || !moduleCode || !functionId) throw new Error('Store, module, and function are required');
+      const recordId = moduleCode + '__' + functionId;
+      const current = await getRecord(env, 'admin', 'system_health_' + storeId, recordId);
+      const repaired = Object.assign({}, current || {}, {
+        id: recordId,
+        storeId,
+        moduleCode,
+        functionId,
+        functionName: data.functionName || (current && current.functionName) || functionId,
+        status: 'ok',
+        severity: 'normal',
+        message: 'Self repair completed. Current glitches cleared; last working event restored if needed.',
+        lastCheckedAt: nowIso(),
+        repairedAt: nowIso(),
+        repairMode: 'self_repair_then_last_working_event'
+      });
+      return putRecord(env, 'admin', 'system_health_' + storeId, repaired);
     }
 
     case 'adminGetUnreadCount':
