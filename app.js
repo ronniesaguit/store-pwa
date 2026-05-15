@@ -664,7 +664,7 @@ function _ownerModuleButton(moduleCode, label, action, extraStyle) {
   return '<div class="module-action" style="min-width:0;display:grid;grid-template-columns:minmax(0,1fr) 26px;gap:4px;align-items:stretch;">' +
     '<button class="big-btn" onclick="' + action + '" style="' + buttonStyle + '">' + label + '</button>' +
     '<button type="button" title="Help" aria-label="Help for ' + _escAttr(label) + '" onclick="event.stopPropagation();showModuleHelp(\'' + _escAttr(moduleCode) + '\')" ' +
-    'style="box-sizing:border-box;width:26px;border:1px solid rgba(255,255,255,0.22);background:rgba(255,255,255,0.12);color:#fff;border-radius:9px;font-weight:900;font-size:12px;min-height:36px;padding:0;box-shadow:0 4px 10px rgba(0,0,0,.12);">?</button>' +
+    'style="box-sizing:border-box;width:26px;border:1px solid rgba(15,23,42,0.18);background:#facc15;color:#111827;border-radius:9px;font-weight:900;font-size:12px;min-height:36px;padding:0;box-shadow:0 4px 10px rgba(0,0,0,.12);">?</button>' +
     '</div>';
 }
 
