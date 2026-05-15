@@ -2164,6 +2164,7 @@ async function renderAddProductForm(msg, scannedCode, existingImage) {
         '<button class="btn btn-primary" style="background:#7c3aed;margin:0 0 10px 0;" onclick="openScannerModal(\'addProduct\')"> Scan Barcode</button>' +
         _voiceInputHtml('p-barcode', 'Barcode number', 'Speak barcode') +
       '</div>' +
+      _productExamplesHtml() +
       '<div class="field"><label>Product Name *</label>' +
         _voiceInputHtml('p-name', 'Full product name', 'Speak product name') +
       '</div>' +
@@ -2192,6 +2193,54 @@ async function renderAddProductForm(msg, scannedCode, existingImage) {
     '</div>';
   var barcode = document.getElementById('p-barcode');
   if (barcode) barcode.value = initialCode;
+}
+
+function _productExamplesHtml() {
+  var examples = [
+    { key: 'rice', label: 'Example 1: Rice', sub: 'Category: Grocery', color: '#166534' },
+    { key: 'soap', label: 'Example 2: Dish Soap', sub: 'Category: Household', color: '#1d4ed8' },
+    { key: 'vitamin', label: 'Example 3: Vitamin C', sub: 'Category: Health', color: '#9a3412' }
+  ];
+  return '<div class="field"><label>Product Examples</label>' +
+    '<div style="display:grid;grid-template-columns:1fr;gap:8px;">' +
+    examples.map(function(ex) {
+      return '<button type="button" onclick="applyProductExample(\'' + ex.key + '\')" style="text-align:left;border:1px solid #e5e7eb;background:#fff;border-radius:10px;padding:10px 12px;cursor:pointer;">' +
+        '<div style="font-size:13px;font-weight:900;color:' + ex.color + ';">' + ex.label + '</div>' +
+        '<div class="muted" style="font-size:11px;margin-top:2px;">' + ex.sub + '</div>' +
+        '</button>';
+    }).join('') +
+    '</div></div>';
+}
+
+function applyProductExample(key) {
+  var data = {
+    rice: { barcode: '100001', name: 'Premium Rice 5kg', category: 'Grocery', cost: 250, margin: 20, price: 300, stock: 20, reorder: 5 },
+    soap: { barcode: '100002', name: 'Dishwashing Liquid 500ml', category: 'Household', cost: 45, margin: 35, price: 61, stock: 30, reorder: 8 },
+    vitamin: { barcode: '100003', name: 'Vitamin C 100 Tablets', category: 'Health', cost: 180, margin: 30, price: 234, stock: 15, reorder: 5 }
+  }[key];
+  if (!data) return;
+  state.categories = _mergeCategories(state.categories, [{ Category_Name: data.category, Is_Active: 'TRUE', Sort_Order: 99, _local: true }]);
+  try { DB.saveCategories(state.categories); } catch(e) {}
+  _updateCategoryDropdown();
+  var values = {
+    'p-barcode': data.barcode,
+    'p-name': data.name,
+    'p-category': data.category,
+    'p-cost': data.cost,
+    'p-margin': data.margin,
+    'p-price': data.price,
+    'p-stock': data.stock,
+    'p-reorder': data.reorder
+  };
+  Object.keys(values).forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) {
+      el.value = values[id];
+      el.dispatchEvent(new Event('input'));
+      el.dispatchEvent(new Event('change'));
+    }
+  });
+  _showToast('Example product loaded: ' + data.name, false);
 }
 
 //  Voice to Text 
