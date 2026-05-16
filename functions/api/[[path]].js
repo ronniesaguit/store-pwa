@@ -137,6 +137,14 @@ function ownerCredentials(env) {
   };
 }
 
+function ownerCredentialsForStore(store, env) {
+  const fallback = ownerCredentials(env);
+  return {
+    username: String((store && (store.Owner_Username || store.ownerUsername || store.owner_username)) || fallback.username),
+    password: String((store && (store.Owner_Password || store.ownerPassword || store.owner_password)) || fallback.password)
+  };
+}
+
 function ownerToken(tenant) {
   return 'local_owner_' + String(tenant || 'default') + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
 }
@@ -287,13 +295,15 @@ function staffManifest(role, staff) {
 
 async function ownerStoreProfile(env, tenant) {
   const stores = await adminStores(env);
-  const matched = stores.find((s) => String(s.API_Key || '').toUpperCase() === String(tenant || '').toUpperCase()) || stores[0] || {};
+  const matched = stores.find((s) => String(s.API_Key || '').toUpperCase() === String(tenant || '').toUpperCase()) || {};
   const plan = normalizePlan(matched.Plan || 'BUSINESS_HUB');
   const def = planDefaults(plan);
+  const creds = ownerCredentialsForStore(matched, env);
   return {
     storeKey: tenant,
-    storeName: matched.Store_Name || 'Demo Store',
+    storeName: matched.Store_Name || 'Store Not Found',
     ownerName: matched.Owner_Name || 'Store Owner',
+    ownerUsername: creds.username,
     ownerEmail: matched.Owner_Email || '',
     plan: {
       id: plan,
@@ -314,7 +324,7 @@ async function ownerBootData(env, tenant) {
     loggedIn: true,
     user: {
       User_ID: 'owner',
-      Username: ownerCredentials(env).username,
+      Username: profile.ownerUsername,
       Full_Name: profile.ownerName,
       Role: 'OWNER'
     },
@@ -564,7 +574,9 @@ async function handleLocalAction(action, data, requestBody, env) {
   const tenant = tenantId(requestBody);
   switch (action) {
     case 'login': {
-      const creds = ownerCredentials(env);
+      const stores = await adminStores(env);
+      const ownerStore = stores.find((s) => String(s.API_Key || '').toUpperCase() === String(tenant || '').toUpperCase()) || {};
+      const creds = ownerCredentialsForStore(ownerStore, env);
       const username = String(data.username || '').trim();
       const password = String(data.password || '');
       if (username === creds.username && password === creds.password) {
@@ -1061,6 +1073,8 @@ async function handleLocalAction(action, data, requestBody, env) {
         Owner_Name: data.ownerName || '',
         Owner_Email: data.ownerEmail || '',
         Owner_Phone: data.ownerPhone || '',
+        Owner_Username: data.ownerUsername || 'owner',
+        Owner_Password: data.ownerPassword || '1234',
         API_Key: apiKey,
         Status: 'ACTIVE',
         Plan: plan,
@@ -1079,8 +1093,8 @@ async function handleLocalAction(action, data, requestBody, env) {
         storeId: store.Store_ID,
         storeName: store.Store_Name,
         apiKey: store.API_Key,
-        ownerUsername: 'owner',
-        ownerPassword: '1234',
+        ownerUsername: store.Owner_Username || 'owner',
+        ownerPassword: store.Owner_Password || '1234',
         trialEnd: String(store.Trial_End).slice(0, 10),
         plan: store.Plan,
         monthlyFee: store.Monthly_Fee
