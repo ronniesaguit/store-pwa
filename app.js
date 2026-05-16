@@ -4177,8 +4177,11 @@ function renderReportScreen(type, d, fixedCosts) {
   var healthHtml = '<div class="card"><div class="title" style="font-size:15px;margin-bottom:10px;"> Business Health Indicators</div>';
 
   if (monthlyFixed <= 0) {
-    healthHtml += '<div style="background:#fef9c3;border-radius:8px;padding:10px;font-size:13px;color:#854d0e;margin-bottom:10px;">' +
-      ' <strong>Set your Monthly Fixed Costs</strong> in Settings to unlock Break-Even analysis.</div>';
+    healthHtml += '<div style="background:#fef9c3;border:1px solid #fde68a;border-radius:10px;padding:10px;font-size:13px;color:#854d0e;margin-bottom:10px;">' +
+      '<div style="font-weight:800;margin-bottom:4px;">Set your Monthly Fixed Costs to unlock Break-Even analysis.</div>' +
+      '<div style="font-size:12px;line-height:1.35;margin-bottom:8px;">Add rent, salaries, and other fixed monthly costs so this report can calculate your break-even target.</div>' +
+      '<button type="button" onclick="renderSettings()" style="width:100%;border:0;background:#f59e0b;color:#fff;border-radius:9px;padding:10px 12px;font-size:13px;font-weight:900;cursor:pointer;">Set Monthly Fixed Costs</button>' +
+      '</div>';
   }
 
   healthHtml += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
