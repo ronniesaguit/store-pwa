@@ -2,7 +2,7 @@
   "name": "Store Management System",
   "short_name": "StoreApp",
   "description": "Store Management - Works Offline",
-  "start_url": "./index.html",
+  "start_url": "./index.html?pwa=1",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#f7f7f8",

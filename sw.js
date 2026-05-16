@@ -1,5 +1,5 @@
 ﻿// sw.js â€” Service Worker for offline-first Store PWA
-const CACHE = 'store-pwa-v98';
+const CACHE = 'store-pwa-v99';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -45,6 +45,15 @@ function isFreshAppShellRequest(request, url) {
   return /\/($|index\.html$|app\.js$|api\.js$|config\.js$|admin\.html$|admin\.js$|sw\.js$)/.test(url.pathname);
 }
 
+function cachedAppShellFallback(request) {
+  return caches.match(request, { ignoreSearch: true }).then(function(cached) {
+    if (cached) return cached;
+    return caches.match('./index.html').then(function(index) {
+      return index || caches.match('./');
+    });
+  });
+}
+
 // Install: pre-cache all static assets
 self.addEventListener('install', function(e) {
   e.waitUntil(
@@ -83,9 +92,7 @@ self.addEventListener('fetch', function(e) {
         }
         return response;
       }).catch(function() {
-        return caches.match(e.request).then(function(cached) {
-          return cached || caches.match('./index.html');
-        });
+        return cachedAppShellFallback(e.request);
       })
     );
     return;
@@ -100,7 +107,7 @@ self.addEventListener('fetch', function(e) {
         }
         return response;
       }).catch(function() {
-        return caches.match(e.request);
+        return caches.match(e.request, { ignoreSearch: true });
       })
     );
     return;
@@ -118,7 +125,7 @@ self.addEventListener('fetch', function(e) {
 
   // Cache-first for everything else (app shell, JS files)
   e.respondWith(
-    caches.match(e.request).then(function(cached) {
+    caches.match(e.request, { ignoreSearch: true }).then(function(cached) {
       if (cached) return cached;
       return fetch(e.request).then(function(response) {
         // Cache valid GET responses
@@ -130,7 +137,7 @@ self.addEventListener('fetch', function(e) {
       }).catch(function() {
         // Offline and not cached â€” return index.html for navigation requests
         if (e.request.destination === 'document') {
-          return caches.match('./index.html');
+          return cachedAppShellFallback(e.request);
         }
       });
     })

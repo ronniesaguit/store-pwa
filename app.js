@@ -56,7 +56,7 @@ async function boot() {
 
   //  Step 1: Render instantly from IndexedDB cache (zero network wait) 
   var cachedSession = localStorage.getItem('store_session');
-  if (cachedSession && API.token) {
+  if (cachedSession) {
     try {
       state.session    = JSON.parse(cachedSession);
       state.products   = (await DB.getProducts())   || [];
