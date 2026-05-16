@@ -715,11 +715,15 @@ async function handleLocalAction(action, data, requestBody, env) {
         Current_Stock: 0,
         Reorder_Level: 5,
         Allow_Discount: 'FALSE',
-        allow_discount: false
+        allow_discount: false,
+        Discount_Mode: 'amount',
+        discount_mode: 'amount',
+        Discount_Value: 0,
+        discount_value: 0
       }, data);
       product.id = product.Product_ID || product.id;
       product.Product_ID = product.Product_ID || product.id;
-      return putRecord(env, tenant, 'products', withNumberFields(product, ['Cost_Price', 'Selling_Price', 'Current_Stock', 'Reorder_Level']));
+      return putRecord(env, tenant, 'products', withNumberFields(product, ['Cost_Price', 'Selling_Price', 'Current_Stock', 'Reorder_Level', 'Discount_Value', 'discount_value']));
     }
 
     case 'updateProduct': {
@@ -727,7 +731,7 @@ async function handleLocalAction(action, data, requestBody, env) {
       const productId = data.productId || data.Product_ID || data.id;
       const patch = Object.assign({}, data);
       delete patch.productId;
-      return patchRecord(env, tenant, 'products', productId, withNumberFields(patch, ['Cost_Price', 'Selling_Price', 'Current_Stock', 'Reorder_Level']));
+      return patchRecord(env, tenant, 'products', productId, withNumberFields(patch, ['Cost_Price', 'Selling_Price', 'Current_Stock', 'Reorder_Level', 'Discount_Value', 'discount_value']));
     }
 
     case 'deleteProduct':
@@ -875,10 +879,11 @@ async function handleLocalAction(action, data, requestBody, env) {
         if (!product) continue;
         const price = Number(product.Selling_Price || item.price || 0);
         const cost = Number(product.Cost_Price || 0);
-        const discountAllowed = product.Allow_Discount === true || product.allow_discount === true ||
-          String(product.Allow_Discount || product.allow_discount || '').toUpperCase() === 'TRUE';
-        const discountMode = item.discountMode === 'percent' ? 'percent' : 'amount';
-        const rawDiscount = discountAllowed ? Math.max(0, Number(item.discountValue || 0)) : 0;
+        const discountAllowed = (item.discountApplied === true || String(item.discountApplied || '').toUpperCase() === 'TRUE') &&
+          (product.Allow_Discount === true || product.allow_discount === true ||
+          String(product.Allow_Discount || product.allow_discount || '').toUpperCase() === 'TRUE');
+        const discountMode = String(product.Discount_Mode || product.discount_mode || 'amount').toLowerCase() === 'percent' ? 'percent' : 'amount';
+        const rawDiscount = discountAllowed ? Math.max(0, Number(product.Discount_Value != null ? product.Discount_Value : product.discount_value || 0)) : 0;
         const discountPerUnit = discountMode === 'percent'
           ? price * Math.min(rawDiscount, 100) / 100
           : Math.min(rawDiscount, price);
