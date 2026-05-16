@@ -3051,12 +3051,14 @@ function _discountRuleLabel(rule) {
 function _cartLineDiscount(item) {
   var qty = Math.max(1, Number(item.qty || 1));
   var price = Number(item.price || 0);
-  var mode = item.discountMode || 'amount';
-  var raw = item.discountApplied ? Math.max(0, Number(item.discountValue || 0)) : 0;
+  var rule = item.discountRule || {};
+  var mode = item.discountMode || rule.mode || 'amount';
+  var configuredValue = Math.max(0, Number(item.discountValue != null ? item.discountValue : rule.value || 0));
+  var raw = item.discountApplied ? configuredValue : 0;
   var perUnit = mode === 'percent' ? price * Math.min(raw, 100) / 100 : Math.min(raw, price);
   return {
     mode: mode,
-    value: raw,
+    value: configuredValue,
     perUnit: perUnit,
     totalDiscount: perUnit * qty,
     lineTotal: Math.max(0, (price - perUnit) * qty)
