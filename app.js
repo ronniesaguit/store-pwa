@@ -244,7 +244,16 @@ async function submitLogin() {
           API.call('login', { username: username, password: password })
             .then(function(result) {
               API.setToken(result.token);
-              state.session   = { loggedIn: true, user: result.user, plan: result.plan || null, inTrial: result.inTrial || false, manifest: result.manifest || null };
+              state.session   = result.session || {
+                loggedIn: true,
+                user: result.user,
+                plan: result.plan || null,
+                inTrial: result.inTrial || false,
+                autoRenewTrial: result.autoRenewTrial || false,
+                trialEnd: result.trialEnd || '',
+                subscriptionExpires: result.subscriptionExpires || '',
+                manifest: result.manifest || null
+              };
               state.storeProfile = { storeName: result.storeName || (state.storeProfile||{}).storeName || '',
                                      ownerName: result.ownerName || (state.storeProfile||{}).ownerName || '' };
               state.products   = result.products   || state.products;
@@ -273,7 +282,16 @@ async function submitLogin() {
   try {
     var result = await API.call('login', { username: username, password: password });
     API.setToken(result.token);
-    state.session      = { loggedIn: true, user: result.user, plan: result.plan || null, inTrial: result.inTrial || false, manifest: result.manifest || null };
+    state.session      = result.session || {
+      loggedIn: true,
+      user: result.user,
+      plan: result.plan || null,
+      inTrial: result.inTrial || false,
+      autoRenewTrial: result.autoRenewTrial || false,
+      trialEnd: result.trialEnd || '',
+      subscriptionExpires: result.subscriptionExpires || '',
+      manifest: result.manifest || null
+    };
     state.storeProfile = { storeName: result.storeName || '', ownerName: result.ownerName || '' };
     state.products     = result.products   || [];
     state.categories   = result.categories || [];
