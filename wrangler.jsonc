@@ -1,0 +1,16 @@
+{
+    "$schema": "node_modules/wrangler/config-schema.json",
+    "name": "store-pwa",
+    "pages_build_output_dir": ".",
+    "compatibility_date": "2026-04-25",
+    "d1_databases": [
+      {
+        "binding": "STORE_DB",
+        "database_name": "businesshub-registry",
+        "database_id": "9bed88a1-93ce-4651-af99-7eb96f7eb22d"
+      }
+    ],
+    "observability": {
+      "enabled": true
+    }
+  }
