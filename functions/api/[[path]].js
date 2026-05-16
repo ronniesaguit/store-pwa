@@ -719,7 +719,9 @@ async function handleLocalAction(action, data, requestBody, env) {
         Discount_Mode: 'amount',
         discount_mode: 'amount',
         Discount_Value: 0,
-        discount_value: 0
+        discount_value: 0,
+        Free_Pricing: 'FALSE',
+        free_pricing: false
       }, data);
       product.id = product.Product_ID || product.id;
       product.Product_ID = product.Product_ID || product.id;
@@ -877,9 +879,12 @@ async function handleLocalAction(action, data, requestBody, env) {
         const qty = Number(item.qty || item.quantity || 1);
         const product = byId[productId];
         if (!product) continue;
-        const price = Number(product.Selling_Price || item.price || 0);
+        const freePricing = product.Free_Pricing === true || product.free_pricing === true ||
+          String(product.Free_Pricing || product.free_pricing || '').toUpperCase() === 'TRUE';
+        const price = freePricing ? Math.max(0, Number(item.price || 0)) : Number(product.Selling_Price || 0);
         const cost = Number(product.Cost_Price || 0);
-        const discountAllowed = (item.discountApplied === true || String(item.discountApplied || '').toUpperCase() === 'TRUE') &&
+        if (freePricing && price <= 0) throw new Error('Sale price is required for free pricing item: ' + (product.Product_Name || productId));
+        const discountAllowed = !freePricing && (item.discountApplied === true || String(item.discountApplied || '').toUpperCase() === 'TRUE') &&
           (product.Allow_Discount === true || product.allow_discount === true ||
           String(product.Allow_Discount || product.allow_discount || '').toUpperCase() === 'TRUE');
         const discountMode = String(product.Discount_Mode || product.discount_mode || 'amount').toLowerCase() === 'percent' ? 'percent' : 'amount';

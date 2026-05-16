@@ -2403,6 +2403,7 @@ function renderProductsList() {
   var canManageDiscounts = _isOwnerSession() || _currentRoleName() === 'OWNER';
   var html = state.products.map(function(p) {
     var rule = _productDiscountRule(p);
+    var freePricing = _productFreePricing(p);
     var pImg = _productImage(p);
     var imgEl = pImg
       ? _thumbHtml(pImg, 44)
@@ -2412,8 +2413,10 @@ function renderProductsList() {
       '<div style="flex:1;min-width:0;"><strong>' + p.Product_Name + '</strong>' +
       (p._pending ? ' <span style="color:#d97706;font-size:11px;">pending</span>' : '') + '<br>' +
       '<span class="muted">' + Number(p.Selling_Price).toFixed(2) + ' | Stock: ' + p.Current_Stock + '</span>' +
+      (freePricing ? '<div style="font-size:11px;color:#7c3aed;font-weight:900;margin-top:2px;">Free pricing in Quick Sell</div>' : '') +
       (rule.allowed ? '<div style="font-size:11px;color:#16a34a;font-weight:800;margin-top:2px;">Discount: ' + _discountRuleLabel(rule) + '</div>' : '<div style="font-size:11px;color:#94a3b8;margin-top:2px;">No discount</div>') +
       '</div>' +
+      (canManageDiscounts ? '<button class="small-btn" style="background:' + (freePricing ? '#ede9fe;color:#5b21b6;' : '#f3f4f6;color:#374151;') + '" onclick="openProductPricingEditor(\'' + p.Product_ID + '\')">Pricing</button>' : '') +
       (canManageDiscounts ? '<button class="small-btn" style="background:' + (rule.allowed ? '#dcfce7;color:#166534;' : '#f3f4f6;color:#374151;') + '" onclick="openProductDiscountEditor(\'' + p.Product_ID + '\')">Discount</button>' : '') +
       '<button class="small-btn" onclick="editProduct(\'' + p.Product_ID + '\')">Edit</button>' +
       '</div>';
@@ -2424,8 +2427,65 @@ function renderProductsList() {
     '<div class="topbar"><div class="title">Products (' + state.products.length + ')</div>' +
     '<button class="small-btn" onclick="goHome()">Back</button></div>' +
     '<button class="btn btn-secondary" onclick="renderAddProductForm()">+ Add Product</button>' +
-    '<div class="hint" style="margin:0 0 8px;">Owner controls the exact item discount. Sales staff can only apply or skip it in Quick Sell.</div>' +
+    '<div class="hint" style="margin:0 0 8px;">Owner controls free pricing and exact item discounts. Free pricing items cannot receive discounts.</div>' +
     '<div class="card">' + html + '</div></div>';
+}
+
+function openProductPricingEditor(productId) {
+  if (!(_isOwnerSession() || _currentRoleName() === 'OWNER')) {
+    _showToast('Only owner can control product pricing', true);
+    return;
+  }
+  var p = (state.products || []).find(function(x) { return String(x.Product_ID || x.id) === String(productId); });
+  if (!p) return;
+  var freePricing = _productFreePricing(p);
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;">Pricing Control</div><button class="small-btn" onclick="loadProducts()">Back</button></div>' +
+    '<div class="card">' +
+    '<div style="font-weight:900;font-size:16px;margin-bottom:4px;">' + _escHtml(p.Product_Name || 'Product') + '</div>' +
+    '<div class="hint" style="margin-bottom:12px;">Free pricing lets the salesperson type the selling price during Quick Sell. Discounts are disabled for free pricing items.</div>' +
+    '<label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:14px;"><input type="checkbox" id="free-pricing-enabled" ' + (freePricing ? 'checked' : '') + '> Free pricing in Quick Sell</label>' +
+    '<button class="btn btn-primary" onclick="saveProductPricingRule(\'' + productId + '\')">Save Pricing Rule</button>' +
+    '<button class="btn btn-secondary" onclick="loadProducts()">Cancel</button>' +
+    '</div></div>';
+}
+
+async function saveProductPricingRule(productId) {
+  if (!(_isOwnerSession() || _currentRoleName() === 'OWNER')) {
+    _showToast('Only owner can control product pricing', true);
+    return;
+  }
+  var p = (state.products || []).find(function(x) { return String(x.Product_ID || x.id) === String(productId); });
+  if (!p) return;
+  var enabled = !!((document.getElementById('free-pricing-enabled') || {}).checked);
+  p.Free_Pricing = enabled ? 'TRUE' : 'FALSE';
+  p.free_pricing = enabled;
+  if (enabled) {
+    p.Allow_Discount = 'FALSE';
+    p.allow_discount = false;
+  }
+  try { await DB.saveProducts(state.products); } catch(e) {}
+  renderProductsList();
+  var patch = {
+    productId: productId,
+    Free_Pricing: p.Free_Pricing,
+    free_pricing: enabled,
+    Allow_Discount: p.Allow_Discount,
+    allow_discount: p.allow_discount
+  };
+  if (!navigator.onLine) {
+    try { await DB.addToSyncQueue({ action: 'updateProduct', data: patch }); } catch(e) {}
+    _showToast('Pricing rule saved offline. It will sync when online.', false);
+    return;
+  }
+  try {
+    await API.call('updateProduct', patch);
+    _showToast('Pricing rule saved', false);
+  } catch(e) {
+    _showToast('Saved locally, sync needed: ' + (e.message || String(e)), true);
+    try { await DB.addToSyncQueue({ action: 'updateProduct', data: patch }); } catch(qErr) {}
+  }
 }
 
 function openProductDiscountEditor(productId) {
@@ -2435,6 +2495,10 @@ function openProductDiscountEditor(productId) {
   }
   var p = (state.products || []).find(function(x) { return String(x.Product_ID || x.id) === String(productId); });
   if (!p) return;
+  if (_productFreePricing(p)) {
+    _showToast('Disable free pricing before adding a discount', true);
+    return;
+  }
   var rule = _productDiscountRule(p);
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
@@ -2549,6 +2613,8 @@ async function renderAddProductForm(msg, scannedCode, existingImage) {
         '<div class="field"><label>Discount Type</label><select id="p-discount-mode"><option value="amount">PHP off each</option><option value="percent">% off</option></select></div>' +
         '<div class="field"><label>Discount Value</label><input id="p-discount-value" type="number" min="0" step="0.01" value="0"></div>' +
       '</div>' +
+      '<label style="display:flex;align-items:flex-start;gap:8px;margin:0 0 12px;font-size:13px;background:#faf5ff;border:1px solid #ddd6fe;border-radius:10px;padding:10px;color:#5b21b6;">' +
+        '<input type="checkbox" id="p-free-pricing" style="margin-top:2px;"> Free pricing in Quick Sell</label>' +
       '<button class="btn btn-primary" onclick="submitProduct()">Save Product</button>' +
     '</div>' +
     _renderCategoryModalHtml() +
@@ -2762,8 +2828,9 @@ function calcSellingPrice() {
 async function submitProduct() {
   var name  = (document.getElementById('p-name')  || {}).value || '';
   var price = (document.getElementById('p-price') || {}).value || '';
+  var freePricing = !!((document.getElementById('p-free-pricing') || {}).checked);
   if (!name.trim())       { _showToast('Product name is required', true); return; }
-  if (Number(price) <= 0) { _showToast('Selling price must be greater than zero', true); return; }
+  if (!freePricing && Number(price) <= 0) { _showToast('Selling price must be greater than zero', true); return; }
 
   //  Strict duplicate check 
   var nameLower = name.trim().toLowerCase();
@@ -2795,11 +2862,13 @@ async function submitProduct() {
     Unit:          'pc',
     Barcode:       (document.getElementById('p-barcode')  || {}).value || '',
     Cost_Price:    (document.getElementById('p-cost')     || {}).value || 0,
-    Selling_Price: price,
+    Selling_Price: freePricing && Number(price) <= 0 ? 0 : price,
     Current_Stock: Math.max(0, Number((document.getElementById('p-stock') || {}).value || 0)),
     Reorder_Level: (document.getElementById('p-reorder') || {}).value || 5,
-    Allow_Discount: ((document.getElementById('p-allow-discount') || {}).checked ? 'TRUE' : 'FALSE'),
-    allow_discount: !!((document.getElementById('p-allow-discount') || {}).checked),
+    Free_Pricing: freePricing ? 'TRUE' : 'FALSE',
+    free_pricing: freePricing,
+    Allow_Discount: (!freePricing && ((document.getElementById('p-allow-discount') || {}).checked) ? 'TRUE' : 'FALSE'),
+    allow_discount: !freePricing && !!((document.getElementById('p-allow-discount') || {}).checked),
     Discount_Mode: ((document.getElementById('p-discount-mode') || {}).value === 'percent' ? 'percent' : 'amount'),
     discount_mode: ((document.getElementById('p-discount-mode') || {}).value === 'percent' ? 'percent' : 'amount'),
     Discount_Value: Math.max(0, Number((document.getElementById('p-discount-value') || {}).value || 0)),
@@ -2859,6 +2928,8 @@ async function editProduct(id) {
   var discValue = document.getElementById('p-discount-value');
   if (discMode) discMode.value = rule.mode;
   if (discValue) discValue.value = Number(rule.value || 0);
+  var freePricing = document.getElementById('p-free-pricing');
+  if (freePricing) freePricing.checked = _productFreePricing(p);
   var sel = document.getElementById('p-category');
   if (sel && p.Category_Name) sel.value = p.Category_Name;
 }
@@ -3037,7 +3108,13 @@ function _productAllowsDiscount(product) {
   return raw === true || raw === 1 || String(raw || '').toUpperCase() === 'TRUE' || String(raw || '').toUpperCase() === 'YES';
 }
 
+function _productFreePricing(product) {
+  var raw = product && (product.Free_Pricing != null ? product.Free_Pricing : product.free_pricing);
+  return raw === true || raw === 1 || String(raw || '').toUpperCase() === 'TRUE' || String(raw || '').toUpperCase() === 'YES';
+}
+
 function _productDiscountRule(product) {
+  if (_productFreePricing(product)) return { allowed: false, mode: 'amount', value: 0 };
   var mode = String((product && (product.Discount_Mode || product.discount_mode)) || 'amount').toLowerCase() === 'percent' ? 'percent' : 'amount';
   var value = Math.max(0, Number((product && (product.Discount_Value != null ? product.Discount_Value : product.discount_value)) || 0));
   return { allowed: _productAllowsDiscount(product) && value > 0, mode: mode, value: value };
@@ -3074,6 +3151,16 @@ function _refreshCartItemTotal(item) {
   item.total = disc.lineTotal;
 }
 
+function updateCartFreePrice(idx, value) {
+  var item = state.cart[idx];
+  if (!item || !item.freePricing) return;
+  item.price = Math.max(0, Number(value || 0));
+  item.discountApplied = false;
+  item.allowDiscount = false;
+  _refreshCartItemTotal(item);
+  renderQuickSell();
+}
+
 function toggleCartDiscount(idx, checked) {
   var item = state.cart[idx];
   if (!item || !item.allowDiscount) return;
@@ -3099,6 +3186,7 @@ function _renderQuickSell(msg) {
 
   var prodsHtml = state.products.map(function(p) {
     var rule = _productDiscountRule(p);
+    var freePricing = _productFreePricing(p);
     var pImg = _productImage(p);
     var safeImg = pImg ? pImg.replace(/'/g, '%27') : '';
     var imgEl = pImg
@@ -3110,7 +3198,7 @@ function _renderQuickSell(msg) {
       '<div style="flex:1;min-width:0;text-align:left;">' +
         '<div class="product-name" style="font-size:13px;line-height:1.3;white-space:normal;">' + p.Product_Name + '</div>' +
         '<div class="product-price" style="font-size:13px;">' + Number(p.Selling_Price).toFixed(2) + '</div>' +
-        '<div class="muted" style="font-size:11px;">Stock: ' + p.Current_Stock + (rule.allowed ? ' | ' + _discountRuleLabel(rule) : '') + '</div>' +
+        '<div class="muted" style="font-size:11px;">Stock: ' + p.Current_Stock + (freePricing ? ' | Free pricing' : (rule.allowed ? ' | ' + _discountRuleLabel(rule) : '')) + '</div>' +
       '</div>' +
       '</button>';
   }).join('');
@@ -3118,7 +3206,12 @@ function _renderQuickSell(msg) {
   var cartHtml = state.cart.map(function(item, idx) {
     _refreshCartItemTotal(item);
     var disc = _cartLineDiscount(item);
-    var discountControls = item.allowDiscount
+    var freePriceControl = item.freePricing
+      ? '<div style="margin-top:7px;"><label style="font-size:11px;color:#5b21b6;font-weight:900;">Sale Price</label><input type="number" min="0" step="0.01" value="' + Number(item.price || 0) + '" onchange="updateCartFreePrice(' + idx + ',this.value)" style="width:100%;padding:8px;border:1px solid #ddd6fe;border-radius:8px;font-size:13px;"></div>'
+      : '';
+    var discountControls = item.freePricing
+      ? '<div style="font-size:11px;color:#5b21b6;margin-top:4px;">Free pricing item - discount disabled</div>'
+      : item.allowDiscount
       ? '<label style="display:flex;align-items:center;gap:7px;margin-top:7px;font-size:12px;color:#166534;font-weight:800;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:7px;">' +
         '<input type="checkbox" ' + (item.discountApplied ? 'checked' : '') + ' onchange="toggleCartDiscount(' + idx + ',this.checked)"> Apply owner discount: ' + _escHtml(_discountRuleLabel(item.discountRule)) + '</label>'
       : '<div style="font-size:11px;color:#94a3b8;margin-top:4px;">No discount for this item</div>';
@@ -3127,7 +3220,7 @@ function _renderQuickSell(msg) {
       : '';
     return '<div class="cart-row">' +
       '<div><strong>' + item.name + '</strong><br>' +
-      '<span class="muted">' + item.qty + ' x ' + item.price.toFixed(2) + '</span>' + discountNote + discountControls + '</div>' +
+      '<span class="muted">' + item.qty + ' x ' + item.price.toFixed(2) + '</span>' + freePriceControl + discountNote + discountControls + '</div>' +
       '<div><strong>' + item.total.toFixed(2) + '</strong><br>' +
       '<button class="small-btn" onclick="removeCartItem(' + idx + ')">Remove</button></div>' +
       '</div>';
@@ -3164,19 +3257,21 @@ function addToCart(pid) {
   if (existing) { existing.qty++; _refreshCartItemTotal(existing); }
   else {
     var rule = _productDiscountRule(p);
+    var freePricing = _productFreePricing(p);
     state.cart.push({
       id: pid,
       name: p.Product_Name,
-      price: Number(p.Selling_Price),
+      price: freePricing ? 0 : Number(p.Selling_Price),
       qty: 1,
-      allowDiscount: rule.allowed,
+      freePricing: freePricing,
+      allowDiscount: !freePricing && rule.allowed,
       discountRule: rule,
       discountApplied: false,
       discountMode: rule.mode,
       discountValue: rule.value,
       discountPerUnit: 0,
       discountTotal: 0,
-      total: Number(p.Selling_Price)
+      total: freePricing ? 0 : Number(p.Selling_Price)
     });
   }
   renderQuickSell();
@@ -3186,6 +3281,8 @@ function removeCartItem(idx) { state.cart.splice(idx, 1); renderQuickSell(); }
 
 async function checkoutSale() {
   if (!state.cart.length) { _showToast('Cart is empty', true); return; }
+  var missingFreePrice = state.cart.find(function(i) { return i.freePricing && Number(i.price || 0) <= 0; });
+  if (missingFreePrice) { _showToast('Enter sale price for ' + missingFreePrice.name, true); return; }
   var paid   = Number(document.getElementById('amount-paid').value);
   var total  = state.cart.reduce(function(s, x) { return s + x.total; }, 0);
   var method = document.getElementById('payment-method').value;
@@ -3202,6 +3299,8 @@ async function checkoutSale() {
       return {
         productId: i.id,
         qty: i.qty,
+        price: i.freePricing ? Number(i.price || 0) : undefined,
+        freePricing: !!i.freePricing,
         discountApplied: !!(i.allowDiscount && i.discountApplied),
         discountMode: (i.allowDiscount && i.discountApplied) ? i.discountMode : 'amount',
         discountValue: (i.allowDiscount && i.discountApplied) ? Number(i.discountValue || 0) : 0,
