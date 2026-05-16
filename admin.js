@@ -638,7 +638,7 @@ function renderDashboard() {
   _app('<div class="screen">' +
     _topbar('HubSuite Admin') +
     '<div style="display:flex;justify-content:flex-end;margin-bottom:8px;">' +
-    '<button class="btn-sm btn-primary btn" style="width:auto;" onclick="adminLogout()">Logout</button></div>' +
+    '<button type="button" class="logout-btn btn-primary" onclick="adminLogout()">Logout</button></div>' +
 
     '<div class="stat-grid">' +
     '<div class="stat-card"><div class="val">' + counts.total + '</div><div class="lbl">Total Stores</div></div>' +

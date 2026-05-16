@@ -652,7 +652,7 @@ function _dashboardHeader_(storeName, subLabel, onlineLabel, isOffline) {
     ? '<span style="display:inline-block;background:rgba(231,76,60,0.25);color:#e74c3c;border:1px solid rgba(231,76,60,0.5);border-radius:20px;padding:1px 10px;font-size:0.7rem;font-weight:600;letter-spacing:.3px;"> Offline</span>'
     : '<span style="display:inline-block;background:rgba(46,204,113,0.2);color:#2ecc71;border:1px solid rgba(46,204,113,0.4);border-radius:20px;padding:1px 10px;font-size:0.7rem;font-weight:600;letter-spacing:.3px;"> Online</span>';
   return '<div style="background:var(--primary,#2c3e50);padding:14px 16px 10px;text-align:center;position:relative;">' +
-    '<button class="small-btn" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);" onclick="logout()">Logout</button>' +
+    '<button type="button" class="logout-btn" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:#fff;color:#111827;" onclick="logout()">Logout</button>' +
     '<div style="font-size:1.45rem;font-weight:700;letter-spacing:.3px;line-height:1.15;color:#fff;">' + _escAttr(storeName) + '</div>' +
     '<div style="font-size:0.78rem;opacity:0.75;color:#fff;margin-top:2px;"> ' + _escAttr(subLabel) + '</div>' +
     '<div style="margin-top:6px;">' + statusPill + '</div>' +
