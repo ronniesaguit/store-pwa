@@ -658,6 +658,7 @@ function renderDashboard() {
      '<button class="btn btn-secondary" style="margin:0;" onclick="renderModuleCatalog()">Modules</button>' +
      '<button class="btn btn-secondary" style="margin:0;" onclick="renderHealthMonitor()">Health Monitor</button>' +
      '<button class="btn btn-secondary" style="margin:0;position:relative;" id="msg-btn" onclick="renderMessagesInbox()">Messages</button>' +
+     '<button class="btn btn-secondary" style="margin:0;grid-column:1 / -1;" onclick="refreshDashboard()">Refresh Store List</button>' +
      '</div>' +
 
     '<div class="card">' +
@@ -1076,7 +1077,13 @@ async function _copyStoreToDedicatedDb(storeId) {
 }
 
 async function _refreshStores() {
-  try { adminState.stores = await ADMIN_API.call('adminGetStores'); } catch(e) {}
+  try { adminState.stores = await ADMIN_API.call('adminGetStores'); return true; } catch(e) { _toast('Could not refresh stores: ' + e.message, true); return false; }
+}
+
+async function refreshDashboard() {
+  _app('<div style="text-align:center;padding:80px 20px;color:#6b7280;">Refreshing stores...</div>');
+  await _refreshStores();
+  renderDashboard();
 }
 
 //  Create Store 
@@ -1976,7 +1983,7 @@ function renderProvisionSuccess(r) {
     : '<div>Dedicated DB: <strong>libSQL</strong> - <span style="word-break:break-all;font-size:11px;">' + _esc(r.tursoDbUrl || '') + '</span></div>';
 
   _app('<div class="screen">' +
-    _topbar('Store Created', 'renderDashboard()') +
+    _topbar('Store Created', 'refreshDashboard()') +
     '<div class="card" style="text-align:center;">' +
     '<div style="font-size:48px;margin-bottom:8px;">OK</div>' +
     '<h3 style="margin-bottom:4px;">' + _esc(r.storeName) + '</h3>' +
@@ -2005,7 +2012,7 @@ function renderProvisionSuccess(r) {
     '<div>API Key: <span style="word-break:break-all;font-size:11px;">' + _esc(r.apiKey) + '</span></div>' +
     '</div></div>' +
     '</div>' +
-    '<button class="btn btn-primary" onclick="renderDashboard()">Back to Dashboard</button>' +
+    '<button class="btn btn-primary" onclick="refreshDashboard()">View in Store List</button>' +
     '</div>');
 }
 
