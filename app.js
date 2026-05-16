@@ -28,7 +28,10 @@ var state = {
   ownerAddOns:   [],
   ownerAddOnsLoaded: false,
   ownerAddOnsLoading: false,
-  ownerAddOnsFetchedAt: 0
+  ownerAddOnsFetchedAt: 0,
+  ownerSupportUnread: 0,
+  ownerSupportUnreadFetchedAt: 0,
+  ownerSupportUnreadLoading: false
 };
 
 // Executive dashboard state
@@ -708,6 +711,54 @@ function _refreshOwnerAddOnsInBackground() {
   _refreshOwnerAddOns({ rerender: true });
 }
 
+function _ownerSupportSeenKey() {
+  var session = state.session || {};
+  var storeKey = session.storeKey || session.apiKey || '';
+  var storeId = session.storeId || (state.storeProfile && (state.storeProfile.Store_ID || state.storeProfile.storeId)) || '';
+  return 'owner_support_seen_' + (storeKey || storeId || 'store');
+}
+
+function _computeOwnerSupportUnread(messages) {
+  var seen = localStorage.getItem(_ownerSupportSeenKey()) || '';
+  return (messages || []).filter(function(m) {
+    return m.Direction === 'TO_STORE' && String(m.Created_At || '') > seen;
+  }).length;
+}
+
+function _markOwnerSupportSeen(messages) {
+  var latest = '';
+  (messages || []).forEach(function(m) {
+    if (m.Direction === 'TO_STORE' && String(m.Created_At || '') > latest) latest = String(m.Created_At || '');
+  });
+  if (latest) localStorage.setItem(_ownerSupportSeenKey(), latest);
+  state.ownerSupportUnread = 0;
+  state.ownerSupportUnreadFetchedAt = Date.now();
+}
+
+async function _refreshOwnerMessageAlert(options) {
+  options = options || {};
+  if (!navigator.onLine || !API.token || !_isOwnerSession()) return;
+  var ageMs = Date.now() - (state.ownerSupportUnreadFetchedAt || 0);
+  if (state.ownerSupportUnreadLoading || (!options.force && ageMs < 30000)) return;
+  state.ownerSupportUnreadLoading = true;
+  try {
+    var messages = await API.call('getSupportMessages');
+    var unread = _computeOwnerSupportUnread(messages || []);
+    var changed = unread !== state.ownerSupportUnread;
+    state.ownerSupportUnread = unread;
+    state.ownerSupportUnreadFetchedAt = Date.now();
+    if (changed && options.rerender && _isOwnerSession()) renderOwnerDashboard();
+  } catch(e) {
+    console.warn('Owner message alert refresh failed:', e.message);
+  } finally {
+    state.ownerSupportUnreadLoading = false;
+  }
+}
+
+function _refreshOwnerMessageAlertInBackground() {
+  _refreshOwnerMessageAlert({ rerender: true });
+}
+
 function _planTier(planId) {
   if (HUB && HUB.getTier) return HUB.getTier(planId);
   return { id: String(planId || 'TRIAL').toUpperCase(), name: String(planId || 'TRIAL').toUpperCase(), addOnPrice: null };
@@ -774,6 +825,15 @@ function _ownerModuleButton(moduleCode, label, action, extraStyle) {
 
 function _ownerSimpleButton(label, action, accentStyle) {
   return '<button class="big-btn" onclick="' + action + '" style="box-sizing:border-box;width:100%;min-width:0;padding:14px 8px;font-size:13px;line-height:1.15;border-radius:12px;margin-bottom:0;min-height:54px;' + (accentStyle || '') + '">' + label + '</button>';
+}
+
+function _ownerMessagesButton() {
+  var unread = Number(state.ownerSupportUnread || 0);
+  var alertStyle = unread > 0 ? 'border:2px solid #f59e0b;background:#fffbeb;color:#92400e;box-shadow:0 0 0 3px rgba(245,158,11,.18);' : '';
+  return '<button class="big-btn" onclick="renderMessagingHub()" style="position:relative;box-sizing:border-box;width:100%;min-width:0;padding:14px 8px;font-size:13px;line-height:1.15;border-radius:12px;margin-bottom:0;min-height:54px;' + alertStyle + '">' +
+    'Messages' +
+    (unread > 0 ? '<span style="position:absolute;top:6px;right:8px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#dc2626;color:#fff;font-size:10px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;">' + unread + '</span>' : '') +
+    '</button>';
 }
 
 function _ownerMoreModulesSelect(modules) {
@@ -994,6 +1054,7 @@ function _initTopbarHelpObserver() {
 
 function renderOwnerDashboard(msg) {
   _refreshOwnerAddOnsInBackground();
+  _refreshOwnerMessageAlertInBackground();
   var storeName = (state.storeProfile && (state.storeProfile.storeName || state.storeProfile.Store_Name)) || '';
   var ownerName = (state.storeProfile && (state.storeProfile.ownerName || state.storeProfile.Owner_Name)) || state.session.user.Full_Name;
   var plan = state.session && state.session.plan;
@@ -1050,7 +1111,7 @@ function renderOwnerDashboard(msg) {
   if (_hasModule('products')) btns += _ownerSimpleButton('Products', 'loadProducts()');
   if (_hasModule('expenses')) btns += _ownerSimpleButton('Expenses', 'renderExpenses()');
   if (_hasModule('reports')) btns += _ownerSimpleButton('Report', 'renderReports()');
-  btns += _ownerSimpleButton('Messages', 'renderMessagingHub()');
+  btns += _ownerMessagesButton();
   btns += _ownerMoreModulesSelect(moreModules);
   btns += _ownerSimpleButton('Explore Add-Ons', 'renderAddOnsPanel()', 'border:2px dashed rgba(255,255,255,0.28);background:rgba(255,255,255,0.06);');
   var subInfo = _ownerSubscriptionInfo();
@@ -5669,9 +5730,16 @@ async function renderMessagingHub() {
   showLoading('Loading messages');
   var staff = [];
   var messages = [];
+  var supportMessages = [];
   try { staff = await API.call('getStoreUsers'); } catch(e) {}
   try { messages = await API.call('getStaffChatMessages'); } catch(e) {}
-  _renderMessagingHub(staff || [], messages || []);
+  if (_isOwnerSession()) {
+    try {
+      supportMessages = await API.call('getSupportMessages');
+      _markOwnerSupportSeen(supportMessages || []);
+    } catch(e) {}
+  }
+  _renderMessagingHub(staff || [], messages || [], supportMessages || []);
 }
 
 function _currentUserForMessage() {
@@ -5698,27 +5766,46 @@ function _messageRecipientOptions(staff) {
   return options;
 }
 
-function _renderMessagingHub(staff, messages) {
+function _messageBubbleHtml(name, target, message, time, mine) {
+  return '<div style="display:flex;flex-direction:column;align-items:' + (mine ? 'flex-end' : 'flex-start') + ';margin-bottom:10px;">' +
+    '<div style="max-width:86%;background:' + (mine ? '#dcfce7' : '#eff6ff') + ';border:1px solid ' + (mine ? '#bbf7d0' : '#dbeafe') + ';border-radius:14px;padding:9px 12px;font-size:13px;line-height:1.35;box-shadow:0 1px 2px rgba(15,23,42,.05);">' +
+    '<div style="font-size:11px;color:#64748b;font-weight:800;margin-bottom:3px;">' + _escHtml(name || 'Store User') + (target ? ' to ' + _escHtml(target) : '') + '</div>' +
+    _escHtml(message || '') + '</div>' +
+    '<div style="font-size:10px;color:#94a3b8;margin-top:3px;">' + String(time || '').slice(0,16).replace('T',' ') + '</div></div>';
+}
+
+function _renderMessagingHub(staff, messages, supportMessages) {
   var me = _currentUserForMessage();
+  var supportHtml = _isOwnerSession() ? (supportMessages || []).map(function(m) {
+    var mine = m.Direction === 'TO_ADMIN';
+    var target = mine ? 'Admin Support' : (state.storeProfile && (state.storeProfile.storeName || state.storeProfile.Store_Name)) || 'Store';
+    return _messageBubbleHtml(m.From_Name || (mine ? me.name : 'Admin Support'), target, m.Message, m.Created_At, mine);
+  }).join('') : '';
+  if (_isOwnerSession() && !supportHtml) {
+    supportHtml = '<div class="muted" style="text-align:center;padding:18px 12px;">No admin support messages yet.</div>';
+  }
   var msgHtml = (messages || []).map(function(m) {
     var mine = String(m.From_User_ID || '') === String(me.id) || String(m.From_Name || '') === String(me.name);
     var target = m.To_Group === 'all_staff' ? 'All Staff' : (m.To_Group === 'owner' ? 'Owner' : (m.To_User_ID ? 'Individual Staff' : ''));
-    return '<div style="display:flex;flex-direction:column;align-items:' + (mine ? 'flex-end' : 'flex-start') + ';margin-bottom:8px;">' +
-      '<div style="max-width:82%;background:' + (mine ? '#dcfce7' : '#e8f0fe') + ';border-radius:12px;padding:9px 12px;font-size:13px;">' +
-      '<strong style="font-size:11px;color:#64748b;">' + _escHtml(m.From_Name || 'Store User') + (target ? ' to ' + _escHtml(target) : '') + '</strong><br>' +
-      _escHtml(m.Message || m.message || '') + '</div>' +
-      '<div style="font-size:10px;color:#9ca3af;margin-top:2px;">' + String(m.Created_At || '').slice(0,16).replace('T',' ') + '</div></div>';
+    return _messageBubbleHtml(m.From_Name || 'Store User', target, m.Message || m.message || '', m.Created_At, mine);
   }).join('') || '<div class="muted" style="text-align:center;padding:24px;">No internal messages yet.</div>';
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
     '<div class="topbar"><div class="title" style="margin:0;">Messages</div><button class="small-btn" onclick="goHome()">Back</button></div>' +
-    '<div class="card">' +
-    '<div class="field"><label>Send To</label><select id="msg-recipient">' + _messageRecipientOptions(staff) + '</select></div>' +
-    '<div class="field"><label>Message</label><textarea id="msg-body" rows="3" placeholder="Type your message"></textarea></div>' +
-    '<button class="btn btn-primary" onclick="sendMessagingHubMessage()">Send Message</button>' +
+    '<div class="card" style="padding:0;overflow:hidden;border:1px solid #e5e7eb;box-shadow:0 8px 24px rgba(15,23,42,.08);">' +
+    '<div style="padding:12px 14px;background:#f8fafc;border-bottom:1px solid #e5e7eb;">' +
+    '<div style="font-size:14px;font-weight:900;color:#0f172a;">Store Messaging</div>' +
+    '<div style="font-size:11px;color:#64748b;margin-top:2px;">Send to Admin Support, all staff, or one staff member.</div>' +
     '</div>' +
-    '<div class="card"><div class="subtitle">Internal Messages</div>' + msgHtml + '</div>' +
+    '<div style="padding:12px;display:grid;gap:10px;">' +
+    '<div class="field" style="margin:0;"><label>Send To</label><select id="msg-recipient">' + _messageRecipientOptions(staff) + '</select></div>' +
+    '<div class="field" style="margin:0;"><label>Message</label><textarea id="msg-body" rows="3" placeholder="Type your message" style="resize:vertical;min-height:72px;"></textarea></div>' +
+    '<button class="btn btn-primary" onclick="sendMessagingHubMessage()" style="margin:0;">Send Message</button>' +
+    '</div>' +
+    '</div>' +
+    (_isOwnerSession() ? '<div class="card" style="padding:0;overflow:hidden;"><div style="padding:10px 12px;border-bottom:1px solid #e5e7eb;font-weight:900;font-size:13px;">Admin Support</div><div style="min-height:160px;max-height:34vh;overflow-y:auto;padding:12px;background:#f9fafb;">' + supportHtml + '</div></div>' : '') +
+    '<div class="card" style="padding:0;overflow:hidden;"><div style="padding:10px 12px;border-bottom:1px solid #e5e7eb;font-weight:900;font-size:13px;">Internal Messages</div><div style="min-height:180px;max-height:38vh;overflow-y:auto;padding:12px;background:#f9fafb;">' + msgHtml + '</div></div>' +
     '</div>';
 }
 

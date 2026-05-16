@@ -409,6 +409,15 @@ function _storeStatus(store) {
   return 'EXPIRED';
 }
 
+function _adminStoreById(storeId) {
+  return (adminState.stores || []).find(function(s) { return String(s.Store_ID) === String(storeId); }) || null;
+}
+
+function _isArchivedStoreId(storeId) {
+  var st = _adminStoreById(storeId);
+  return !st || _storeStatus(st) === 'ARCHIVED';
+}
+
 function _badgeHtml(status) {
   var map = {
     TRIAL:     '<span class="badge badge-trial">FREE TRIAL</span>',
@@ -1521,7 +1530,7 @@ async function renderHealthMonitor() {
       '<div style="display:flex;flex-direction:column;gap:6px;margin-left:8px;">' +
       '<button class="small-btn" style="margin-top:4px;" onclick="event.stopPropagation();renderStoreSnapshot(\'' + st.Store_ID + '\')">Business</button>' +
       '<button class="small-btn" style="background:#1d4ed8;color:#fff;margin-top:0;" onclick="event.stopPropagation();renderStoreSystemHealth(\'' + st.Store_ID + '\')">App Health</button>' +
-      '<button class="small-btn" style="margin-top:0;" onclick="event.stopPropagation();renderSendMessageToStore(\'' + st.Store_ID + '\',\'' + _esc(st.Store_Name) + '\')">Message</button>' +
+      (String(status).toUpperCase() === 'ARCHIVED' ? '' : '<button class="small-btn" style="margin-top:0;" onclick="event.stopPropagation();renderSendMessageToStore(\'' + st.Store_ID + '\',\'' + _esc(st.Store_Name) + '\')">Message</button>') +
       '</div>' +
       '</div></div>';
   }).join('');
@@ -1720,6 +1729,7 @@ async function renderStoreSnapshot(storeId) {
   }
 
   var st = snap.store || {};
+  var status = _storeStatus(_adminStoreById(storeId) || st);
 
   var lowStockHtml = (snap.lowStockItems || []).map(function(p) {
     return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px solid #f3f4f6;">' +
@@ -1772,9 +1782,9 @@ async function renderStoreSnapshot(storeId) {
     '<div class="section-title"> Recent Expenses</div>' +
     recentExpHtml + '</div>' +
 
-    '<div class="card">' +
+    (status === 'ARCHIVED' ? '' : '<div class="card">' +
     '<button class="btn btn-secondary" onclick="renderSendMessageToStore(\'' + storeId + '\',\'' + _esc(st.name || '') + '\')"> Message Owner</button>' +
-    '</div></div>');
+    '</div>') + '</div>');
 }
 
 //  Messaging 
@@ -1797,9 +1807,10 @@ async function renderMessagesInbox() {
     return;
   }
 
-  // Group messages by store
+  // Group active-store messages only; archived stores stay out of the admin inbox.
   var byStore = {};
   allMsgs.forEach(function(m) {
+    if (_isArchivedStoreId(m.Store_ID)) return;
     if (!byStore[m.Store_ID]) byStore[m.Store_ID] = { storeId: m.Store_ID, storeName: m.Store_Name, msgs: [], unread: 0 };
     byStore[m.Store_ID].msgs.push(m);
   });
@@ -1834,14 +1845,20 @@ async function renderMessagesInbox() {
       '</div></div>';
   }).join('') || '<div class="muted" style="padding:12px;">No messages yet.</div>';
 
-  var totalUnread = unread.count || 0;
+  var totalUnread = threads.reduce(function(sum, t) { return sum + Number(t.unread || 0); }, 0);
   _app('<div class="screen">' +
     _topbar(' Messages' + (totalUnread > 0 ? ' (' + totalUnread + ' unread)' : ''), 'renderDashboard()') +
+    '<div class="hint" style="margin-bottom:8px;">Archived stores are hidden from messages. Reactivate a store to resume messaging.</div>' +
     '<div class="card" style="padding:0;">' + threadRows + '</div></div>');
 }
 
 async function renderStoreMessageThread(storeId, storeName) {
   _stopMsgPoll();
+  if (_isArchivedStoreId(storeId)) {
+    _app('<div class="screen">' + _topbar('Messages', 'renderMessagesInbox()') +
+      '<div class="msg-err">This store is archived. Reactivate it before messaging the owner.</div></div>');
+    return;
+  }
   _app('<div style="text-align:center;padding:60px 20px;color:#6b7280;">Loading conversation</div>');
   var msgs;
   try { msgs = await ADMIN_API.call('adminGetStoreMessages', { storeId: storeId }); } catch(e) {
@@ -1905,6 +1922,11 @@ function _renderThreadScreen(storeId, storeName, msgs) {
 
 async function renderSendMessageToStore(storeId, storeName) {
   _stopMsgPoll();
+  if (_isArchivedStoreId(storeId)) {
+    _app('<div class="screen">' + _topbar('Messages', 'renderMessagesInbox()') +
+      '<div class="msg-err">This store is archived. Reactivate it before messaging the owner.</div></div>');
+    return;
+  }
   var msgs;
   try { msgs = await ADMIN_API.call('adminGetStoreMessages', { storeId: storeId }); } catch(e) { msgs = []; }
   _renderThreadScreen(storeId, storeName, msgs);
