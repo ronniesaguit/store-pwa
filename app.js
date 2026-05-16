@@ -38,6 +38,7 @@ var HUB = window.HUBSUITE || null;
 //  Boot 
 
 async function boot() {
+  _initTopbarHelpObserver();
   // Force indicator to upper-left regardless of cached CSS
   var ind = document.getElementById('sync-indicator');
   if (ind) { ind.style.left = '10px'; ind.style.right = 'auto'; }
@@ -482,6 +483,33 @@ function openGcashPayment() {
   }, 700);
 }
 
+function openDonatePanel() {
+  var modal = document.getElementById('donate-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'donate-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.62);z-index:970;display:flex;align-items:flex-end;justify-content:center;padding:12px;';
+    modal.addEventListener('click', function(e) { if (e.target === modal) closeDonatePanel(); });
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML =
+    '<div style="width:100%;max-width:430px;background:#ecfdf5;border:1px solid #86efac;border-radius:18px;box-shadow:0 22px 60px rgba(0,0,0,.28);overflow:hidden;">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;background:#16a34a;color:#fff;">' +
+    '<div style="font-size:16px;font-weight:900;">Support / Donation</div>' +
+    '<button type="button" onclick="closeDonatePanel()" style="width:36px;height:36px;border:0;border-radius:10px;background:rgba(255,255,255,.18);color:#fff;font-size:22px;line-height:1;cursor:pointer;">&times;</button>' +
+    '</div>' +
+    '<div style="padding:16px;text-align:center;color:#14532d;">' +
+    '<div style="font-size:13px;line-height:1.45;margin-bottom:12px;">If this app is helpful to you, please consider donating for its maintenance.<br>Donate directly to GCash <strong>' + HUB_GCASH_NUMBER + '</strong> (' + HUB_GCASH_NAME + ').</div>' +
+    '<img src="./assets/gcash-qr.jpg" alt="GCash QR" style="max-width:220px;width:100%;border-radius:16px;border:1px solid #d1d5db;background:#fff;padding:10px;margin-bottom:12px;">' +
+    '<button class="btn btn-primary" style="background:#16a34a;margin-bottom:0;" onclick="openGcashPayment()">Open GCash to Donate</button>' +
+    '</div></div>';
+}
+
+function closeDonatePanel() {
+  var modal = document.getElementById('donate-modal');
+  if (modal) modal.remove();
+}
+
 function _isActiveAddOnStatus(status) {
   return ['active_paid', 'trial_active', 'trial_expiring'].indexOf(String(status || '')) !== -1;
 }
@@ -808,6 +836,86 @@ function closeModuleHelp() {
   if (modal) modal.remove();
 }
 
+function _moduleCodeForHelpTitle(titleText) {
+  var t = String(titleText || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  var rules = [
+    [/quick sell|receipt/, 'quick_sell'],
+    [/product exists|add product|products?/, 'products'],
+    [/record expense|expenses?/, 'expenses'],
+    [/advanced reports?|daily report|weekly report|monthly report|reports?/, 'reports'],
+    [/sales history/, 'sales_history'],
+    [/stock movements?|stock history/, 'inventory_movements'],
+    [/add stock|restock|adjust stock|inventory/, 'inventory'],
+    [/approval/, 'approvals'],
+    [/staff activity/, 'activity_log'],
+    [/add staff|edit staff|staff detail|manage staff|staff|change role|set password/, 'staff_management'],
+    [/bir|tax/, 'tax_reports'],
+    [/roi|capital setup/, 'roi'],
+    [/business monitors?|monitors?/, 'monitors'],
+    [/support chat|help/, 'support'],
+    [/chat/, 'internal_chat'],
+    [/supplier/, 'suppliers'],
+    [/requisition/, 'purchase_requisitions'],
+    [/purchase order|receive stock/, 'purchase_orders'],
+    [/receiving/, 'stock_receiving'],
+    [/transfer/, 'branch_transfer'],
+    [/log payment|vendor payment/, 'vendor_payments'],
+    [/record return|return/, 'customer_returns'],
+    [/promotion/, 'discounts_promotions'],
+    [/void/, 'voids'],
+    [/hq control|consolidated|all branches|multi-branch/, 'hq_control_center'],
+    [/custom role/, 'custom_role_builder'],
+    [/alert/, 'alert_rules_engine'],
+    [/notification/, 'notification_delivery'],
+    [/automation/, 'automation_rules'],
+    [/data import|import job/, 'data_import_tools'],
+    [/registry db|legacy migration|migration job/, 'registry_db'],
+    [/add-ons|addons|hubsuite add-ons/, 'addons'],
+    [/sandbox/, 'sandbox_mode'],
+    [/hardware/, 'hardware_profiles'],
+    [/settings/, 'settings']
+  ];
+  for (var i = 0; i < rules.length; i++) {
+    if (rules[i][0].test(t)) return rules[i][1];
+  }
+  return '';
+}
+
+function _injectModuleHelpButtons() {
+  var app = document.getElementById('app');
+  if (!app) return;
+  Array.prototype.slice.call(app.querySelectorAll('.topbar')).forEach(function(bar) {
+    if (bar.querySelector('[data-module-help-button]')) return;
+    var titleEl = bar.querySelector('.title');
+    var code = _moduleCodeForHelpTitle(titleEl ? titleEl.textContent : '');
+    if (!code) return;
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'small-btn';
+    btn.setAttribute('data-module-help-button', code);
+    btn.textContent = "What's This";
+    btn.style.cssText = 'margin-left:auto;background:#facc15;color:#111827;border:1px solid rgba(15,23,42,.16);min-height:36px;padding:8px 10px;font-size:12px;font-weight:900;white-space:nowrap;';
+    btn.onclick = function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      showModuleHelp(code);
+    };
+    var existingButton = bar.querySelector('button');
+    if (existingButton) bar.insertBefore(btn, existingButton);
+    else bar.appendChild(btn);
+  });
+}
+
+function _initTopbarHelpObserver() {
+  if (window.__moduleHelpObserverStarted) return;
+  window.__moduleHelpObserverStarted = true;
+  setTimeout(_injectModuleHelpButtons, 0);
+  var app = document.getElementById('app');
+  if (!app || !window.MutationObserver) return;
+  new MutationObserver(function() { setTimeout(_injectModuleHelpButtons, 0); })
+    .observe(app, { childList: true, subtree: true });
+}
+
 function renderOwnerDashboard(msg) {
   _refreshOwnerAddOnsInBackground();
   var storeName = (state.storeProfile && (state.storeProfile.storeName || state.storeProfile.Store_Name)) || '';
@@ -869,10 +977,8 @@ function renderOwnerDashboard(msg) {
   btns += _ownerMoreModulesSelect(moreModules);
   btns += _ownerSimpleButton('Explore Add-Ons', 'renderAddOnsPanel()', 'border:2px dashed rgba(255,255,255,0.28);background:rgba(255,255,255,0.06);');
   var paymentCard =
-    '<div class="card" style="background:#ecfdf5;border:1px solid #86efac;">' +
-    '<div class="subtitle" style="color:#166534;">Support / Donation</div>' +
-    '<div style="font-size:13px;color:#14532d;margin-bottom:10px;">If this app is helpful to you, please consider donating for its maintenance.<br>Donate directly to GCash <strong>' + HUB_GCASH_NUMBER + '</strong> (' + HUB_GCASH_NAME + ').</div>' +
-    '<button class="btn btn-primary" style="background:#16a34a;" onclick="openGcashPayment()">Open GCash to Donate</button>' + '<div style="margin-top:12px;text-align:center;"><img src="./assets/gcash-qr.jpg" alt="GCash QR" style="max-width:220px;width:100%;border-radius:16px;border:1px solid #d1d5db;background:#fff;padding:10px;"></div>' +
+    '<div style="display:flex;justify-content:center;margin:4px 0 10px;">' +
+    '<button type="button" onclick="openDonatePanel()" style="border:1px solid #86efac;background:#ecfdf5;color:#166534;border-radius:999px;padding:9px 16px;font-size:12px;font-weight:900;cursor:pointer;">Donate</button>' +
     '</div>';
 
   document.getElementById('app').innerHTML =
