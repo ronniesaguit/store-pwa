@@ -668,6 +668,19 @@ function _ownerModuleButton(moduleCode, label, action, extraStyle) {
     '</div>';
 }
 
+function _ownerSimpleButton(label, action, accentStyle) {
+  return '<button class="big-btn" onclick="' + action + '" style="box-sizing:border-box;width:100%;min-width:0;padding:14px 8px;font-size:13px;line-height:1.15;border-radius:12px;margin-bottom:0;min-height:54px;' + (accentStyle || '') + '">' + label + '</button>';
+}
+
+function _ownerMoreModulesSelect(modules) {
+  var options = (modules || []).map(function(m) {
+    return '<option value="' + _escAttr(m.action) + '">' + _escHtml(m.label) + '</option>';
+  }).join('');
+  return '<select aria-label="More modules" onchange="if(this.value){try{(new Function(this.value))();}finally{this.value=\'\';}}" ' +
+    'style="box-sizing:border-box;width:100%;min-width:0;padding:0 8px;font-size:13px;font-weight:800;border:2px solid #e5e7eb;border-radius:12px;background:#fff;color:#1f2937;min-height:54px;text-align:center;">' +
+    '<option value="">More Modules</option>' + options + '</select>';
+}
+
 function _helpText(enWhat, enHow, tlWhat, tlHow, cbWhat, cbHow) {
   return {
     en: { what: enWhat, how: enHow },
@@ -809,47 +822,52 @@ function renderOwnerDashboard(msg) {
       '</div>'
     : '';
 
-  var btns = '';
-  if (_hasModule('products'))        btns += _ownerModuleButton('products', 'Products', 'loadProducts()');
-  if (_hasModule('quick_sell'))      btns += _ownerModuleButton('quick_sell', 'Quick Sell', 'renderQuickSell()');
-  if (_hasModule('quick_sell'))      btns += _ownerModuleButton('sales_history', 'Sales History', 'renderSalesHistory()');
-  if (_hasModule('inventory'))       btns += _ownerModuleButton('inventory', 'Inventory', 'renderInventoryAdvancedSummary()');
-  if (_hasModule('expenses'))        btns += _ownerModuleButton('expenses', 'Expenses', 'renderExpenses()');
-  if (_hasModule('reports'))         btns += _ownerModuleButton('reports', 'Reports', 'renderReports()');
-  if (_hasModule('reports'))         btns += _ownerModuleButton('advanced_reports', 'Advanced Reports', 'renderAdvancedReportsHome()');
-  if (_hasModule('tax_reports'))     btns += _ownerModuleButton('tax_reports', 'BIR / Tax', 'renderBIRData()');
-  if (_hasModule('inventory_movements')) btns += _ownerModuleButton('inventory_movements', 'Stock History', 'renderInventoryMovements()');
-  if (_hasModule('suppliers'))       btns += _ownerModuleButton('suppliers', 'Suppliers', 'renderSuppliers()');
-  if (_hasModule('purchase_orders')) btns += _ownerModuleButton('purchase_orders', 'Purchase Orders', 'renderPurchaseOrders()');
-  if (_hasModule('purchase_requisitions')) btns += _ownerModuleButton('purchase_requisitions', 'Requisitions', 'renderPurchaseRequisitions()');
-  if (_hasModule('stock_receiving')) btns += _ownerModuleButton('stock_receiving', 'Receiving Logs', 'renderReceivingLogs()');
-  if (_hasModule('order_fulfillment')) btns += _ownerModuleButton('order_fulfillment', 'Fulfillment', 'renderOrderFulfillment()');
-  if (_hasModule('branch_transfer')) btns += _ownerModuleButton('branch_transfer', 'Branch Transfers', 'renderBranchTransfers()');
-  if (_hasModule('vendor_payments')) btns += _ownerModuleButton('vendor_payments', 'Vendor Payments', 'renderVendorPayments()');
-  if (_hasModule('customer_returns')) btns += _ownerModuleButton('customer_returns', 'Returns', 'renderCustomerReturns()');
-  if (_hasModule('discounts_promotions')) btns += _ownerModuleButton('discounts_promotions', 'Promotions', 'renderDiscountsPromotions()');
-  if (_hasModule('voids')) btns += _ownerModuleButton('voids', 'Voids', 'renderVoids()');
-  if (_hasModule('hq_control_center')) btns += _ownerModuleButton('hq_control_center', 'HQ Control', 'renderHQControlCenter()');
-  if (_hasModule('internal_chat'))   btns += _ownerModuleButton('internal_chat', 'Chat', 'renderChat()');
-  if (_hasModule('staff_management') || _hasModule('staff')) btns += _ownerModuleButton('staff_management', 'Staff', 'renderStaffList()');
-  if (_hasModule('custom_role_builder')) btns += _ownerModuleButton('custom_role_builder', 'Custom Roles', 'renderCustomRoles()');
-  if (_hasModule('approvals'))       btns += _ownerModuleButton('approvals', 'Approvals', 'renderApprovalsQueue()');
-  if (_hasModule('roi'))             btns += _ownerModuleButton('roi', 'ROI', 'renderROIMonitor()');
-  if (_hasModule('monitors'))        btns += _ownerModuleButton('monitors', 'Monitors', 'renderMonitors()');
-  if (_hasModule('automation_rules'))btns += _ownerModuleButton('automation_rules', 'Automation', 'renderAutomationRules()');
-  if (_hasModule('data_import_tools')) btns += _ownerModuleButton('data_import_tools', 'Import Data', 'renderDataImport()');
-  if (_hasModule('settings'))        btns += _ownerModuleButton('settings', 'Settings', 'renderFullSettings()');
-  if (_hasModule('notification_delivery')) btns += _ownerModuleButton('notification_delivery', 'Notifications', 'renderNotificationsCenter()');
-  if (_hasModule('alert_rules_engine') || _hasModule('alerts_dashboard')) btns += _ownerModuleButton('alert_rules_engine', 'Alerts', 'renderAlertsCenter()');
-  if (_hasModule('activity_log')) btns += _ownerModuleButton('activity_log', 'Staff Activity', 'renderActivityLog()');
-  if (_hasModule('hardware_profiles')) btns += _ownerModuleButton('hardware_profiles', 'Hardware', 'renderHardwareSetup()');
-  if (_hasModule('sandbox_mode')) btns += _ownerModuleButton('sandbox_mode', 'Sandbox', 'renderSandboxMode()');
-  if (_hasModule('support'))         btns += _ownerModuleButton('support', 'Help', 'renderSupport()');
-  btns += _ownerModuleButton('addons', 'Explore Add-Ons', 'renderAddOnsPanel()', 'border:2px dashed rgba(255,255,255,0.28);background:rgba(255,255,255,0.06);');
+  var moreModules = [];
+  function addMoreModule(moduleCode, label, action, alternateCode) {
+    if (_hasModule(moduleCode) || (alternateCode && _hasModule(alternateCode))) {
+      moreModules.push({ label: label, action: action });
+    }
+  }
 
-  var quickActions = '';
-  if (_hasModule('products')) quickActions += '<button class="btn btn-secondary" onclick="renderAddProductForm()">+ Add New Product</button>';
-  if (_hasModule('expenses')) quickActions += '<button class="btn btn-secondary" style="margin-top:8px;" onclick="renderAddExpenseForm()">+ Record Expense</button>';
+  addMoreModule('quick_sell', 'Sales History', 'renderSalesHistory()', 'sales_history');
+  addMoreModule('inventory', 'Inventory', 'renderInventoryAdvancedSummary()');
+  addMoreModule('reports', 'Advanced Reports', 'renderAdvancedReportsHome()', 'advanced_reports');
+  addMoreModule('tax_reports', 'BIR / Tax', 'renderBIRData()');
+  addMoreModule('inventory_movements', 'Stock History', 'renderInventoryMovements()');
+  addMoreModule('suppliers', 'Suppliers', 'renderSuppliers()');
+  addMoreModule('purchase_orders', 'Purchase Orders', 'renderPurchaseOrders()');
+  addMoreModule('purchase_requisitions', 'Requisitions', 'renderPurchaseRequisitions()');
+  addMoreModule('stock_receiving', 'Receiving Logs', 'renderReceivingLogs()');
+  addMoreModule('order_fulfillment', 'Fulfillment', 'renderOrderFulfillment()');
+  addMoreModule('branch_transfer', 'Branch Transfers', 'renderBranchTransfers()');
+  addMoreModule('vendor_payments', 'Vendor Payments', 'renderVendorPayments()');
+  addMoreModule('customer_returns', 'Returns', 'renderCustomerReturns()');
+  addMoreModule('discounts_promotions', 'Promotions', 'renderDiscountsPromotions()');
+  addMoreModule('voids', 'Voids', 'renderVoids()');
+  addMoreModule('hq_control_center', 'HQ Control', 'renderHQControlCenter()');
+  addMoreModule('internal_chat', 'Chat', 'renderChat()');
+  addMoreModule('staff_management', 'Staff', 'renderStaffList()', 'staff');
+  addMoreModule('custom_role_builder', 'Custom Roles', 'renderCustomRoles()');
+  addMoreModule('approvals', 'Approvals', 'renderApprovalsQueue()');
+  addMoreModule('roi', 'ROI', 'renderROIMonitor()');
+  addMoreModule('monitors', 'Monitors', 'renderMonitors()');
+  addMoreModule('automation_rules', 'Automation', 'renderAutomationRules()');
+  addMoreModule('data_import_tools', 'Import Data', 'renderDataImport()');
+  addMoreModule('settings', 'Settings', 'renderFullSettings()');
+  addMoreModule('notification_delivery', 'Notifications', 'renderNotificationsCenter()');
+  addMoreModule('alert_rules_engine', 'Alerts', 'renderAlertsCenter()', 'alerts_dashboard');
+  addMoreModule('activity_log', 'Staff Activity', 'renderActivityLog()');
+  addMoreModule('hardware_profiles', 'Hardware', 'renderHardwareSetup()');
+  addMoreModule('sandbox_mode', 'Sandbox', 'renderSandboxMode()');
+  addMoreModule('support', 'Help', 'renderSupport()');
+
+  var btns = '';
+  if (_hasModule('quick_sell')) btns += _ownerSimpleButton('Quick Sell', 'renderQuickSell()');
+  if (_hasModule('products')) btns += _ownerSimpleButton('Products', 'loadProducts()');
+  if (_hasModule('expenses')) btns += _ownerSimpleButton('Expenses', 'renderExpenses()');
+  if (_hasModule('reports')) btns += _ownerSimpleButton('Report', 'renderReports()');
+  btns += _ownerMoreModulesSelect(moreModules);
+  btns += _ownerSimpleButton('Explore Add-Ons', 'renderAddOnsPanel()', 'border:2px dashed rgba(255,255,255,0.28);background:rgba(255,255,255,0.06);');
   var paymentCard =
     '<div class="card" style="background:#ecfdf5;border:1px solid #86efac;">' +
     '<div class="subtitle" style="color:#166534;">Support / Donation</div>' +
@@ -863,7 +881,6 @@ function renderOwnerDashboard(msg) {
     planLine +
     (msg ? '<div class="message message-ok">' + msg + '</div>' : '') +
     '<div class="grid-buttons" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;">' + btns + '</div>' +
-    (quickActions ? '<div class="card"><div class="subtitle">Quick Actions</div>' + quickActions + '</div>' : '') +
     paymentCard +
     '</div>';
 }
@@ -1822,7 +1839,9 @@ function _normalizeManageStaffUsers(list) {
       User_ID: u.User_ID || u.id || u.user_id || u.staff_id || '',
       Full_Name: u.Full_Name || u.full_name || u.name || u.Username || u.username || 'Staff',
       Username: u.Username || u.username || '',
-      Role: String(role || 'STAFF').toUpperCase()
+      Role: String(role || 'STAFF').toUpperCase(),
+      Staff_Label: u.staff_label || u.staffLabel || u.position_name || '',
+      Module_Access: u.module_access || u.moduleAccess || u.enabled_modules || []
     };
   });
 }
@@ -1967,7 +1986,7 @@ async function renderManageStaff() {
       '<div style="flex:1;min-width:0;">' +
       '<div style="font-weight:600;font-size:0.95rem;color:#1a1a2e;">' + _escAttr(u.Full_Name || u.Username) + '</div>' +
       '<div style="font-size:0.78rem;color:#6b7280;margin-top:1px;">@' + _escAttr(u.Username) + '</div>' +
-      '<div style="font-size:0.72rem;color:#475569;margin-top:3px;">Role: ' + _escAttr(_roleLabel(u.Role)) + '</div>' +
+      '<div style="font-size:0.72rem;color:#475569;margin-top:3px;">Role: ' + _escAttr(u.Staff_Label || _roleLabel(u.Role)) + '</div>' +
       '</div>' +
       '<span style="background:#e8f4fd;color:#2980b9;font-size:0.7rem;font-weight:600;padding:3px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.3px;flex-shrink:0;">Staff</span>' +
       '</div>' +
@@ -2027,6 +2046,9 @@ async function renderManageStaff() {
     '<input id="staff-fullname" class="input" style="padding-left:36px;" placeholder="Full Name (e.g. Maria Santos)">' +
     '</div>' +
     '<div style="position:relative;margin-bottom:10px;">' +
+    '<input id="staff-label" class="input" placeholder="Staff title/name in your store (e.g. Tindera, Bantay, Encoder)">' +
+    '</div>' +
+    '<div style="position:relative;margin-bottom:10px;">' +
     '<span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:1rem;">@</span>' +
     '<input id="staff-username" class="input" style="padding-left:36px;" placeholder="Username (e.g. maria)" autocomplete="off">' +
     '</div>' +
@@ -2035,6 +2057,7 @@ async function renderManageStaff() {
     '<select id="staff-role" class="input">' + _renderStaffRoleOptions('CASHIER') + '</select>' +
     '<div style="font-size:0.74rem;color:#6b7280;margin-top:4px;">Role controls which dashboard and features this staff member sees.</div>' +
     '</div>' +
+    _renderStaffModuleCheckboxes() +
     '<div style="position:relative;margin-bottom:16px;">' +
     '<span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:1rem;"></span>' +
     '<input id="staff-password" class="input" style="padding-left:36px;" type="password" placeholder="Password (min. 4 characters)" autocomplete="new-password">' +
@@ -3264,9 +3287,11 @@ function renderAddStaffForm() {
   var content = '<div class="card">' +
     _renderStaffRoleGuide() +
     '<div class="field"><label>Full Name *</label><input id="staff-fullname" placeholder="Enter full name"></div>' +
+    '<div class="field"><label>Staff Title / Local Name</label><input id="staff-label" placeholder="e.g. Tindera, Bantay, Encoder"></div>' +
     '<div class="field"><label>Username *</label><input id="staff-username" placeholder="Enter username"></div>' +
     '<div class="field"><label>Password *</label><input id="staff-password" type="password" placeholder="Enter password"></div>' +
     '<div class="field"><label>Role *</label><select id="staff-role">' + _renderStaffRoleOptions('CASHIER') + '</select></div>' +
+    _renderStaffModuleCheckboxes() +
     '<div class="field"><label>Phone</label><input id="staff-phone" placeholder="Enter phone number"></div>' +
     '<div class="field"><label>Email</label><input id="staff-email" type="email" placeholder="Enter email"></div>' +
     '<div class="field"><label>Notes</label><textarea id="staff-notes" placeholder="Optional notes"></textarea></div>' +
@@ -3282,11 +3307,14 @@ async function submitAddStaff() {
   var emailEl = document.getElementById('staff-email');
   var notesEl = document.getElementById('staff-notes');
   var roleEl = document.getElementById('staff-role');
+  var labelEl = document.getElementById('staff-label');
   var data = {
     fullName: document.getElementById('staff-fullname').value.trim(),
     username: document.getElementById('staff-username').value.trim(),
     password: document.getElementById('staff-password').value.trim(),
     role: roleEl ? roleEl.value : 'CASHIER',
+    staffLabel: labelEl ? labelEl.value.trim() : '',
+    moduleAccess: _selectedStaffModules(),
     phone: phoneEl ? phoneEl.value.trim() : '',
     email: emailEl ? emailEl.value.trim() : '',
     notes: notesEl ? notesEl.value.trim() : ''
@@ -3303,6 +3331,10 @@ async function submitAddStaff() {
   var allowedRoles = _availableStaffRoles().map(function(role) { return role.code; });
   if (allowedRoles.indexOf(data.role) === -1) {
     _showToast('That role is not included in your current bundle.', true);
+    return;
+  }
+  if (!data.moduleAccess.length) {
+    _showToast('Choose at least one module for this staff.', true);
     return;
   }
 
@@ -3327,7 +3359,11 @@ async function submitAddStaff() {
         password: data.password,
         role: data.role,
         roleCode: data.role,
-        role_code: data.role
+        role_code: data.role,
+        staffLabel: data.staffLabel,
+        staff_label: data.staffLabel,
+        moduleAccess: data.moduleAccess,
+        module_access: data.moduleAccess
       });
     } catch(firstErr) {
       await API.createStaff({
@@ -3338,6 +3374,10 @@ async function submitAddStaff() {
         role: data.role,
         role_code: data.role,
         roleCode: data.role,
+        staffLabel: data.staffLabel,
+        staff_label: data.staffLabel,
+        moduleAccess: data.moduleAccess,
+        module_access: data.moduleAccess,
         phone: data.phone,
         email: data.email,
         notes: data.notes,
@@ -5815,6 +5855,43 @@ function _renderPurchaseRequisitionsUI(reqs, error, msg) {
     rows +
     (_hasPermission('purchase_requisitions','create') ? '<button class="btn btn-primary" style="margin-top:8px;" onclick="renderCreatePurchaseRequisition()">+ New Requisition</button>' : '') +
     '</div>';
+}
+
+function _staffModuleChoices() {
+  var items = [
+    ['quick_sell','Quick Sell'], ['products','Products'], ['expenses','Expenses'], ['reports','Reports'],
+    ['inventory','Inventory'], ['suppliers','Suppliers'], ['purchase_orders','Purchase Orders'],
+    ['purchase_requisitions','Requisitions'], ['stock_receiving','Receiving Logs'], ['order_fulfillment','Fulfillment'],
+    ['branch_transfer','Branch Transfers'], ['vendor_payments','Vendor Payments'], ['customer_returns','Returns'],
+    ['discounts_promotions','Promotions'], ['voids','Voids'], ['sales_history','Sales History'],
+    ['advanced_reports','Advanced Reports'], ['tax_reports','BIR / Tax'], ['inventory_movements','Stock History'],
+    ['hq_control_center','HQ Control'], ['internal_chat','Chat'], ['approvals','Approvals'],
+    ['activity_log','Staff Activity'], ['support','Help']
+  ];
+  return items.filter(function(item) {
+    if (item[0] === 'support') return true;
+    if (item[0] === 'sales_history') return _hasModule('quick_sell') || _hasModule('sales_history');
+    if (item[0] === 'advanced_reports') return _hasModule('reports') || _hasModule('advanced_reports');
+    return _hasModule(item[0]);
+  });
+}
+
+function _renderStaffModuleCheckboxes(defaults) {
+  var selected = {};
+  (defaults || ['quick_sell','products','expenses']).forEach(function(code) { selected[code] = true; });
+  return '<div class="field"><label>Allowed Modules</label>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+    _staffModuleChoices().map(function(item) {
+      return '<label style="display:flex;align-items:center;gap:7px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:8px;font-size:12px;font-weight:700;color:#334155;">' +
+        '<input type="checkbox" data-staff-module="' + _escAttr(item[0]) + '"' + (selected[item[0]] ? ' checked' : '') + '> ' + _escHtml(item[1]) + '</label>';
+    }).join('') +
+    '</div><div class="hint">Choose every module this staff can open. One staff can have several roles/modules.</div></div>';
+}
+
+function _selectedStaffModules() {
+  return Array.prototype.slice.call(document.querySelectorAll('input[data-staff-module]:checked')).map(function(el) {
+    return el.getAttribute('data-staff-module');
+  });
 }
 
 async function renderCreatePurchaseRequisition() {

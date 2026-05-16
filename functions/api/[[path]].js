@@ -253,16 +253,30 @@ function ownerManifest(plan) {
   };
 }
 
-function staffManifest(role) {
+function staffModuleList(staff) {
+  const raw = staff && (staff.module_access || staff.moduleAccess || staff.modules || staff.enabled_modules);
+  if (Array.isArray(raw)) return raw.map((m) => String(m || '').trim()).filter(Boolean);
+  if (typeof raw === 'string' && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed.map((m) => String(m || '').trim()).filter(Boolean);
+    } catch (e) {}
+    return raw.split(',').map((m) => String(m || '').trim()).filter(Boolean);
+  }
+  return [];
+}
+
+function staffManifest(role, staff) {
   const code = String(role || 'STAFF').toUpperCase();
-  const modules = featureCatalog().map((f) => f.module_code || f.code);
+  const chosen = staffModuleList(staff);
+  const modules = chosen.length ? chosen : featureCatalog().map((f) => f.module_code || f.code);
   const dashboard = code === 'MANAGER' ? 'manager_dashboard'
     : code === 'CASHIER' ? 'cashier_dashboard'
       : code === 'INVENTORY_STAFF' ? 'inventory_dashboard'
         : 'staff_dashboard';
   return {
     dashboard_type: dashboard,
-    role_display_name: code.replace(/_/g, ' '),
+    role_display_name: (staff && (staff.staff_label || staff.staffLabel || staff.title || staff.position_name)) || code.replace(/_/g, ' '),
     enabled_modules: modules,
     granted_permissions: modules.reduce((acc, moduleCode) => {
       ['view', 'create', 'update', 'delete', 'approve', 'export'].forEach((actionName) => acc.push(moduleCode + '.' + actionName));
@@ -332,7 +346,7 @@ async function staffBootData(env, tenant, staff) {
   const categories = await listRecords(env, tenant, 'categories');
   const products = await listRecords(env, tenant, 'products');
   const role = String(staff.role_code || staff.roleCode || staff.role || staff.Role || 'STAFF').toUpperCase();
-  const manifest = staffManifest(role);
+  const manifest = staffManifest(role, staff);
   const user = {
     User_ID: staff.id || staff.userId || staff.staffId || staff.username,
     Username: staff.username || staff.Username || '',
@@ -1293,6 +1307,10 @@ async function handleLocalAction(action, data, requestBody, env) {
       requireOwner(requestBody);
       const user = Object.assign({ id: data.id || data.userId || id('staff'), status: 'active', created_at: nowIso() }, data);
       user.userId = user.userId || user.id;
+      user.full_name = user.full_name || user.fullName || user.Full_Name || '';
+      user.role_code = user.role_code || user.roleCode || user.role || 'CASHIER';
+      user.staff_label = user.staff_label || user.staffLabel || user.position_name || '';
+      user.module_access = staffModuleList(user);
       return putRecord(env, tenant, 'staff', user);
     }
 
