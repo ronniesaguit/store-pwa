@@ -713,7 +713,9 @@ async function handleLocalAction(action, data, requestBody, env) {
         Cost_Price: 0,
         Selling_Price: 0,
         Current_Stock: 0,
-        Reorder_Level: 5
+        Reorder_Level: 5,
+        Allow_Discount: 'FALSE',
+        allow_discount: false
       }, data);
       product.id = product.Product_ID || product.id;
       product.Product_ID = product.Product_ID || product.id;
@@ -862,6 +864,8 @@ async function handleLocalAction(action, data, requestBody, env) {
       const byId = {};
       products.forEach((p) => { byId[p.Product_ID || p.id] = p; });
       let total = 0;
+      let subtotal = 0;
+      let discountTotal = 0;
       let cogs = 0;
       const saleItems = [];
       for (const item of items) {
@@ -871,7 +875,19 @@ async function handleLocalAction(action, data, requestBody, env) {
         if (!product) continue;
         const price = Number(product.Selling_Price || item.price || 0);
         const cost = Number(product.Cost_Price || 0);
-        total += price * qty;
+        const discountAllowed = product.Allow_Discount === true || product.allow_discount === true ||
+          String(product.Allow_Discount || product.allow_discount || '').toUpperCase() === 'TRUE';
+        const discountMode = item.discountMode === 'percent' ? 'percent' : 'amount';
+        const rawDiscount = discountAllowed ? Math.max(0, Number(item.discountValue || 0)) : 0;
+        const discountPerUnit = discountMode === 'percent'
+          ? price * Math.min(rawDiscount, 100) / 100
+          : Math.min(rawDiscount, price);
+        const lineSubtotal = price * qty;
+        const lineDiscount = discountPerUnit * qty;
+        const lineTotal = Math.max(0, lineSubtotal - lineDiscount);
+        subtotal += lineSubtotal;
+        discountTotal += lineDiscount;
+        total += lineTotal;
         cogs += cost * qty;
         product.Current_Stock = Number(product.Current_Stock || 0) - qty;
         await putRecord(env, tenant, 'products', product);
@@ -885,13 +901,29 @@ async function handleLocalAction(action, data, requestBody, env) {
           reason: 'sale',
           created_at: nowIso()
         });
-        saleItems.push({ productId, product_name: product.Product_Name, qty, price, total: price * qty });
+        saleItems.push({
+          productId,
+          product_name: product.Product_Name,
+          qty,
+          price,
+          subtotal: lineSubtotal,
+          discount_allowed: discountAllowed,
+          discount_mode: discountMode,
+          discount_value: rawDiscount,
+          discount_per_unit: discountPerUnit,
+          discount_total: lineDiscount,
+          total: lineTotal
+        });
       }
       const sale = {
         id: id('sale'),
         Sale_ID: id('sale'),
         items: saleItems,
         item_count: saleItems.reduce((sum, item) => sum + Number(item.qty || 0), 0),
+        subtotal,
+        Subtotal: subtotal,
+        discount_total: discountTotal,
+        Discount_Total: discountTotal,
         total,
         Total_Amount: total,
         cogs,

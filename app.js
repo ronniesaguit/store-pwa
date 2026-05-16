@@ -2400,6 +2400,7 @@ async function loadProducts() {
 }
 
 function renderProductsList() {
+  var canManageDiscounts = _isOwnerSession() || _currentRoleName() === 'OWNER';
   var html = state.products.map(function(p) {
     var pImg = _productImage(p);
     var imgEl = pImg
@@ -2409,7 +2410,10 @@ function renderProductsList() {
       imgEl +
       '<div style="flex:1;min-width:0;"><strong>' + p.Product_Name + '</strong>' +
       (p._pending ? ' <span style="color:#d97706;font-size:11px;">pending</span>' : '') + '<br>' +
-      '<span class="muted">' + Number(p.Selling_Price).toFixed(2) + ' | Stock: ' + p.Current_Stock + '</span></div>' +
+      '<span class="muted">' + Number(p.Selling_Price).toFixed(2) + ' | Stock: ' + p.Current_Stock + '</span>' +
+      (_productAllowsDiscount(p) ? '<div style="font-size:11px;color:#16a34a;font-weight:800;margin-top:2px;">Discount allowed</div>' : '<div style="font-size:11px;color:#94a3b8;margin-top:2px;">No discount</div>') +
+      '</div>' +
+      (canManageDiscounts ? '<button class="small-btn" style="background:' + (_productAllowsDiscount(p) ? '#dcfce7;color:#166534;' : '#f3f4f6;color:#374151;') + '" onclick="toggleProductDiscount(\'' + p.Product_ID + '\')">' + (_productAllowsDiscount(p) ? 'Discount ON' : 'Discount OFF') + '</button>' : '') +
       '<button class="small-btn" onclick="editProduct(\'' + p.Product_ID + '\')">Edit</button>' +
       '</div>';
   }).join('');
@@ -2419,7 +2423,34 @@ function renderProductsList() {
     '<div class="topbar"><div class="title">Products (' + state.products.length + ')</div>' +
     '<button class="small-btn" onclick="goHome()">Back</button></div>' +
     '<button class="btn btn-secondary" onclick="renderAddProductForm()">+ Add Product</button>' +
+    '<div class="hint" style="margin:0 0 8px;">Owner can mark which products may receive item discounts in Quick Sell.</div>' +
     '<div class="card">' + html + '</div></div>';
+}
+
+async function toggleProductDiscount(productId) {
+  if (!(_isOwnerSession() || _currentRoleName() === 'OWNER')) {
+    _showToast('Only owner can control product discounts', true);
+    return;
+  }
+  var p = (state.products || []).find(function(x) { return String(x.Product_ID || x.id) === String(productId); });
+  if (!p) return;
+  var next = !_productAllowsDiscount(p);
+  p.Allow_Discount = next ? 'TRUE' : 'FALSE';
+  p.allow_discount = next;
+  try { await DB.saveProducts(state.products); } catch(e) {}
+  renderProductsList();
+  if (!navigator.onLine) {
+    try { await DB.addToSyncQueue({ action: 'updateProduct', data: { productId: productId, Allow_Discount: p.Allow_Discount, allow_discount: next } }); } catch(e) {}
+    _showToast('Discount setting saved offline. It will sync when online.', false);
+    return;
+  }
+  try {
+    await API.call('updateProduct', { productId: productId, Allow_Discount: p.Allow_Discount, allow_discount: next });
+    _showToast(next ? 'Discount enabled for this product' : 'Discount disabled for this product', false);
+  } catch(e) {
+    _showToast('Saved locally, sync needed: ' + (e.message || String(e)), true);
+    try { await DB.addToSyncQueue({ action: 'updateProduct', data: { productId: productId, Allow_Discount: p.Allow_Discount, allow_discount: next } }); } catch(qErr) {}
+  }
 }
 
 async function renderAddProductForm(msg, scannedCode, existingImage) {
@@ -2473,6 +2504,8 @@ async function renderAddProductForm(msg, scannedCode, existingImage) {
       '<div class="field"><label>Selling Price () *</label>' + _voiceInputHtml('p-price', 'Auto-calculated', 'Speak selling price', 'number', '0.01') + '</div>' +
       '<div class="field"><label>Starting Stock</label>' + _voiceInputHtml('p-stock', '0', 'Speak starting stock', 'number', '1', null, '0') + '<div class="hint">Initial quantity saved with this product.</div></div>' +
       '<div class="field"><label>Reorder Level</label>' + _voiceInputHtml('p-reorder', '5', 'Speak reorder level', 'number', '1', null, '5') + '</div>' +
+      '<label style="display:flex;align-items:flex-start;gap:8px;margin:0 0 12px;font-size:13px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px;padding:10px;">' +
+        '<input type="checkbox" id="p-allow-discount" style="margin-top:2px;"> Allow discount for this product in Quick Sell</label>' +
       '<button class="btn btn-primary" onclick="submitProduct()">Save Product</button>' +
     '</div>' +
     _renderCategoryModalHtml() +
@@ -2722,6 +2755,8 @@ async function submitProduct() {
     Selling_Price: price,
     Current_Stock: Math.max(0, Number((document.getElementById('p-stock') || {}).value || 0)),
     Reorder_Level: (document.getElementById('p-reorder') || {}).value || 5,
+    Allow_Discount: ((document.getElementById('p-allow-discount') || {}).checked ? 'TRUE' : 'FALSE'),
+    allow_discount: !!((document.getElementById('p-allow-discount') || {}).checked),
     Image:         _pendingProductImage || ''
   };
 
@@ -2770,6 +2805,8 @@ async function editProduct(id) {
   document.getElementById('p-cost').value    = p.Cost_Price     || '';
   document.getElementById('p-stock').value   = p.Current_Stock  || 0;
   document.getElementById('p-reorder').value = p.Reorder_Level  || 5;
+  var allowDiscount = document.getElementById('p-allow-discount');
+  if (allowDiscount) allowDiscount.checked = _productAllowsDiscount(p);
   var sel = document.getElementById('p-category');
   if (sel && p.Category_Name) sel.value = p.Category_Name;
 }
@@ -2939,7 +2976,68 @@ async function deleteCategory(name) {
 
 //  Quick Sell 
 
+function _currentRoleName() {
+  return String((state.session && state.session.user && state.session.user.Role) || '').toUpperCase();
+}
+
+function _productAllowsDiscount(product) {
+  var raw = product && (product.Allow_Discount != null ? product.Allow_Discount : product.allow_discount);
+  return raw === true || raw === 1 || String(raw || '').toUpperCase() === 'TRUE' || String(raw || '').toUpperCase() === 'YES';
+}
+
+function _productAllowsDiscountById(productId) {
+  var p = (state.products || []).find(function(x) { return String(x.Product_ID || x.id) === String(productId); });
+  return _productAllowsDiscount(p);
+}
+
+function _cartLineDiscount(item) {
+  var qty = Math.max(1, Number(item.qty || 1));
+  var price = Number(item.price || 0);
+  var mode = item.discountMode || 'amount';
+  var raw = Math.max(0, Number(item.discountValue || 0));
+  var perUnit = mode === 'percent' ? price * Math.min(raw, 100) / 100 : Math.min(raw, price);
+  return {
+    mode: mode,
+    value: raw,
+    perUnit: perUnit,
+    totalDiscount: perUnit * qty,
+    lineTotal: Math.max(0, (price - perUnit) * qty)
+  };
+}
+
+function _refreshCartItemTotal(item) {
+  var disc = _cartLineDiscount(item);
+  item.discountMode = disc.mode;
+  item.discountValue = disc.value;
+  item.discountPerUnit = disc.perUnit;
+  item.discountTotal = disc.totalDiscount;
+  item.total = disc.lineTotal;
+}
+
+function updateCartDiscount(idx, field, value) {
+  var item = state.cart[idx];
+  if (!item || !item.allowDiscount) return;
+  if (field === 'mode') item.discountMode = value === 'percent' ? 'percent' : 'amount';
+  if (field === 'value') item.discountValue = Math.max(0, Number(value || 0));
+  _refreshCartItemTotal(item);
+  renderQuickSell();
+}
+
 function renderQuickSell(msg) {
+  _renderQuickSell(msg);
+}
+
+function _renderQuickSell(msg) {
+  var discountHint = '<div class="message message-offline" style="font-size:12px;margin-bottom:10px;">Discount controls appear only on products marked Discount allowed by the owner.</div>';
+  var discountTotal = state.cart.reduce(function(s, x) { return s + Number(x.discountTotal || 0); }, 0);
+  var subtotal = state.cart.reduce(function(s, x) { return s + (Number(x.price || 0) * Number(x.qty || 0)); }, 0);
+  var discountRow = discountTotal > 0
+    ? '<div style="display:flex;justify-content:space-between;color:#dc2626;font-size:13px;margin-top:8px;"><span>Discounts</span><strong>-' + discountTotal.toFixed(2) + '</strong></div>'
+    : '';
+  var subtotalRow = discountTotal > 0
+    ? '<div style="display:flex;justify-content:space-between;color:#64748b;font-size:13px;"><span>Subtotal</span><strong>' + subtotal.toFixed(2) + '</strong></div>'
+    : '';
+
   var prodsHtml = state.products.map(function(p) {
     var pImg = _productImage(p);
     var safeImg = pImg ? pImg.replace(/'/g, '%27') : '';
@@ -2952,15 +3050,30 @@ function renderQuickSell(msg) {
       '<div style="flex:1;min-width:0;text-align:left;">' +
         '<div class="product-name" style="font-size:13px;line-height:1.3;white-space:normal;">' + p.Product_Name + '</div>' +
         '<div class="product-price" style="font-size:13px;">' + Number(p.Selling_Price).toFixed(2) + '</div>' +
-        '<div class="muted" style="font-size:11px;">Stock: ' + p.Current_Stock + '</div>' +
+        '<div class="muted" style="font-size:11px;">Stock: ' + p.Current_Stock + (_productAllowsDiscount(p) ? ' | Discount allowed' : '') + '</div>' +
       '</div>' +
       '</button>';
   }).join('');
 
   var cartHtml = state.cart.map(function(item, idx) {
+    _refreshCartItemTotal(item);
+    var disc = _cartLineDiscount(item);
+    var discountControls = item.allowDiscount
+      ? '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px;">' +
+        '<select onchange="updateCartDiscount(' + idx + ',&quot;mode&quot;,this.value)" style="width:100%;padding:7px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;">' +
+        '<option value="amount"' + (item.discountMode !== 'percent' ? ' selected' : '') + '>PHP off each</option>' +
+        '<option value="percent"' + (item.discountMode === 'percent' ? ' selected' : '') + '>% off</option>' +
+        '</select>' +
+        '<input type="number" min="0" step="0.01" value="' + Number(item.discountValue || 0) + '" onchange="updateCartDiscount(' + idx + ',&quot;value&quot;,this.value)" ' +
+        'style="width:100%;padding:7px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;" placeholder="Discount">' +
+        '</div>'
+      : '<div style="font-size:11px;color:#94a3b8;margin-top:4px;">No discount for this item</div>';
+    var discountNote = disc.totalDiscount > 0
+      ? '<div style="font-size:11px;color:#dc2626;margin-top:2px;">Less ' + disc.perUnit.toFixed(2) + ' each / ' + disc.totalDiscount.toFixed(2) + ' total</div>'
+      : '';
     return '<div class="cart-row">' +
       '<div><strong>' + item.name + '</strong><br>' +
-      '<span class="muted">' + item.qty + ' x ' + item.price.toFixed(2) + '</span></div>' +
+      '<span class="muted">' + item.qty + ' x ' + item.price.toFixed(2) + '</span>' + discountNote + discountControls + '</div>' +
       '<div><strong>' + item.total.toFixed(2) + '</strong><br>' +
       '<button class="small-btn" onclick="removeCartItem(' + idx + ')">Remove</button></div>' +
       '</div>';
@@ -2974,11 +3087,13 @@ function renderQuickSell(msg) {
     '<button class="small-btn" onclick="goHome()">Back</button></div>' +
     '<button class="btn btn-primary" style="background:#7c3aed;margin-bottom:12px;" onclick="openScannerModal(\'quickSell\')"> Scan to Sell</button>' +
     (msg ? showError(msg) : '') +
+    discountHint +
     '<div class="card"><div class="subtitle">Tap product to add to cart</div>' +
     '<div class="products-grid">' + (prodsHtml || '<div class="muted">No products.</div>') + '</div></div>' +
     '<div class="card">' +
     '<div class="title" style="font-size:20px;">Cart (' + state.cart.length + ' items)</div>' +
     (cartHtml || '<div class="muted">No items yet.</div>') +
+    subtotalRow + discountRow +
     '<div class="cart-total">' + total.toFixed(2) + '</div>' +
     '<div class="field"><label>Amount Paid ()</label>' +
     '<input id="amount-paid" type="number" step="0.01" value="' + total.toFixed(2) + '"></div>' +
@@ -2992,8 +3107,21 @@ function addToCart(pid) {
   var p = state.products.find(function(x) { return x.Product_ID === pid; });
   if (!p) return;
   var existing = state.cart.find(function(x) { return x.id === pid; });
-  if (existing) { existing.qty++; existing.total = existing.qty * existing.price; }
-  else { state.cart.push({ id: pid, name: p.Product_Name, price: Number(p.Selling_Price), qty: 1, total: Number(p.Selling_Price) }); }
+  if (existing) { existing.qty++; _refreshCartItemTotal(existing); }
+  else {
+    state.cart.push({
+      id: pid,
+      name: p.Product_Name,
+      price: Number(p.Selling_Price),
+      qty: 1,
+      allowDiscount: _productAllowsDiscount(p),
+      discountMode: 'amount',
+      discountValue: 0,
+      discountPerUnit: 0,
+      discountTotal: 0,
+      total: Number(p.Selling_Price)
+    });
+  }
   renderQuickSell();
 }
 
@@ -3012,9 +3140,21 @@ async function checkoutSale() {
   var cartSnapshot = state.cart.slice();
 
   var salePayload = {
-    items: state.cart.map(function(i) { return { productId: i.id, qty: i.qty }; }),
+    items: state.cart.map(function(i) {
+      _refreshCartItemTotal(i);
+      return {
+        productId: i.id,
+        qty: i.qty,
+        discountMode: i.allowDiscount ? i.discountMode : 'amount',
+        discountValue: i.allowDiscount ? Number(i.discountValue || 0) : 0,
+        discountPerUnit: i.allowDiscount ? Number(i.discountPerUnit || 0) : 0,
+        discountTotal: i.allowDiscount ? Number(i.discountTotal || 0) : 0
+      };
+    }),
     amountPaid: paid,
-    paymentMethod: method
+    paymentMethod: method,
+    subtotal: state.cart.reduce(function(s, x) { return s + (Number(x.price || 0) * Number(x.qty || 0)); }, 0),
+    discountTotal: state.cart.reduce(function(s, x) { return s + Number(x.discountTotal || 0); }, 0)
   };
 
   try {
@@ -3050,10 +3190,15 @@ function renderReceiptModal(cartItems, total, paid, method, saleResult) {
   function money(v) { return '' + Number(v||0).toFixed(2); }
 
   var itemRows = cartItems.map(function(i) {
+    var discountLine = Number(i.discountTotal || 0) > 0
+      ? '<div style="font-size:11px;color:#dc2626;margin-left:8px;">Less ' + money(i.discountPerUnit) + ' each / ' + money(i.discountTotal) + '</div>'
+      : '';
     return '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:14px;">' +
-      '<span>' + i.qty + 'x ' + i.name + '</span>' +
+      '<span>' + i.qty + 'x ' + i.name + discountLine + '</span>' +
       '<span>' + money(i.total) + '</span></div>';
   }).join('');
+  var discountTotal = cartItems.reduce(function(s, i) { return s + Number(i.discountTotal || 0); }, 0);
+  var subtotal = cartItems.reduce(function(s, i) { return s + (Number(i.price || 0) * Number(i.qty || 0)); }, 0);
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
@@ -3074,6 +3219,8 @@ function renderReceiptModal(cartItems, total, paid, method, saleResult) {
     '<div style="border-top:1px dashed #ccc;margin:8px 0;"></div>' +
     itemRows +
     '<div style="border-top:1px dashed #ccc;margin:8px 0;"></div>' +
+    (discountTotal > 0 ? '<div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0;"><span>SUBTOTAL</span><span>' + money(subtotal) + '</span></div>' : '') +
+    (discountTotal > 0 ? '<div style="display:flex;justify-content:space-between;font-size:13px;color:#dc2626;padding:2px 0;"><span>DISCOUNT</span><span>-' + money(discountTotal) + '</span></div>' : '') +
     '<div style="display:flex;justify-content:space-between;font-size:15px;font-weight:bold;padding:4px 0;">' +
       '<span>TOTAL</span><span>' + money(total) + '</span></div>' +
     '<div style="display:flex;justify-content:space-between;font-size:14px;padding:2px 0;">' +
