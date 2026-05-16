@@ -1818,15 +1818,19 @@ async function renderMessagesInbox() {
     var last = t.msgs[t.msgs.length - 1] || {};
     var preview = String(last.Message || '').substring(0, 60);
     var time = String(last.Created_At || '').substring(0, 16).replace('T', ' ');
+    var store = adminState.stores.find(function(s) { return String(s.Store_ID) === String(t.storeId); }) || {};
+    var owner = store.Owner_Name || (t.msgs[0] || {}).Owner_Name || '';
     return '<div class="store-row" onclick="renderStoreMessageThread(\'' + t.storeId + '\',\'' + _esc(t.storeName) + '\')" style="cursor:pointer;">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;">' +
       '<div style="flex:1;">' +
       '<div style="font-weight:bold;font-size:14px;">' + _esc(t.storeName) +
       (t.unread > 0 ? ' <span style="background:#dc2626;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;">' + t.unread + '</span>' : '') +
       '</div>' +
+      '<div class="muted" style="font-size:11px;">Owner: ' + _esc(owner || 'Unknown') + '</div>' +
       '<div class="muted" style="font-size:12px;">' + _esc(preview) + (preview.length >= 60 ? '' : '') + '</div>' +
       '<div class="muted" style="font-size:11px;">' + time + '</div>' +
       '</div>' +
+      '<button class="small-btn" style="background:#1e3a5f;color:#fff;margin-left:8px;" onclick="event.stopPropagation();renderStoreMessageThread(\'' + t.storeId + '\',\'' + _esc(t.storeName) + '\')">Reply</button>' +
       '</div></div>';
   }).join('') || '<div class="muted" style="padding:12px;">No messages yet.</div>';
 
@@ -1877,9 +1881,11 @@ function _buildBubbles(msgs, isStoreView) {
 }
 
 function _renderThreadScreen(storeId, storeName, msgs) {
+  var store = adminState.stores.find(function(s) { return String(s.Store_ID) === String(storeId); }) || {};
+  var owner = store.Owner_Name || (msgs[0] || {}).Owner_Name || '';
   var bubblesHtml = _buildBubbles(msgs, false);
   _app('<div class="screen">' +
-    '<div class="topbar"><div class="title">' + _esc(storeName) + '</div>' +
+    '<div class="topbar"><div><div class="title" style="margin:0;">' + _esc(storeName) + '</div><div style="font-size:11px;color:#dbeafe;">Owner: ' + _esc(owner || 'Unknown') + '</div></div>' +
     '<button class="small-btn" onclick="_stopMsgPoll();renderMessagesInbox();"> Back</button></div>' +
 
     '<div id="thread-msgs-' + storeId + '" style="flex:1;overflow-y:auto;padding:12px;background:#f9fafb;min-height:200px;max-height:50vh;border-radius:8px;margin-bottom:8px;">' +
@@ -1889,7 +1895,7 @@ function _renderThreadScreen(storeId, storeName, msgs) {
     '<div class="field">' +
     '<textarea id="admin-msg-text" placeholder="Type a message" rows="3" style="resize:none;"></textarea>' +
     '</div>' +
-    '<button class="btn btn-primary" onclick="_sendAdminMessage(\'' + storeId + '\')">Send </button>' +
+    '<button class="btn btn-primary" onclick="_sendAdminMessage(\'' + storeId + '\')">Reply to ' + _esc(storeName) + '</button>' +
     '</div></div>');
 
   // Scroll to bottom

@@ -238,6 +238,11 @@ async function findAdminStore(env, storeId) {
   return stores.find((s) => String(s.Store_ID || s.id) === String(storeId)) || null;
 }
 
+async function findAdminStoreByApiKey(env, apiKey) {
+  const stores = await adminStores(env);
+  return stores.find((s) => String(s.API_Key || '').toUpperCase() === String(apiKey || '').toUpperCase()) || null;
+}
+
 async function saveAdminStore(env, store) {
   store.id = store.Store_ID || store.id || id('store');
   store.Store_ID = store.Store_ID || store.id;
@@ -1342,15 +1347,19 @@ async function handleLocalAction(action, data, requestBody, env) {
     case 'adminGetStoreMessages': {
       requireAdmin(requestBody);
       const messages = await listRecords(env, 'admin', 'messages');
-      return messages.filter((m) => String(m.Store_ID) === String(data.storeId));
+      const store = await findAdminStore(env, data.storeId);
+      return messages.filter((m) => String(m.Store_ID) === String(data.storeId) || (store && String(m.Store_Key || '').toUpperCase() === String(store.API_Key || '').toUpperCase()));
     }
 
     case 'adminSendMessage': {
       requireAdmin(requestBody);
       const store = await findAdminStore(env, data.storeId);
       return putRecord(env, 'admin', 'messages', {
+        id: id('msg'),
         Store_ID: data.storeId,
         Store_Name: store ? store.Store_Name : data.storeId,
+        Store_Key: store ? store.API_Key : '',
+        Owner_Name: store ? store.Owner_Name : '',
         Direction: 'TO_STORE',
         From_Name: 'HubSuite Admin',
         Message: data.message || '',
@@ -1461,11 +1470,38 @@ async function handleLocalAction(action, data, requestBody, env) {
     case 'getUnreadCount': return { count: 0 };
     case 'getActivityLog': return listRecords(env, tenant, 'activity_log');
 
-    case 'getSupportMessages': return listRecords(env, tenant, 'support_messages');
-    case 'sendSupportMessage': return putRecord(env, tenant, 'support_messages', Object.assign({ id: id('msg'), Direction: 'FROM_STORE', Created_At: nowIso() }, data));
+    case 'getSupportMessages': {
+      requireOwner(requestBody);
+      const store = await findAdminStoreByApiKey(env, tenant);
+      const messages = await listRecords(env, 'admin', 'messages');
+      return messages.filter((m) => String(m.Store_Key || '').toUpperCase() === String(tenant || '').toUpperCase() || (store && String(m.Store_ID) === String(store.Store_ID)));
+    }
+    case 'sendSupportMessage': {
+      requireOwner(requestBody);
+      const store = await findAdminStoreByApiKey(env, tenant);
+      return putRecord(env, 'admin', 'messages', {
+        id: id('msg'),
+        Store_ID: store ? store.Store_ID : tenant,
+        Store_Name: store ? store.Store_Name : tenant,
+        Store_Key: tenant,
+        Owner_Name: store ? store.Owner_Name : '',
+        Direction: 'TO_ADMIN',
+        From_Name: data.fromName || (store ? store.Owner_Name : 'Store Owner') || 'Store Owner',
+        Message: data.message || '',
+        Created_At: nowIso()
+      });
+    }
     case 'getStaffChatMessages': return listRecords(env, tenant, 'staff_chat');
     case 'getCustomerChatMessages': return listRecords(env, tenant, 'customer_chat');
-    case 'sendStaffMessage': return putRecord(env, tenant, 'staff_chat', Object.assign({ id: id('chat'), Created_At: nowIso() }, data));
+    case 'sendStaffMessage': return putRecord(env, tenant, 'staff_chat', Object.assign({
+      id: id('chat'),
+      Created_At: nowIso(),
+      From_Name: data.fromName || data.From_Name || 'Store User',
+      From_User_ID: data.fromUserId || data.From_User_ID || '',
+      To_User_ID: data.toUserId || data.To_User_ID || '',
+      To_Group: data.toGroup || data.To_Group || '',
+      Message: data.message || data.Message || ''
+    }, data));
     case 'sendCustomerMessage': return putRecord(env, tenant, 'customer_chat', Object.assign({ id: id('chat'), Created_At: nowIso() }, data));
 
     case 'getAutomationRules': return listRecords(env, tenant, 'automation_rules');

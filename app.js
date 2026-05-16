@@ -1029,7 +1029,7 @@ function renderOwnerDashboard(msg) {
   addMoreModule('discounts_promotions', 'Promotions', 'renderDiscountsPromotions()');
   addMoreModule('voids', 'Voids', 'renderVoids()');
   addMoreModule('hq_control_center', 'HQ Control', 'renderHQControlCenter()');
-  addMoreModule('internal_chat', 'Chat', 'renderChat()');
+  addMoreModule('internal_chat', 'Messages', 'renderMessagingHub()');
   addMoreModule('staff_management', 'Staff', 'renderStaffList()', 'staff');
   addMoreModule('custom_role_builder', 'Custom Roles', 'renderCustomRoles()');
   addMoreModule('approvals', 'Approvals', 'renderApprovalsQueue()');
@@ -1050,6 +1050,7 @@ function renderOwnerDashboard(msg) {
   if (_hasModule('products')) btns += _ownerSimpleButton('Products', 'loadProducts()');
   if (_hasModule('expenses')) btns += _ownerSimpleButton('Expenses', 'renderExpenses()');
   if (_hasModule('reports')) btns += _ownerSimpleButton('Report', 'renderReports()');
+  btns += _ownerSimpleButton('Messages', 'renderMessagingHub()');
   btns += _ownerMoreModulesSelect(moreModules);
   btns += _ownerSimpleButton('Explore Add-Ons', 'renderAddOnsPanel()', 'border:2px dashed rgba(255,255,255,0.28);background:rgba(255,255,255,0.06);');
   var subInfo = _ownerSubscriptionInfo();
@@ -5660,54 +5661,85 @@ function showSubscriptionExpired(paymentInfo) {
     '</div></div>';
 }
 
-//  Chat 
+//  Messaging
 
-async function renderChat() {
-  showLoading('Loading chat');
-  try {
-    var staff    = await API.call('getStaffChatMessages');
-    var customer = await API.call('getCustomerChatMessages');
-    renderChatScreen(staff.messages || [], customer.messages || []);
-  } catch(e) { renderChatScreen([], []); }
+async function renderChat() { renderMessagingHub(); }
+
+async function renderMessagingHub() {
+  showLoading('Loading messages');
+  var staff = [];
+  var messages = [];
+  try { staff = await API.call('getStoreUsers'); } catch(e) {}
+  try { messages = await API.call('getStaffChatMessages'); } catch(e) {}
+  _renderMessagingHub(staff || [], messages || []);
 }
 
-function renderChatScreen(staffMsgs, customerMsgs) {
-  var staffHtml = staffMsgs.map(function(m) {
-    return '<div class="chat-msg"><div class="chat-meta"><strong>' + m.From_Name + '</strong></div>' +
-      '<div class="chat-text">' + m.Message + '</div>' +
-      '<div class="chat-time">' + new Date(m.Created_At).toLocaleString() + '</div></div>';
-  }).join('') || '<div class="muted">No staff messages</div>';
+function _currentUserForMessage() {
+  var user = state.session && state.session.user || {};
+  return {
+    id: user.User_ID || user.id || user.Username || '',
+    name: user.Full_Name || user.Username || 'Store User',
+    role: String(user.Role || '').toUpperCase()
+  };
+}
 
-  var custHtml = customerMsgs.map(function(m) {
-    return '<div class="chat-msg"><div class="chat-meta"><strong>' + (m.Customer_Name || 'Unknown') + '</strong></div>' +
-      '<div class="chat-text">' + m.Message + '</div>' +
-      '<div class="chat-time">' + new Date(m.Created_At).toLocaleString() + '</div></div>';
-  }).join('') || '<div class="muted">No customer messages</div>';
+function _messageRecipientOptions(staff) {
+  var me = _currentUserForMessage();
+  var isOwner = me.role === 'OWNER';
+  var options = isOwner ? '<option value="admin">Admin Support</option><option value="all_staff">All Staff</option>' : '<option value="owner">Owner</option><option value="all_staff">All Staff</option>';
+  (staff || []).filter(function(u) {
+    var id = u.User_ID || u.userId || u.id || u.username || u.Username;
+    return id && String(id) !== String(me.id) && String(u.Role || u.role || '').toUpperCase() !== 'OWNER';
+  }).forEach(function(u) {
+    var id = u.User_ID || u.userId || u.id || u.username || u.Username;
+    var name = u.Full_Name || u.full_name || u.name || u.Username || u.username || 'Staff';
+    options += '<option value="staff:' + _escAttr(id) + '">' + _escHtml(name) + '</option>';
+  });
+  return options;
+}
+
+function _renderMessagingHub(staff, messages) {
+  var me = _currentUserForMessage();
+  var msgHtml = (messages || []).map(function(m) {
+    var mine = String(m.From_User_ID || '') === String(me.id) || String(m.From_Name || '') === String(me.name);
+    var target = m.To_Group === 'all_staff' ? 'All Staff' : (m.To_Group === 'owner' ? 'Owner' : (m.To_User_ID ? 'Individual Staff' : ''));
+    return '<div style="display:flex;flex-direction:column;align-items:' + (mine ? 'flex-end' : 'flex-start') + ';margin-bottom:8px;">' +
+      '<div style="max-width:82%;background:' + (mine ? '#dcfce7' : '#e8f0fe') + ';border-radius:12px;padding:9px 12px;font-size:13px;">' +
+      '<strong style="font-size:11px;color:#64748b;">' + _escHtml(m.From_Name || 'Store User') + (target ? ' to ' + _escHtml(target) : '') + '</strong><br>' +
+      _escHtml(m.Message || m.message || '') + '</div>' +
+      '<div style="font-size:10px;color:#9ca3af;margin-top:2px;">' + String(m.Created_At || '').slice(0,16).replace('T',' ') + '</div></div>';
+  }).join('') || '<div class="muted" style="text-align:center;padding:24px;">No internal messages yet.</div>';
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +
-    '<div class="topbar"><div class="title"> Chat</div><button class="small-btn" onclick="goHome()">Back</button></div>' +
-    '<div class="card"><div class="subtitle">Staff Chat</div>' + staffHtml +
-    '<div class="field" style="margin-top:12px;"><input id="staff-msg" placeholder="Message staff">' +
-    '<button class="btn btn-primary" style="margin-top:8px;" onclick="sendStaffMsg()">Send</button></div></div>' +
-    '<div class="card"><div class="subtitle">Customer Chat</div>' + custHtml +
-    '<div class="field" style="margin-top:12px;"><input id="cust-msg" placeholder="Message customer">' +
-    '<button class="btn btn-primary" style="margin-top:8px;" onclick="sendCustMsg()">Send</button></div></div>' +
+    '<div class="topbar"><div class="title" style="margin:0;">Messages</div><button class="small-btn" onclick="goHome()">Back</button></div>' +
+    '<div class="card">' +
+    '<div class="field"><label>Send To</label><select id="msg-recipient">' + _messageRecipientOptions(staff) + '</select></div>' +
+    '<div class="field"><label>Message</label><textarea id="msg-body" rows="3" placeholder="Type your message"></textarea></div>' +
+    '<button class="btn btn-primary" onclick="sendMessagingHubMessage()">Send Message</button>' +
+    '</div>' +
+    '<div class="card"><div class="subtitle">Internal Messages</div>' + msgHtml + '</div>' +
     '</div>';
 }
 
-async function sendStaffMsg() {
-  var msg = document.getElementById('staff-msg').value.trim();
-  if (!msg) return;
-  try { await API.call('sendStaffMessage', { toUserId: '', message: msg }); renderChat(); }
-  catch(e) { _showToast('Error: ' + e.message, true); }
-}
-
-async function sendCustMsg() {
-  var msg = document.getElementById('cust-msg').value.trim();
-  if (!msg) return;
-  try { await API.call('sendCustomerMessage', { customerId: '', customerName: '', customerEmail: '', message: msg }); renderChat(); }
-  catch(e) { _showToast('Error: ' + e.message, true); }
+async function sendMessagingHubMessage() {
+  var recipient = (document.getElementById('msg-recipient') || {}).value || '';
+  var msg = ((document.getElementById('msg-body') || {}).value || '').trim();
+  if (!msg) { _showToast('Type a message first', true); return; }
+  var me = _currentUserForMessage();
+  try {
+    if (recipient === 'admin') {
+      await API.call('sendSupportMessage', { message: msg, fromName: me.name });
+    } else {
+      var payload = { message: msg, fromName: me.name, fromUserId: me.id };
+      if (recipient === 'all_staff') payload.toGroup = 'all_staff';
+      else if (recipient === 'owner') payload.toGroup = 'owner';
+      else if (recipient.indexOf('staff:') === 0) payload.toUserId = recipient.slice(6);
+      await API.call('sendStaffMessage', payload);
+    }
+    _showToast('Message sent');
+    renderMessagingHub();
+  } catch(e) { _showToast('Error: ' + e.message, true); }
 }
 
 //  Barcode Scanner (inline overlay, no popup window) 
