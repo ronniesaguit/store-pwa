@@ -686,6 +686,7 @@ function renderStoreDetail(idx) {
     '<div style="font-size:13px;line-height:2;">' +
     '<div> ' + (st.Owner_Email || '') + '</div>' +
     '<div> ' + (st.Owner_Phone || '') + '</div>' +
+    '<div> Owner login: <strong>' + _esc(st.Owner_Username || 'owner') + '</strong></div>' +
     '<div> Plan: <strong>' + _esc(_planLabel(plan)) + '</strong> (Negotiable)</div>' +
     (status === 'TRIAL' ? '<div> Trial ends: <strong>' + (String(st.Trial_End || '').substring(0, 10) || '') + '</strong></div>' : '') +
     '<div> Expires: <strong>' + (String(st.Subscription_Expires || '').substring(0, 10) || '') + '</strong></div>' +
@@ -700,6 +701,14 @@ function renderStoreDetail(idx) {
     '<div style="font-size:12px;color:#374151;">' + _esc(String(st.DB_Provider || 'libsql').toUpperCase()) +
       (st.D1_Binding ? '  ' + _esc(st.D1_Binding) : '') + '</div>' +
     '</div></div>' +
+
+    '<div class="card">' +
+    '<div class="section-title"> Owner Login Credentials</div>' +
+    '<div class="hint" style="margin-bottom:10px;">Use this if the owner reports invalid username or password. It updates the login for this exact store link.</div>' +
+    '<div class="field"><label>Owner Username</label><input id="owner-login-user" value="' + _esc(st.Owner_Username || 'owner') + '" placeholder="owner"></div>' +
+    '<div class="field"><label>New Owner Password</label><input id="owner-login-pass" type="password" placeholder="Enter new password"></div>' +
+    '<button class="btn btn-primary" onclick="_saveOwnerLogin(\'' + st.Store_ID + '\')">Save Owner Login</button>' +
+    '</div>' +
 
     //  Extend trial 
     '<div class="card">' +
@@ -828,6 +837,28 @@ function renderStoreDetail(idx) {
 
 function _onChangePlan() {
   return;
+}
+
+async function _saveOwnerLogin(storeId) {
+  var username = (document.getElementById('owner-login-user').value || '').trim();
+  var password = document.getElementById('owner-login-pass').value || '';
+  if (!username) { _toast('Owner username is required', true); return; }
+  if (password.length < 4) { _toast('Owner password must be at least 4 characters', true); return; }
+  try {
+    await ADMIN_API.call('adminUpdateStore', {
+      storeId: storeId,
+      patch: {
+        Owner_Username: username,
+        Owner_Password: password
+      }
+    });
+    adminState.stores = await ADMIN_API.call('adminGetStores');
+    _toast('Owner login saved. Ask the owner to log out, reopen the store link, and use the new credentials.');
+    var idx = adminState.stores.findIndex(function(s) { return String(s.Store_ID) === String(storeId); });
+    if (idx >= 0) renderStoreDetail(idx);
+  } catch(e) {
+    _toast(e.message || 'Failed to save owner login', true);
+  }
 }
 
 async function _computeSuggestedPrice() {
