@@ -8,6 +8,7 @@ const LOCAL_ACTIONS = new Set([
   'adminGetAllStoreHealth', 'adminGetStoreSnapshot', 'adminGetUnreadCount',
   'adminGetAllMessages', 'adminGetStoreMessages', 'adminSendMessage',
   'adminGetStoreSystemHealth', 'adminFlagStoreSystemFunction', 'adminRepairStoreSystemFunction',
+  'adminGetStoreAddOns', 'adminSetStoreAddOns',
   'login', 'logout', 'getBootData', 'getFeatureMarketplace', 'startTrial',
   'getProducts', 'createProduct', 'updateProduct', 'deleteProduct',
   'getProductByBarcode', 'addProductStock', 'getInventoryAdvancedSummary',
@@ -241,6 +242,40 @@ async function saveAdminStore(env, store) {
   store.id = store.Store_ID || store.id || id('store');
   store.Store_ID = store.Store_ID || store.id;
   return putRecord(env, 'admin', 'stores', store);
+}
+
+async function setTenantAddOns(env, tenant, moduleCodes, source) {
+  const selected = Array.from(new Set((moduleCodes || []).map((code) => String(code || '').trim()).filter(Boolean)));
+  const existing = await listRecords(env, tenant, 'addon_subscriptions');
+  const selectedMap = selected.reduce((acc, code) => { acc[code] = true; return acc; }, {});
+  for (const sub of existing) {
+    const code = String(sub.module_code || sub.code || sub.id || '');
+    if (code && !selectedMap[code] && ['trial_active', 'trial_expiring', 'active_paid'].includes(String(sub.status || ''))) {
+      await putRecord(env, tenant, 'addon_subscriptions', Object.assign({}, sub, {
+        id: sub.id || code,
+        module_code: code,
+        status: 'inactive',
+        deactivated_at: nowIso()
+      }));
+    }
+  }
+  const saved = [];
+  for (const code of selected) {
+    saved.push(await putRecord(env, tenant, 'addon_subscriptions', {
+      id: code,
+      module_code: code,
+      status: 'active_paid',
+      activated_by: source || 'admin',
+      activated_at: nowIso()
+    }));
+  }
+  return saved;
+}
+
+async function activeTenantAddOns(env, tenant) {
+  return (await listRecords(env, tenant, 'addon_subscriptions')).filter((sub) => {
+    return ['trial_active', 'trial_expiring', 'active_paid'].includes(String(sub.status || ''));
+  });
 }
 
 async function adminDashboard(env) {
@@ -1089,6 +1124,8 @@ async function handleLocalAction(action, data, requestBody, env) {
         DB_Provider: getDb(env) ? 'd1' : 'runtime',
         Notes: data.notes || ''
       });
+      const selectedAddOns = Array.isArray(data.addOnModuleCodes) ? data.addOnModuleCodes : [];
+      const seededAddOns = await setTenantAddOns(env, store.API_Key, selectedAddOns, 'admin_provision');
       return {
         storeId: store.Store_ID,
         storeName: store.Store_Name,
@@ -1097,7 +1134,8 @@ async function handleLocalAction(action, data, requestBody, env) {
         ownerPassword: store.Owner_Password || '1234',
         trialEnd: String(store.Trial_End).slice(0, 10),
         plan: store.Plan,
-        monthlyFee: store.Monthly_Fee
+        monthlyFee: store.Monthly_Fee,
+        seededAddOns
       };
     }
 
@@ -1108,6 +1146,23 @@ async function handleLocalAction(action, data, requestBody, env) {
       const patch = Object.assign({}, data.patch || {});
       if (data.customModules) patch.Custom_Modules = JSON.stringify(data.customModules);
       return saveAdminStore(env, Object.assign({}, store, patch));
+    }
+
+    case 'adminGetStoreAddOns': {
+      requireAdmin(requestBody);
+      const store = await findAdminStore(env, data.storeId);
+      if (!store) throw new Error('Store not found');
+      return activeTenantAddOns(env, store.API_Key);
+    }
+
+    case 'adminSetStoreAddOns': {
+      requireAdmin(requestBody);
+      const store = await findAdminStore(env, data.storeId);
+      if (!store) throw new Error('Store not found');
+      const saved = await setTenantAddOns(env, store.API_Key, data.moduleCodes || data.addOnModuleCodes || [], 'admin');
+      store.Active_AddOns = JSON.stringify(saved.map((sub) => sub.module_code));
+      await saveAdminStore(env, store);
+      return { addOns: saved, store };
     }
 
     case 'adminExtendTrial': {

@@ -1156,7 +1156,7 @@ async function _startAddOnTrial(moduleCode) {
     await API.call('startTrial', { moduleCode: moduleCode });
     closeFeatureDetailModal();
     closeAddOnsPanel();
-    await _refreshOwnerAddOns({ rerender: true });
+    await _refreshOwnerAddOns({ force: true, rerender: true });
     _showToast('30-day free trial started! ', false);
   } catch(e) {
     if (btn) { btn.disabled = false; btn.textContent = ' Start 30-Day Free Trial'; }

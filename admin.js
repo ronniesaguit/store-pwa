@@ -765,6 +765,13 @@ function renderStoreDetail(idx) {
         '</div>';
     })() +
 
+    '<div class="card">' +
+    '<div class="section-title"> Store Add-On Modules</div>' +
+    '<div class="hint" style="margin-bottom:10px;">Tick add-on modules that should be active for this store. These appear in the owner dashboard after saving.</div>' +
+    '<div id="store-addons-card"><div class="muted">Loading add-ons...</div></div>' +
+    '<button class="btn btn-primary" style="margin-top:8px;" onclick="_saveStoreAddOns(\'' + st.Store_ID + '\')">Save Store Add-Ons</button>' +
+    '</div>' +
+
     _renderPlanInclusionsCard(plan) +
 
     '<div id="store-commercial-state"></div>' +
@@ -834,6 +841,7 @@ function renderStoreDetail(idx) {
     try { if (rawMods2) initMods = JSON.parse(rawMods2); } catch(e) {}
     _renderCustomModuleSelector('chg-custom-modules', initMods);
   }
+  _loadStoreAddOns(st.Store_ID, plan);
 }
 
 function _onChangePlan() {
@@ -859,6 +867,28 @@ async function _saveOwnerLogin(storeId) {
     if (idx >= 0) renderStoreDetail(idx);
   } catch(e) {
     _toast(e.message || 'Failed to save owner login', true);
+  }
+}
+
+async function _loadStoreAddOns(storeId, plan) {
+  try {
+    var active = await ADMIN_API.call('adminGetStoreAddOns', { storeId: storeId });
+    var selected = (active || []).map(function(sub) { return sub.module_code || sub.code || sub.id; }).filter(Boolean);
+    _renderAddOnSelector('store-addons-card', plan, selected);
+  } catch(e) {
+    var el = document.getElementById('store-addons-card');
+    if (el) el.innerHTML = '<div class="msg-err">Could not load add-ons: ' + _esc(e.message) + '</div>';
+  }
+}
+
+async function _saveStoreAddOns(storeId) {
+  var selected = _selectedModulesFromForm('store-addons-card');
+  try {
+    await ADMIN_API.call('adminSetStoreAddOns', { storeId: storeId, moduleCodes: selected });
+    _toast('Store add-ons saved. Ask owner to reopen or refresh the dashboard.');
+    await _refreshStores();
+  } catch(e) {
+    _toast(e.message || 'Failed to save add-ons', true);
   }
 }
 
@@ -1942,7 +1972,8 @@ async function submitCreateStore() {
     d1Binding: (document.getElementById('cs-d1-binding').value || '').trim(),
     tursoDbUrl: (document.getElementById('cs-turso-url').value || '').trim(),
     notes: (document.getElementById('cs-notes').value || '').trim(),
-    initialModuleCodes: _moduleSyncPayload(plan, _selectedModulesFromForm('cs-addons-card')).initialModuleCodes
+    initialModuleCodes: _moduleSyncPayload(plan, _selectedModulesFromForm('cs-addons-card')).initialModuleCodes,
+    addOnModuleCodes: _selectedModulesFromForm('cs-addons-card')
   };
   if (plan === 'CUSTOM') {
     var selectedMods = _selectedModulesFromForm('cs-custom-modules');
