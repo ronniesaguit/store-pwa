@@ -2,7 +2,7 @@ const LOCAL_ACTIONS = new Set([
   'adminLogin', 'adminGetDashboardData', 'adminGetStores', 'adminGetFeatureCatalog',
   'adminGetStoreCommercialState', 'adminSuggestPrice', 'adminProvisionStore',
   'adminUpdateStore', 'adminExtendTrial', 'adminRecordPayment',
-  'adminSuspendStore', 'adminActivateStore', 'adminMigrateStore',
+  'adminSuspendStore', 'adminActivateStore', 'adminArchiveStore', 'adminReactivateStore', 'adminMigrateStore',
   'adminRepairStoreModule', 'adminGetStoreActivityLog', 'adminGetStoreCustomRoles',
   'adminCopyStoreToDedicatedDb', 'adminSavePlatformSettings', 'adminChangePassword',
   'adminGetAllStoreHealth', 'adminGetStoreSnapshot', 'adminGetUnreadCount',
@@ -1196,11 +1196,17 @@ async function handleLocalAction(action, data, requestBody, env) {
     }
 
     case 'adminSuspendStore':
-    case 'adminActivateStore': {
+    case 'adminActivateStore':
+    case 'adminArchiveStore':
+    case 'adminReactivateStore': {
       requireAdmin(requestBody);
       const store = await findAdminStore(env, data.storeId);
       if (!store) throw new Error('Store not found');
-      store.Status = action === 'adminSuspendStore' ? 'SUSPENDED' : 'ACTIVE';
+      store.Status = action === 'adminSuspendStore' ? 'SUSPENDED'
+        : action === 'adminArchiveStore' ? 'ARCHIVED'
+          : 'ACTIVE';
+      if (action === 'adminArchiveStore') store.Archived_At = nowIso();
+      if (action === 'adminReactivateStore' || action === 'adminActivateStore') store.Reactivated_At = nowIso();
       return saveAdminStore(env, store);
     }
 

@@ -403,6 +403,7 @@ function _storeStatus(store) {
   var trial   = store.Trial_End            ? new Date(String(store.Trial_End))            : null;
   var expires = store.Subscription_Expires ? new Date(String(store.Subscription_Expires)) : null;
   if (String(store.Status).toUpperCase() === 'SUSPENDED') return 'SUSPENDED';
+  if (String(store.Status).toUpperCase() === 'ARCHIVED') return 'ARCHIVED';
   if (trial   && now <= trial)   return 'TRIAL';
   if (expires && now <= expires) return 'ACTIVE';
   return 'EXPIRED';
@@ -609,19 +610,23 @@ function adminLogout() {
 
 function renderDashboard() {
   var stores   = adminState.stores;
-  var statuses = stores.map(_storeStatus);
+  var activeStores = stores.filter(function(st) { return _storeStatus(st) !== 'ARCHIVED'; });
+  var archivedStores = stores.filter(function(st) { return _storeStatus(st) === 'ARCHIVED'; });
+  var statuses = activeStores.map(_storeStatus);
   var counts   = {
-    total:     stores.length,
+    total:     activeStores.length,
     trial:     statuses.filter(function(s) { return s === 'TRIAL'; }).length,
     active:    statuses.filter(function(s) { return s === 'ACTIVE'; }).length,
     expired:   statuses.filter(function(s) { return s === 'EXPIRED'; }).length,
-    suspended: statuses.filter(function(s) { return s === 'SUSPENDED'; }).length
+    suspended: statuses.filter(function(s) { return s === 'SUSPENDED'; }).length,
+    archived:  archivedStores.length
   };
-  var mrr = stores.reduce(function(sum, st) {
+  var mrr = activeStores.reduce(function(sum, st) {
     return sum + (Number(st.Monthly_Fee) || 0);
   }, 0);
 
-  var storeRows = stores.map(function(st, i) {
+  var storeRows = activeStores.map(function(st) {
+    var i = adminState.stores.indexOf(st);
     var status = _storeStatus(st);
     var autoRenew = String(st.Auto_Renew_Trial || '').toLowerCase() === 'true';
     var sub = st.Trial_End && status === 'TRIAL'
@@ -639,6 +644,20 @@ function renderDashboard() {
       '<input type="checkbox" ' + (autoRenew ? 'checked' : '') + ' onchange="_toggleAutoRenewTrial(event,\'' + st.Store_ID + '\')"> Auto trial</label>' +
       '</div></div></div>';
   }).join('');
+  var archivedOptions = archivedStores.map(function(st) {
+    return '<option value="' + _esc(st.Store_ID) + '">' + _esc(st.Store_Name || st.Store_ID) + ' - ' + _esc(st.Owner_Name || 'No owner') + '</option>';
+  }).join('');
+  var archivePanel = '<div class="card">' +
+    '<div class="section-title">Archived Stores (' + archivedStores.length + ')</div>' +
+    '<div class="hint" style="margin-bottom:8px;">Archived stores are hidden from the active dashboard. Reactivate to continue where the store left off.</div>' +
+    (archivedStores.length
+      ? '<select id="archived-store-select" style="width:100%;padding:10px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:8px;"><option value="">Select archived store</option>' + archivedOptions + '</select>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+        '<button class="btn btn-secondary" style="margin:0;" onclick="_openArchivedStore()">Open</button>' +
+        '<button class="btn btn-success" style="margin:0;" onclick="_reactivateArchivedStore()">Reactivate</button>' +
+        '</div>'
+      : '<div class="muted">No archived stores.</div>') +
+    '</div>';
 
   _app('<div class="screen">' +
     _topbar('HubSuite Admin') +
@@ -667,9 +686,11 @@ function renderDashboard() {
      '</div>' +
 
     '<div class="card">' +
-    '<div class="section-title">All Stores</div>' +
-    (storeRows || '<div class="muted">No stores yet. Create one above.</div>') +
-    '</div></div>');
+    '<div class="section-title">Active Stores</div>' +
+    (storeRows || '<div class="muted">No active stores. Create one above or reactivate an archived store.</div>') +
+    '</div>' +
+    archivePanel +
+    '</div>');
 }
 
 //  Store Detail 
@@ -784,9 +805,12 @@ function renderStoreDetail(idx) {
     //  Suspend / Activate 
     '<div class="card">' +
     '<div class="section-title"> Store Status</div>' +
-    (status === 'SUSPENDED'
-      ? '<button class="btn btn-success" onclick="_toggleStatus(\'' + st.Store_ID + '\',\'ACTIVE\')"> Activate Store</button>'
-      : '<button class="btn btn-danger"  onclick="_toggleStatus(\'' + st.Store_ID + '\',\'SUSPENDED\')"> Suspend Store</button>') +
+    (status === 'ARCHIVED'
+      ? '<button class="btn btn-success" onclick="_reactivateStore(\'' + st.Store_ID + '\')">Reactivate Store</button>'
+      : (status === 'SUSPENDED'
+        ? '<button class="btn btn-success" onclick="_toggleStatus(\'' + st.Store_ID + '\',\'ACTIVE\')"> Activate Store</button>'
+        : '<button class="btn btn-danger"  onclick="_toggleStatus(\'' + st.Store_ID + '\',\'SUSPENDED\')"> Suspend Store</button>') +
+        '<button class="btn btn-secondary" style="margin-top:8px;" onclick="_archiveStore(\'' + st.Store_ID + '\')">Archive Store</button>') +
     '</div>' +
 
     //  Repair Toolkit 
@@ -1025,6 +1049,43 @@ async function _toggleStatus(storeId, newStatus) {
     await _refreshStores();
     renderDashboard();
   } catch(e) { _toast(e.message, true); }
+}
+
+async function _archiveStore(storeId) {
+  if (!confirm('Archive this store? It will be hidden from the active dashboard but can be reactivated later.')) return;
+  try {
+    await ADMIN_API.call('adminArchiveStore', { storeId: storeId });
+    _toast('Store archived');
+    await _refreshStores();
+    renderDashboard();
+  } catch(e) { _toast(e.message || 'Could not archive store', true); }
+}
+
+async function _reactivateStore(storeId) {
+  try {
+    await ADMIN_API.call('adminReactivateStore', { storeId: storeId });
+    _toast('Store reactivated');
+    await _refreshStores();
+    renderDashboard();
+  } catch(e) { _toast(e.message || 'Could not reactivate store', true); }
+}
+
+function _selectedArchivedStoreId() {
+  var el = document.getElementById('archived-store-select');
+  return el ? el.value : '';
+}
+
+function _openArchivedStore() {
+  var storeId = _selectedArchivedStoreId();
+  if (!storeId) { _toast('Select an archived store first', true); return; }
+  var idx = adminState.stores.findIndex(function(st) { return String(st.Store_ID) === String(storeId); });
+  if (idx >= 0) renderStoreDetail(idx);
+}
+
+async function _reactivateArchivedStore() {
+  var storeId = _selectedArchivedStoreId();
+  if (!storeId) { _toast('Select an archived store first', true); return; }
+  await _reactivateStore(storeId);
 }
 
 async function _migrateStore(storeId) {
