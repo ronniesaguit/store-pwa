@@ -57,6 +57,10 @@ const DB = {
     return this._run(storeName, 'readwrite', function(s) { return s.add(item); });
   },
 
+  delete(storeName, key) {
+    return this._run(storeName, 'readwrite', function(s) { return s.delete(key); });
+  },
+
   // Products
   async saveProducts(products) {
     await this.clear('products');
@@ -90,5 +94,27 @@ const DB = {
   async markSynced(id) {
     var item = await this.get('syncQueue', id);
     if (item) { item.synced = true; await this.put('syncQueue', item); }
+  },
+  async deleteSyncItem(id) {
+    return this.delete('syncQueue', id);
+  },
+  async getSyncQueueStats() {
+    var all = await this.getAll('syncQueue');
+    var pending = all.filter(function(i) { return !i.synced; }).length;
+    var synced = all.length - pending;
+    return { total: all.length, pending: pending, synced: synced };
+  },
+  async deleteSyncQueueRange(fromMs, toMs, includePending) {
+    var all = await this.getAll('syncQueue');
+    var removed = 0;
+    for (var i = 0; i < all.length; i++) {
+      var item = all[i];
+      var ts = Number(item.timestamp || 0);
+      if (!ts || ts < fromMs || ts > toMs) continue;
+      if (!includePending && !item.synced) continue;
+      await this.deleteSyncItem(item.id);
+      removed++;
+    }
+    return removed;
   }
 };

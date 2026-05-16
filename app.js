@@ -123,15 +123,19 @@ function routeToDashboard() {
   else                                 renderViewerDashboard();
 }
 
-async function syncWhenOnline() {
+async function _syncOfflineQueue(options) {
+  options = options || {};
   if (!API.token) return;
   try {
     var queue = await DB.getSyncQueue();
+    if (!queue.length) return;
+    if (typeof updateSyncIndicator === 'function') updateSyncIndicator('syncing');
     for (var i = 0; i < queue.length; i++) {
       var item = queue[i];
       try {
         await API.call(item.action, item.data);
         await DB.markSynced(item.id);
+        if (DB.deleteSyncItem) await DB.deleteSyncItem(item.id);
       } catch(e) { console.warn('Sync item failed:', e); }
     }
     // Refresh in one batch call
@@ -140,8 +144,17 @@ async function syncWhenOnline() {
     state.categories = syncBoot.categories || [];
     await DB.saveProducts(state.products);
     await DB.saveCategories(state.categories);
-    _showToast('Synced!', false);
-  } catch(e) { console.warn('Sync error:', e); }
+    try { localStorage.setItem('last_sync_at', Date.now().toString()); } catch(e) {}
+    if (typeof updateSyncIndicator === 'function') updateSyncIndicator('online');
+    if (!options.silent) _showToast('Offline records synced!', false);
+  } catch(e) {
+    if (typeof updateSyncIndicator === 'function') updateSyncIndicator('offline');
+    console.warn('Sync error:', e);
+  }
+}
+
+async function syncWhenOnline() {
+  return _syncOfflineQueue({});
 }
 
 //  Helpers 
@@ -1105,6 +1118,7 @@ function renderOwnerDashboard(msg) {
   addMoreModule('hardware_profiles', 'Hardware', 'renderHardwareSetup()');
   addMoreModule('sandbox_mode', 'Sandbox', 'renderSandboxMode()');
   addMoreModule('support', 'Help', 'renderSupport()');
+  moreModules.push({ label: 'Phone Storage', action: 'renderPhoneStorage()' });
 
   var btns = '';
   if (_hasModule('quick_sell')) btns += _ownerSimpleButton('Quick Sell', 'renderQuickSell()');
@@ -5800,7 +5814,7 @@ function _renderMessagingHub(staff, messages, supportMessages) {
     '</div>' +
     '<div style="padding:12px;display:grid;gap:10px;">' +
     '<div class="field" style="margin:0;"><label>Send To</label><select id="msg-recipient">' + _messageRecipientOptions(staff) + '</select></div>' +
-    '<div class="field" style="margin:0;"><label>Message</label><textarea id="msg-body" rows="3" placeholder="Type your message" style="resize:vertical;min-height:72px;"></textarea></div>' +
+    '<div class="field" style="margin:0;"><label>Message</label><textarea id="msg-body" rows="3" placeholder="Type your message" style="box-sizing:border-box;width:100%;display:block;resize:vertical;min-height:72px;padding:12px;border:1px solid #e5e7eb;border-radius:8px;font-size:16px;"></textarea></div>' +
     '<button class="btn btn-primary" onclick="sendMessagingHubMessage()" style="margin:0;">Send Message</button>' +
     '</div>' +
     '</div>' +
@@ -7732,7 +7746,68 @@ async function renderFullSettings() {
   } catch(e) {
     document.getElementById('app').innerHTML =
       '<div class="screen"><div class="topbar"><div class="title" style="margin:0;"> Settings</div><button class="small-btn" onclick="goHome()"> Home</button></div>' +
-      '<div class="card"><div class="message message-error">' + e.message + '</div></div></div>';
+      '<div class="card"><div class="message message-error">' + e.message + '</div></div>' +
+      _phoneStorageCardHtml() + '</div>';
+    _loadPhoneStorageSummary();
+  }
+}
+
+function _phoneStorageCardHtml() {
+  return '<div class="card">' +
+    '<div class="section-title" style="margin-bottom:8px;"> Phone Storage</div>' +
+    '<div class="hint" style="margin-bottom:10px;">This deletes old offline sync records stored on this phone only. It does not delete the live online database.</div>' +
+    '<div id="phone-storage-summary" class="hint" style="margin-bottom:10px;">Checking local storage...</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+    '<div class="field"><label>From Date</label><input id="local-clean-from" type="date"></div>' +
+    '<div class="field"><label>To Date</label><input id="local-clean-to" type="date"></div>' +
+    '</div>' +
+    '<label style="display:flex;align-items:flex-start;gap:8px;margin:0 0 10px;font-size:12px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px;">' +
+    '<input type="checkbox" id="local-clean-pending" style="margin-top:2px;"> Include unsynced pending records in this date range</label>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+    '<button class="btn btn-secondary" onclick="syncWhenOnline()">Sync Now</button>' +
+    '<button class="btn btn-danger" onclick="deleteLocalPhoneDataRange()">Delete From Phone</button>' +
+    '</div>' +
+    '</div>';
+}
+
+function renderPhoneStorage() {
+  document.getElementById('app').innerHTML =
+    '<div class="screen">' +
+    '<div class="topbar"><div class="title" style="margin:0;"> Phone Storage</div><button class="small-btn" onclick="goHome()"> Home</button></div>' +
+    _phoneStorageCardHtml() +
+    '</div>';
+  _loadPhoneStorageSummary();
+}
+
+async function _loadPhoneStorageSummary() {
+  var el = document.getElementById('phone-storage-summary');
+  if (!el || !DB.getSyncQueueStats) return;
+  try {
+    var stats = await DB.getSyncQueueStats();
+    el.innerHTML = 'Offline queue on this phone: <strong>' + stats.total + '</strong> record(s). Pending upload: <strong>' + stats.pending + '</strong>. Already synced/old: <strong>' + stats.synced + '</strong>.';
+  } catch(e) {
+    el.textContent = 'Local storage summary is not available on this device.';
+  }
+}
+
+async function deleteLocalPhoneDataRange() {
+  var from = (document.getElementById('local-clean-from') || {}).value || '';
+  var to = (document.getElementById('local-clean-to') || {}).value || '';
+  var includePending = !!((document.getElementById('local-clean-pending') || {}).checked);
+  if (!from || !to) { _showToast('Choose From Date and To Date first', true); return; }
+  var fromMs = new Date(from + 'T00:00:00').getTime();
+  var toMs = new Date(to + 'T23:59:59.999').getTime();
+  if (!isFinite(fromMs) || !isFinite(toMs) || fromMs > toMs) { _showToast('Invalid date range', true); return; }
+  var warning = includePending
+    ? 'This will also delete pending unsynced records from this phone. Continue?'
+    : 'This will delete synced offline records from this phone for the selected dates. Continue?';
+  if (!confirm(warning)) return;
+  try {
+    var removed = await DB.deleteSyncQueueRange(fromMs, toMs, includePending);
+    _showToast('Deleted ' + removed + ' local record(s) from this phone.', false);
+    _loadPhoneStorageSummary();
+  } catch(e) {
+    _showToast('Delete failed: ' + (e.message || String(e)), true);
   }
 }
 
@@ -7818,6 +7893,7 @@ function _renderFullSettingsUI(settings) {
     '<div class="field"><label>Printer Type</label><select id="set-printer"><option value="none"' + (!print.default_printer_type||print.default_printer_type==='none'?' selected':'') + '>None (screen only)</option><option value="bluetooth_thermal"' + (print.default_printer_type==='bluetooth_thermal'?' selected':'') + '>Bluetooth Thermal</option><option value="wifi_printer"' + (print.default_printer_type==='wifi_printer'?' selected':'') + '>WiFi Printer</option></select></div>' +
     '<button class="btn btn-secondary" onclick="savePrintingSettings()">Save Printing</button>' +
     '</div>' +
+    _phoneStorageCardHtml() +
 
     '<div class="card">' +
     '<div class="section-title" style="margin-bottom:8px;"> Security</div>' +
@@ -7827,6 +7903,7 @@ function _renderFullSettingsUI(settings) {
     '<button class="btn btn-secondary" onclick="changePasswordFromSettings()">Change Password</button>' +
     '</div>' +
     '</div>';
+  _loadPhoneStorageSummary();
 }
 
 async function saveBusinessProfile() {
@@ -8015,18 +8092,22 @@ async function _loadNotifBadge(buttonId) {
 
 //  Sync Functions 
 
+function updateSyncIndicator(status) {
+  var el = document.getElementById('sync-indicator');
+  if (!el) return;
+  var map = {
+    online:  { text: 'Online',  bg: '#dcfce7', color: '#166534' },
+    offline: { text: 'Offline', bg: '#fee2e2', color: '#991b1b' },
+    syncing: { text: 'Syncing', bg: '#fef3c7', color: '#92400e' }
+  };
+  var item = map[status] || map.online;
+  el.textContent = item.text;
+  el.style.background = item.bg;
+  el.style.color = item.color;
+}
+
 async function syncWhenOnline() {
-  if (!API.token) return; // No session
-  try {
-    // Sync pending sales or data
-    updateSyncIndicator('syncing');
-    // Example: Sync any queued changes
-    await DB.syncPending(); // Placeholder
-    updateSyncIndicator('online');
-  } catch (e) {
-    console.warn('Sync failed:', e);
-    updateSyncIndicator('offline');
-  }
+  return _syncOfflineQueue({});
 }
 
 //  Start 
@@ -8035,7 +8116,19 @@ window.addEventListener('DOMContentLoaded', function() {
   boot().catch(function(err) {
     console.error('Boot error:', err);
     renderLogin('Startup error: ' + err.message);
+  }).then(function() {
+    if (navigator.onLine) setTimeout(function() { syncWhenOnline(); }, 800);
   });
+});
+
+window.addEventListener('online', function() {
+  state.isOffline = false;
+  syncWhenOnline();
+});
+
+window.addEventListener('offline', function() {
+  state.isOffline = true;
+  if (typeof updateSyncIndicator === 'function') updateSyncIndicator('offline');
 });
 
 
