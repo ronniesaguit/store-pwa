@@ -505,6 +505,64 @@ function openDonatePanel() {
     '</div></div>';
 }
 
+function _ownerSubscriptionInfo() {
+  var session = state.session || {};
+  var plan = session.plan || {};
+  return {
+    autoRenewTrial: session.autoRenewTrial === true || String(session.autoRenewTrial || '').toLowerCase() === 'true',
+    monthlyFee: Number(plan.base_price || plan.monthlyFee || 0) || 0,
+    expires: session.subscriptionExpires || session.trialEnd || ''
+  };
+}
+
+function openSubscriptionFeePanel() {
+  var info = _ownerSubscriptionInfo();
+  var months = 1;
+  function amount() { return info.monthlyFee * months; }
+  var modal = document.getElementById('donate-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'donate-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.62);z-index:970;display:flex;align-items:flex-end;justify-content:center;padding:12px;';
+    modal.addEventListener('click', function(e) { if (e.target === modal) closeDonatePanel(); });
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML =
+    '<div style="width:100%;max-width:430px;background:#ecfdf5;border:1px solid #86efac;border-radius:18px;box-shadow:0 22px 60px rgba(0,0,0,.28);overflow:hidden;">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;background:#16a34a;color:#fff;">' +
+    '<div style="font-size:16px;font-weight:900;">Subscription Fee</div>' +
+    '<button type="button" onclick="closeDonatePanel()" style="width:36px;height:36px;border:0;border-radius:10px;background:rgba(255,255,255,.18);color:#fff;font-size:22px;line-height:1;cursor:pointer;">&times;</button>' +
+    '</div>' +
+    '<div style="padding:16px;text-align:center;color:#14532d;">' +
+    '<div style="font-size:13px;line-height:1.45;margin-bottom:12px;">The no. of months to pay</div>' +
+    '<div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;">' +
+    '<button type="button" onclick="_setSubscriptionMonths(-1)" style="width:38px;height:38px;border:1px solid #86efac;border-radius:10px;background:#fff;color:#166534;font-weight:900;">-</button>' +
+    '<input id="sub-months" type="number" min="1" value="1" oninput="_updateSubscriptionAmount()" style="width:82px;text-align:center;padding:9px;border:1px solid #86efac;border-radius:10px;font-weight:900;color:#14532d;">' +
+    '<button type="button" onclick="_setSubscriptionMonths(1)" style="width:38px;height:38px;border:1px solid #86efac;border-radius:10px;background:#fff;color:#166534;font-weight:900;">+</button>' +
+    '</div>' +
+    '<div style="font-size:13px;margin-bottom:8px;">Monthly fee: <strong>' + _money(info.monthlyFee) + '</strong></div>' +
+    '<div style="font-size:18px;font-weight:900;margin-bottom:12px;">Amount to pay: <span id="sub-amount">' + _money(amount()) + '</span></div>' +
+    '<div style="font-size:12px;line-height:1.45;margin-bottom:12px;">Send payment to GCash <strong>' + HUB_GCASH_NUMBER + '</strong> (' + HUB_GCASH_NAME + '). After paying, send the transaction number and amount paid to Admin through Messages / Help.</div>' +
+    '<img src="./assets/gcash-qr.jpg" alt="GCash QR" style="max-width:220px;width:100%;border-radius:16px;border:1px solid #d1d5db;background:#fff;padding:10px;margin-bottom:12px;">' +
+    '<button class="btn btn-primary" style="background:#16a34a;margin-bottom:8px;" onclick="openGcashPayment()">Open GCash</button>' +
+    '<button class="btn btn-secondary" style="margin-bottom:0;" onclick="closeDonatePanel();renderSupport()">Message Admin</button>' +
+    '</div></div>';
+}
+
+function _setSubscriptionMonths(delta) {
+  var el = document.getElementById('sub-months');
+  if (!el) return;
+  el.value = Math.max(1, (Number(el.value) || 1) + delta);
+  _updateSubscriptionAmount();
+}
+
+function _updateSubscriptionAmount() {
+  var info = _ownerSubscriptionInfo();
+  var months = Math.max(1, Number((document.getElementById('sub-months') || {}).value) || 1);
+  var out = document.getElementById('sub-amount');
+  if (out) out.textContent = _money(info.monthlyFee * months);
+}
+
 function closeDonatePanel() {
   var modal = document.getElementById('donate-modal');
   if (modal) modal.remove();
@@ -976,10 +1034,15 @@ function renderOwnerDashboard(msg) {
   if (_hasModule('reports')) btns += _ownerSimpleButton('Report', 'renderReports()');
   btns += _ownerMoreModulesSelect(moreModules);
   btns += _ownerSimpleButton('Explore Add-Ons', 'renderAddOnsPanel()', 'border:2px dashed rgba(255,255,255,0.28);background:rgba(255,255,255,0.06);');
-  var paymentCard =
-    '<div style="display:flex;justify-content:center;margin:4px 0 10px;">' +
-    '<button type="button" onclick="openDonatePanel()" style="border:1px solid #86efac;background:#ecfdf5;color:#166534;border-radius:999px;padding:9px 16px;font-size:12px;font-weight:900;cursor:pointer;">Donate</button>' +
-    '</div>';
+  var subInfo = _ownerSubscriptionInfo();
+  var paymentCard = subInfo.autoRenewTrial
+    ? '<div style="display:flex;justify-content:center;margin:4px 0 10px;">' +
+      '<button type="button" onclick="openDonatePanel()" style="border:1px solid #86efac;background:#ecfdf5;color:#166534;border-radius:999px;padding:9px 16px;font-size:12px;font-weight:900;cursor:pointer;">Donate</button>' +
+      '</div>'
+    : '<div style="text-align:center;margin:4px 0 10px;">' +
+      '<button type="button" onclick="openSubscriptionFeePanel()" style="border:1px solid #86efac;background:#ecfdf5;color:#166534;border-radius:999px;padding:9px 16px;font-size:12px;font-weight:900;cursor:pointer;">Subscription Fee</button>' +
+      '<div style="font-size:11px;color:#64748b;margin-top:4px;">' + (subInfo.expires ? 'Due / expires: ' + _escHtml(String(subInfo.expires).slice(0,10)) : 'No due date set') + '</div>' +
+      '</div>';
 
   document.getElementById('app').innerHTML =
     '<div class="screen">' +

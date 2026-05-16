@@ -623,6 +623,7 @@ function renderDashboard() {
 
   var storeRows = stores.map(function(st, i) {
     var status = _storeStatus(st);
+    var autoRenew = String(st.Auto_Renew_Trial || '').toLowerCase() === 'true';
     var sub = st.Trial_End && status === 'TRIAL'
       ? 'Trial ends ' + String(st.Trial_End).substring(0, 10)
       : st.Subscription_Expires
@@ -632,7 +633,11 @@ function renderDashboard() {
       '<div style="display:flex;justify-content:space-between;align-items:center;">' +
       '<div><div style="font-size:14px;font-weight:bold;">' + st.Store_Name + '</div>' +
         '<div class="muted" style="font-size:12px;">' + (st.Owner_Name || 'No owner') + '  ' + _esc(_planLabel(st.Plan || '')) + '  ' + sub + '</div></div>' +
-      _badgeHtml(status) + '</div></div>';
+      '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">' +
+      _badgeHtml(status) +
+      '<label onclick="event.stopPropagation();" style="display:flex;align-items:center;gap:5px;font-size:11px;color:#475569;font-weight:800;">' +
+      '<input type="checkbox" ' + (autoRenew ? 'checked' : '') + ' onchange="_toggleAutoRenewTrial(event,\'' + st.Store_ID + '\')"> Auto trial</label>' +
+      '</div></div></div>';
   }).join('');
 
   _app('<div class="screen">' +
@@ -927,6 +932,22 @@ async function _recordPayment(storeId) {
     await _refreshStores();
     renderDashboard();
   } catch(e) { _toast(e.message, true); }
+}
+
+async function _toggleAutoRenewTrial(event, storeId) {
+  var checked = !!(event && event.target && event.target.checked);
+  try {
+    await ADMIN_API.call('adminUpdateStore', {
+      storeId: storeId,
+      patch: { Auto_Renew_Trial: String(checked) }
+    });
+    await _refreshStores();
+    _toast(checked ? 'Auto-renew trial enabled' : 'Normal monthly subscription enabled');
+    renderDashboard();
+  } catch(e) {
+    if (event && event.target) event.target.checked = !checked;
+    _toast(e.message || 'Could not update trial setting', true);
+  }
 }
 
 async function _changePlan(storeId) {

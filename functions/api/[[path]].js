@@ -340,6 +340,9 @@ async function ownerStoreProfile(env, tenant) {
     ownerName: matched.Owner_Name || 'Store Owner',
     ownerUsername: creds.username,
     ownerEmail: matched.Owner_Email || '',
+    autoRenewTrial: String(matched.Auto_Renew_Trial || matched.autoRenewTrial || '').toLowerCase() === 'true',
+    trialEnd: matched.Trial_End || '',
+    subscriptionExpires: matched.Subscription_Expires || '',
     plan: {
       id: plan,
       name: plan,
@@ -365,6 +368,9 @@ async function ownerBootData(env, tenant) {
     },
     plan: profile.plan,
     inTrial: profile.inTrial,
+    autoRenewTrial: profile.autoRenewTrial,
+    trialEnd: profile.trialEnd,
+    subscriptionExpires: profile.subscriptionExpires,
     manifest: profile.manifest,
     storeName: profile.storeName,
     ownerName: profile.ownerName
@@ -377,6 +383,9 @@ async function ownerBootData(env, tenant) {
     ownerName: profile.ownerName,
     plan: profile.plan,
     inTrial: profile.inTrial,
+    autoRenewTrial: profile.autoRenewTrial,
+    trialEnd: profile.trialEnd,
+    subscriptionExpires: profile.subscriptionExpires,
     manifest: profile.manifest,
     user: session.user,
     paymentInfo: {
@@ -1115,6 +1124,7 @@ async function handleLocalAction(action, data, requestBody, env) {
         Plan: plan,
         Trial_End: addDays(trialDays),
         Subscription_Expires: addDays(30),
+        Auto_Renew_Trial: String(data.autoRenewTrial === true || data.autoRenewTrial === 'true'),
         Monthly_Fee: Number(data.monthlyFee || def.fee || 0),
         Max_Users: data.maxUsers || def.users,
         Max_Products: data.maxProducts || def.products,
