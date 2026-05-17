@@ -5920,7 +5920,7 @@ function _renderSupportScreen(msgs) {
 
     '<div style="background:#fff;border-radius:0;padding:12px;margin-bottom:0;">' +
     '<div style="font-size:12px;color:#6b7280;text-align:center;margin-bottom:8px;">Chat with HubSuite Admin  ' +
-    '<strong>09163561251</strong> (GCash/Viber)</div>' +
+    '<strong>09177105930</strong> (GCash/Viber)</div>' +
     '</div>' +
 
     '<div id="support-msgs" style="padding:12px;min-height:200px;">' +
@@ -6004,7 +6004,7 @@ function showNoStoreKey() {
       'margin-bottom:12px;box-sizing:border-box;">' +
     '<button class="btn btn-primary" onclick="_applyStoreKey()">Connect Store</button>' +
     '<div class="muted" style="margin-top:16px;font-size:12px;">Your store key was provided by HubSuite when your store was created.<br>' +
-    'Contact <strong>09163561251</strong> (GCash/Viber) for assistance.</div>' +
+    'Contact <strong>09177105930</strong> (GCash/Viber) for assistance.</div>' +
     '</div></div>';
 }
 
