@@ -5995,16 +5995,16 @@ function showNoStoreKey() {
     '<div class="screen"><div class="card" style="padding:18px;">' +
     '<div style="text-align:center;margin-bottom:18px;">' +
     '<h2 style="margin:0 0 8px;">HubSuite</h2>' +
-    '<div class="muted" style="font-size:13px;">Create your store account. The store key is generated automatically.</div>' +
+    '<div class="muted" style="font-size:13px;">Create your business account. Your access key is generated automatically.</div>' +
     '</div>' +
-    '<div class="title" style="font-size:20px;margin-bottom:4px;">Register New Store</div>' +
+    '<div class="title" style="font-size:20px;margin-bottom:4px;">Register New Business</div>' +
     '<div class="muted" style="font-size:13px;margin-bottom:14px;">For new owners: fill this up once, then you can log in immediately.</div>' +
-    '<div class="field"><label>Store Name</label><input id="reg-store-name" placeholder="e.g. Vina Sari-sari Store"></div>' +
-    '<div class="field"><label>Type of Store / Business</label><select id="reg-business-type" onchange="_previewPublicRegisterPlan()">' + _publicBusinessTypeOptions() + '</select></div>' +
+    '<div class="field"><label>Business Name</label><input id="reg-store-name" placeholder="e.g. Vina Sari-sari Business"></div>' +
+    '<div class="field"><label>Type of Business</label><select id="reg-business-type" onchange="_previewPublicRegisterPlan()">' + _publicBusinessTypeOptions() + '</select></div>' +
     '<div id="reg-plan-preview" class="message message-ok" style="font-size:12px;margin-bottom:12px;">Recommended plan: Negosyo Hub</div>' +
     '<div class="field"><label>Username</label><input id="reg-username" autocomplete="username" placeholder="Owner username"></div>' +
     '<div class="field"><label>Password</label><input id="reg-password" type="password" autocomplete="new-password" placeholder="At least 4 characters"></div>' +
-    '<button class="btn btn-primary" onclick="submitPublicStoreRegistration()">Register Store</button>' +
+    '<button class="btn btn-primary" onclick="submitPublicStoreRegistration()">Register Business</button>' +
     '</div></div>';
   _previewPublicRegisterPlan();
 }
@@ -6018,16 +6018,16 @@ function _applyStoreKey() {
 
 function _publicBusinessTypeOptions() {
   var rows = [
-    ['', 'Choose your type of business', ''],
-    ['sari_sari', 'Sari-sari Store', 'NEGOSYO_HUB'],
-    ['small_retail', 'Small Retail Store', 'NEGOSYO_HUB'],
+    ['', 'Choose your type of Business', ''],
+    ['sari_sari', 'Sari-sari Business', 'NEGOSYO_HUB'],
+    ['small_retail', 'Small Retail Business', 'NEGOSYO_HUB'],
     ['online_seller', 'Online Seller', 'NEGOSYO_HUB'],
     ['food_stall', 'Food Stall / Eatery', 'NEGOSYO_HUB'],
     ['solo_service', 'Solo Service Business', 'NEGOSYO_HUB'],
     ['grocery', 'Grocery / Mini Mart', 'BUSINESS_HUB'],
-    ['hardware', 'Hardware Store', 'BUSINESS_HUB'],
+    ['hardware', 'Hardware Business', 'BUSINESS_HUB'],
     ['agri_products', 'Agricultural Products', 'BUSINESS_HUB'],
-    ['pharmacy', 'Pharmacy / Health Store', 'BUSINESS_HUB'],
+    ['pharmacy', 'Pharmacy / Health Business', 'BUSINESS_HUB'],
     ['salon', 'Salon / Personal Services', 'BUSINESS_HUB'],
     ['repair_service', 'Repair / Technical Services', 'BUSINESS_HUB'],
     ['rental', 'Rentals', 'BUSINESS_HUB'],
@@ -6049,7 +6049,7 @@ function _previewPublicRegisterPlan() {
   var opt = sel.options[sel.selectedIndex];
   var plan = opt ? opt.getAttribute('data-plan') : 'NEGOSYO_HUB';
   if (!plan) {
-    out.innerHTML = 'Please choose your type of business.';
+    out.innerHTML = 'Please choose your type of Business.';
     return;
   }
   var label = plan === 'NEXORA_HUB' ? 'Nexora Hub' : (plan === 'BUSINESS_HUB' ? 'Business Hub' : 'Negosyo Hub');
@@ -6061,12 +6061,12 @@ async function submitPublicStoreRegistration() {
   var businessType = ((document.getElementById('reg-business-type') || {}).value || '').trim();
   var username = ((document.getElementById('reg-username') || {}).value || '').trim();
   var password = ((document.getElementById('reg-password') || {}).value || '');
-  if (!storeName) { _showToast('Store name is required', true); return; }
+  if (!storeName) { _showToast('Business name is required', true); return; }
   if (!businessType) { _showToast('Business type is required', true); return; }
   if (!username) { _showToast('Username is required', true); return; }
   if (password.length < 4) { _showToast('Password must be at least 4 characters', true); return; }
 
-  showLoading('Registering store');
+  showLoading('Registering business');
   try {
     var result = await API.call('publicRegisterStore', {
       storeName: storeName,

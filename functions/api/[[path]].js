@@ -186,14 +186,14 @@ function businessTypePlan(type) {
 
 function businessTypeLabel(type) {
   const labels = {
-    sari_sari: 'Sari-sari Store',
-    small_retail: 'Small Retail Store',
+    sari_sari: 'Sari-sari Business',
+    small_retail: 'Small Retail Business',
     grocery: 'Grocery / Mini Mart',
-    hardware: 'Hardware Store',
+    hardware: 'Hardware Business',
     agri_products: 'Agricultural Products',
     food_stall: 'Food Stall / Eatery',
     restaurant: 'Restaurant / Cafe',
-    pharmacy: 'Pharmacy / Health Store',
+    pharmacy: 'Pharmacy / Health Business',
     salon: 'Salon / Personal Services',
     repair_service: 'Repair / Technical Services',
     rental: 'Rentals',
@@ -666,7 +666,7 @@ async function handleLocalAction(action, data, requestBody, env) {
       const businessType = String(data.businessType || '').trim();
       const username = String(data.username || '').trim();
       const password = String(data.password || '');
-      if (!storeName) throw new Error('Store name is required');
+      if (!storeName) throw new Error('Business name is required');
       if (!businessType) throw new Error('Business type is required');
       if (!username) throw new Error('Username is required');
       if (password.length < 4) throw new Error('Password must be at least 4 characters');
