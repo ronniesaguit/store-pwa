@@ -2625,9 +2625,7 @@ async function renderAddProductForm(msg, scannedCode, existingImage) {
 
 function _productExamplesHtml() {
   var examples = [
-    { key: 'rice', label: 'Example 1: Rice', sub: 'Category: Grocery', color: '#166534' },
-    { key: 'soap', label: 'Example 2: Dish Soap', sub: 'Category: Household', color: '#1d4ed8' },
-    { key: 'vitamin', label: 'Example 3: Vitamin C', sub: 'Category: Health', color: '#9a3412' }
+    { key: 'rice', label: 'Sample: Rice', sub: 'Category: Grocery', color: '#166534' }
   ];
   return '<div class="field"><label>Product Examples</label>' +
     '<div style="display:grid;grid-template-columns:1fr;gap:8px;">' +
