@@ -5992,7 +5992,7 @@ function _escHtml(str) {
 
 function showNoStoreKey() {
   document.getElementById('app').innerHTML =
-    '<div class="screen"><div class="card" style="text-align:center;padding:32px 20px;">' +
+    '<div class="screen"><div class="card" style="text-align:center;padding:28px 18px;">' +
     '<div style="font-size:48px;margin-bottom:12px;"></div>' +
     '<h2 style="margin:0 0 8px;">HubSuite</h2>' +
     '<div class="muted" style="margin-bottom:24px;">This app is not linked to any store yet.</div>' +
@@ -6003,7 +6003,18 @@ function showNoStoreKey() {
     '<button class="btn btn-primary" onclick="_applyStoreKey()">Connect Store</button>' +
     '<div class="muted" style="margin-top:16px;font-size:12px;">Your store key was provided by HubSuite when your store was created.<br>' +
     'Contact <strong>09177105930</strong> (GCash/Viber) for assistance.</div>' +
+    '</div>' +
+    '<div class="card" style="padding:18px;">' +
+    '<div class="title" style="font-size:20px;margin-bottom:4px;">Register New Store</div>' +
+    '<div class="muted" style="font-size:13px;margin-bottom:14px;">For new owners: fill this up once, then you can log in immediately.</div>' +
+    '<div class="field"><label>Store Name</label><input id="reg-store-name" placeholder="e.g. Vina Sari-sari Store"></div>' +
+    '<div class="field"><label>Type of Store / Business</label><select id="reg-business-type" onchange="_previewPublicRegisterPlan()">' + _publicBusinessTypeOptions() + '</select></div>' +
+    '<div id="reg-plan-preview" class="message message-ok" style="font-size:12px;margin-bottom:12px;">Recommended plan: Negosyo Hub</div>' +
+    '<div class="field"><label>Username</label><input id="reg-username" autocomplete="username" placeholder="Owner username"></div>' +
+    '<div class="field"><label>Password</label><input id="reg-password" type="password" autocomplete="new-password" placeholder="At least 4 characters"></div>' +
+    '<button class="btn btn-primary" onclick="submitPublicStoreRegistration()">Register Store</button>' +
     '</div></div>';
+  _previewPublicRegisterPlan();
 }
 
 function _applyStoreKey() {
@@ -6011,6 +6022,82 @@ function _applyStoreKey() {
   if (!key.startsWith('sk_')) { _showToast('Invalid store key format', true); return; }
   localStorage.setItem('store_key', key);
   window.location.reload();
+}
+
+function _publicBusinessTypeOptions() {
+  var rows = [
+    ['sari_sari', 'Sari-sari Store', 'NEGOSYO_HUB'],
+    ['small_retail', 'Small Retail Store', 'NEGOSYO_HUB'],
+    ['online_seller', 'Online Seller', 'NEGOSYO_HUB'],
+    ['food_stall', 'Food Stall / Eatery', 'NEGOSYO_HUB'],
+    ['solo_service', 'Solo Service Business', 'NEGOSYO_HUB'],
+    ['grocery', 'Grocery / Mini Mart', 'BUSINESS_HUB'],
+    ['hardware', 'Hardware Store', 'BUSINESS_HUB'],
+    ['agri_products', 'Agricultural Products', 'BUSINESS_HUB'],
+    ['pharmacy', 'Pharmacy / Health Store', 'BUSINESS_HUB'],
+    ['salon', 'Salon / Personal Services', 'BUSINESS_HUB'],
+    ['repair_service', 'Repair / Technical Services', 'BUSINESS_HUB'],
+    ['rental', 'Rental Business', 'BUSINESS_HUB'],
+    ['restaurant', 'Restaurant / Cafe', 'BUSINESS_HUB'],
+    ['multi_branch', 'Multi-branch Business', 'NEXORA_HUB'],
+    ['distribution', 'Distribution / Wholesale', 'NEXORA_HUB'],
+    ['warehouse', 'Warehouse / Inventory-heavy', 'NEXORA_HUB']
+  ];
+  return rows.map(function(row) {
+    return '<option value="' + row[0] + '" data-plan="' + row[2] + '">' + row[1] + '</option>';
+  }).join('');
+}
+
+function _previewPublicRegisterPlan() {
+  var sel = document.getElementById('reg-business-type');
+  var out = document.getElementById('reg-plan-preview');
+  if (!sel || !out) return;
+  var opt = sel.options[sel.selectedIndex];
+  var plan = opt ? opt.getAttribute('data-plan') : 'NEGOSYO_HUB';
+  var label = plan === 'NEXORA_HUB' ? 'Nexora Hub' : (plan === 'BUSINESS_HUB' ? 'Business Hub' : 'Negosyo Hub');
+  out.innerHTML = 'Recommended plan: <strong>' + label + '</strong>';
+}
+
+async function submitPublicStoreRegistration() {
+  var storeName = ((document.getElementById('reg-store-name') || {}).value || '').trim();
+  var businessType = ((document.getElementById('reg-business-type') || {}).value || '').trim();
+  var username = ((document.getElementById('reg-username') || {}).value || '').trim();
+  var password = ((document.getElementById('reg-password') || {}).value || '');
+  if (!storeName) { _showToast('Store name is required', true); return; }
+  if (!businessType) { _showToast('Business type is required', true); return; }
+  if (!username) { _showToast('Username is required', true); return; }
+  if (password.length < 4) { _showToast('Password must be at least 4 characters', true); return; }
+
+  showLoading('Registering store');
+  try {
+    var result = await API.call('publicRegisterStore', {
+      storeName: storeName,
+      businessType: businessType,
+      username: username,
+      password: password
+    });
+    API.setToken(result.token);
+    state.session = result.session;
+    state.products = result.products || [];
+    state.categories = result.categories || [];
+    state.storeProfile = { storeName: result.storeName || storeName, ownerName: username };
+    localStorage.setItem('store_key', result.apiKey);
+    localStorage.setItem('store_session', JSON.stringify(state.session));
+    localStorage.setItem('store_profile', JSON.stringify(state.storeProfile));
+    try {
+      await DB.init();
+      await DB.saveProducts(state.products);
+      await DB.saveCategories(state.categories);
+    } catch(e) {}
+    try {
+      var hash = await sha256(password);
+      localStorage.setItem('offline_cred_' + username.toLowerCase(), JSON.stringify({ passwordHash: hash, user: state.session.user }));
+    } catch(e) {}
+    window.location.href = './?k=' + encodeURIComponent(result.apiKey);
+  } catch(e) {
+    showNoStoreKey();
+    _showToast('Registration failed: ' + (e.message || String(e)), true);
+  }
 }
 
 function showSubscriptionExpired(paymentInfo) {

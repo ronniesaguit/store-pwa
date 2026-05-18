@@ -646,7 +646,8 @@ function renderDashboard() {
     return '<div class="store-row" onclick="renderStoreDetail(' + i + ')">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;">' +
       '<div><div style="font-size:14px;font-weight:bold;">' + st.Store_Name + '</div>' +
-        '<div class="muted" style="font-size:12px;">' + (st.Owner_Name || 'No owner') + '  ' + _esc(_planLabel(st.Plan || '')) + '  ' + sub + '</div></div>' +
+        '<div class="muted" style="font-size:12px;">' + (st.Owner_Name || 'No owner') + '  ' + _esc(_planLabel(st.Plan || '')) + '  ' + sub + '</div>' +
+        (st.Business_Type_Label || st.Business_Type ? '<div class="muted" style="font-size:11px;">Business type: ' + _esc(st.Business_Type_Label || st.Business_Type) + '</div>' : '') + '</div>' +
       '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">' +
       _badgeHtml(status) +
       '<label onclick="event.stopPropagation();" style="display:flex;align-items:center;gap:5px;font-size:11px;color:#475569;font-weight:800;">' +
@@ -720,6 +721,7 @@ function renderStoreDetail(idx) {
     _badgeHtml(status) + '</div>' +
 
     '<div style="font-size:13px;line-height:2;">' +
+    (st.Business_Type_Label || st.Business_Type ? '<div> Business Type: <strong>' + _esc(st.Business_Type_Label || st.Business_Type) + '</strong></div>' : '') +
     '<div> ' + (st.Owner_Email || '') + '</div>' +
     '<div> ' + (st.Owner_Phone || '') + '</div>' +
     '<div> Owner login: <strong>' + _esc(st.Owner_Username || 'owner') + '</strong></div>' +

@@ -9,6 +9,7 @@ const LOCAL_ACTIONS = new Set([
   'adminGetAllMessages', 'adminGetStoreMessages', 'adminSendMessage',
   'adminGetStoreSystemHealth', 'adminFlagStoreSystemFunction', 'adminRepairStoreSystemFunction',
   'adminGetStoreAddOns', 'adminSetStoreAddOns',
+  'publicRegisterStore',
   'login', 'logout', 'getBootData', 'getFeatureMarketplace', 'startTrial',
   'getProducts', 'createProduct', 'updateProduct', 'deleteProduct',
   'getProductByBarcode', 'addProductStock', 'getInventoryAdvancedSummary',
@@ -170,6 +171,44 @@ function planDefaults(plan) {
     CUSTOM: { fee: 200, users: -1, products: -1, reports: 'ALL', health: true }
   };
   return defs[normalizePlan(plan)] || defs.TRIAL;
+}
+
+function businessTypePlan(type) {
+  const t = String(type || '').trim().toLowerCase();
+  const negosyo = ['sari_sari', 'small_retail', 'food_stall', 'solo_service', 'online_seller'];
+  const business = ['grocery', 'hardware', 'agri_products', 'pharmacy', 'salon', 'repair_service', 'rental', 'restaurant'];
+  const nexora = ['multi_branch', 'distribution', 'warehouse'];
+  if (nexora.includes(t)) return 'NEXORA_HUB';
+  if (business.includes(t)) return 'BUSINESS_HUB';
+  if (negosyo.includes(t)) return 'NEGOSYO_HUB';
+  return 'NEGOSYO_HUB';
+}
+
+function businessTypeLabel(type) {
+  const labels = {
+    sari_sari: 'Sari-sari Store',
+    small_retail: 'Small Retail Store',
+    grocery: 'Grocery / Mini Mart',
+    hardware: 'Hardware Store',
+    agri_products: 'Agricultural Products',
+    food_stall: 'Food Stall / Eatery',
+    restaurant: 'Restaurant / Cafe',
+    pharmacy: 'Pharmacy / Health Store',
+    salon: 'Salon / Personal Services',
+    repair_service: 'Repair / Technical Services',
+    rental: 'Rental Business',
+    online_seller: 'Online Seller',
+    solo_service: 'Solo Service Business',
+    multi_branch: 'Multi-branch Business',
+    distribution: 'Distribution / Wholesale',
+    warehouse: 'Warehouse / Inventory-heavy'
+  };
+  return labels[String(type || '').trim()] || String(type || 'Business');
+}
+
+function publicStoreApiKey(storeName) {
+  const stem = String(storeName || 'STORE').toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 12) || 'STORE';
+  return ('STORE_' + stem + '_' + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4)).toUpperCase();
 }
 
 function featureCatalog() {
@@ -622,6 +661,68 @@ async function advancedReport(env, tenant, type, period) {
 async function handleLocalAction(action, data, requestBody, env) {
   const tenant = tenantId(requestBody);
   switch (action) {
+    case 'publicRegisterStore': {
+      const storeName = String(data.storeName || '').trim();
+      const businessType = String(data.businessType || '').trim();
+      const username = String(data.username || '').trim();
+      const password = String(data.password || '');
+      if (!storeName) throw new Error('Store name is required');
+      if (!businessType) throw new Error('Business type is required');
+      if (!username) throw new Error('Username is required');
+      if (password.length < 4) throw new Error('Password must be at least 4 characters');
+
+      const stores = await adminStores(env);
+      const duplicate = stores.find((s) =>
+        String(s.Store_Name || '').trim().toLowerCase() === storeName.toLowerCase() &&
+        String(s.Owner_Username || '').trim().toLowerCase() === username.toLowerCase() &&
+        String(s.Status || '').toUpperCase() !== 'ARCHIVED'
+      );
+      if (duplicate) throw new Error('This store registration already exists. Please log in or contact support.');
+
+      const plan = businessTypePlan(businessType);
+      const def = planDefaults(plan);
+      const storeId = id('store');
+      const apiKey = publicStoreApiKey(storeName);
+      const trialDays = Number(platformSettings(env).TRIAL_DAYS || 30);
+      const store = await saveAdminStore(env, {
+        id: storeId,
+        Store_ID: storeId,
+        Store_Name: storeName,
+        Business_Type: businessType,
+        Business_Type_Label: businessTypeLabel(businessType),
+        Owner_Name: username,
+        Owner_Email: '',
+        Owner_Phone: '',
+        Owner_Username: username,
+        Owner_Password: password,
+        API_Key: apiKey,
+        Status: 'ACTIVE',
+        Plan: plan,
+        Trial_End: addDays(trialDays),
+        Subscription_Expires: addDays(trialDays),
+        Auto_Renew_Trial: 'true',
+        Monthly_Fee: Number(def.fee || 0),
+        Max_Users: def.users,
+        Max_Products: def.products,
+        Reports_Level: def.reports,
+        Has_Health_Indicators: String(def.health),
+        DB_Provider: getDb(env) ? 'd1' : 'runtime',
+        Notes: 'Self-registered from public owner registration. Business type: ' + businessTypeLabel(businessType)
+      });
+      const boot = await ownerBootData(env, store.API_Key);
+      return Object.assign({
+        token: ownerToken(store.API_Key),
+        apiKey: store.API_Key,
+        storeId: store.Store_ID,
+        storeName: store.Store_Name,
+        ownerUsername: store.Owner_Username,
+        plan: store.Plan,
+        trialEnd: String(store.Trial_End || '').slice(0, 10),
+        businessType: store.Business_Type,
+        businessTypeLabel: store.Business_Type_Label
+      }, boot);
+    }
+
     case 'login': {
       const stores = await adminStores(env);
       const ownerStore = stores.find((s) => String(s.API_Key || '').toUpperCase() === String(tenant || '').toUpperCase()) || {};
