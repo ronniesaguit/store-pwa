@@ -6018,6 +6018,7 @@ function _applyStoreKey() {
 
 function _publicBusinessTypeOptions() {
   var rows = [
+    ['', 'Choose your type of business', ''],
     ['sari_sari', 'Sari-sari Store', 'NEGOSYO_HUB'],
     ['small_retail', 'Small Retail Store', 'NEGOSYO_HUB'],
     ['online_seller', 'Online Seller', 'NEGOSYO_HUB'],
@@ -6029,14 +6030,15 @@ function _publicBusinessTypeOptions() {
     ['pharmacy', 'Pharmacy / Health Store', 'BUSINESS_HUB'],
     ['salon', 'Salon / Personal Services', 'BUSINESS_HUB'],
     ['repair_service', 'Repair / Technical Services', 'BUSINESS_HUB'],
-    ['rental', 'Rental Business', 'BUSINESS_HUB'],
+    ['rental', 'Rentals', 'BUSINESS_HUB'],
     ['restaurant', 'Restaurant / Cafe', 'BUSINESS_HUB'],
     ['multi_branch', 'Multi-branch Business', 'NEXORA_HUB'],
     ['distribution', 'Distribution / Wholesale', 'NEXORA_HUB'],
     ['warehouse', 'Warehouse / Inventory-heavy', 'NEXORA_HUB']
   ];
   return rows.map(function(row) {
-    return '<option value="' + row[0] + '" data-plan="' + row[2] + '">' + row[1] + '</option>';
+    var disabled = row[0] ? '' : ' disabled selected';
+    return '<option value="' + row[0] + '" data-plan="' + row[2] + '"' + disabled + '>' + row[1] + '</option>';
   }).join('');
 }
 
@@ -6046,6 +6048,10 @@ function _previewPublicRegisterPlan() {
   if (!sel || !out) return;
   var opt = sel.options[sel.selectedIndex];
   var plan = opt ? opt.getAttribute('data-plan') : 'NEGOSYO_HUB';
+  if (!plan) {
+    out.innerHTML = 'Please choose your type of business.';
+    return;
+  }
   var label = plan === 'NEXORA_HUB' ? 'Nexora Hub' : (plan === 'BUSINESS_HUB' ? 'Business Hub' : 'Negosyo Hub');
   out.innerHTML = 'Recommended plan: <strong>' + label + '</strong>';
 }

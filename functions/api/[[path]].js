@@ -196,7 +196,7 @@ function businessTypeLabel(type) {
     pharmacy: 'Pharmacy / Health Store',
     salon: 'Salon / Personal Services',
     repair_service: 'Repair / Technical Services',
-    rental: 'Rental Business',
+    rental: 'Rentals',
     online_seller: 'Online Seller',
     solo_service: 'Solo Service Business',
     multi_branch: 'Multi-branch Business',
