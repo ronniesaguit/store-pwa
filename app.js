@@ -5992,19 +5992,11 @@ function _escHtml(str) {
 
 function showNoStoreKey() {
   document.getElementById('app').innerHTML =
-    '<div class="screen"><div class="card" style="text-align:center;padding:28px 18px;">' +
-    '<div style="font-size:48px;margin-bottom:12px;"></div>' +
+    '<div class="screen"><div class="card" style="padding:18px;">' +
+    '<div style="text-align:center;margin-bottom:18px;">' +
     '<h2 style="margin:0 0 8px;">HubSuite</h2>' +
-    '<div class="muted" style="margin-bottom:24px;">This app is not linked to any store yet.</div>' +
-    '<div class="subtitle" style="margin-bottom:8px;">Enter your Store Key</div>' +
-    '<input id="sk-input" placeholder="sk_xxxxxxxxxxxxxxxxxxxxxxxx" ' +
-      'style="width:100%;padding:12px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;' +
-      'margin-bottom:12px;box-sizing:border-box;">' +
-    '<button class="btn btn-primary" onclick="_applyStoreKey()">Connect Store</button>' +
-    '<div class="muted" style="margin-top:16px;font-size:12px;">Your store key was provided by HubSuite when your store was created.<br>' +
-    'Contact <strong>09177105930</strong> (GCash/Viber) for assistance.</div>' +
+    '<div class="muted" style="font-size:13px;">Create your store account. The store key is generated automatically.</div>' +
     '</div>' +
-    '<div class="card" style="padding:18px;">' +
     '<div class="title" style="font-size:20px;margin-bottom:4px;">Register New Store</div>' +
     '<div class="muted" style="font-size:13px;margin-bottom:14px;">For new owners: fill this up once, then you can log in immediately.</div>' +
     '<div class="field"><label>Store Name</label><input id="reg-store-name" placeholder="e.g. Vina Sari-sari Store"></div>' +
